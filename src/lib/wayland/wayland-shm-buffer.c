@@ -108,11 +108,11 @@ error:
 	if (fd >= 0)
 		close(fd);
 
-	if (buffer)
-		free(buffer);
-
 	if (buffer->target)
 		pepper_render_target_destroy(buffer->target);
+
+	if (buffer)
+		free(buffer);
 
 	return NULL;
 }
