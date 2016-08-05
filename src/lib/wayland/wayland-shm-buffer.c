@@ -92,6 +92,7 @@ wayland_shm_buffer_create(wayland_output_t *output)
 	wl_buffer_add_listener(buffer->buffer, &buffer_listener, buffer);
 	wl_shm_pool_destroy(pool);
 	close(fd);
+	fd = -1;
 
 	buffer->target = pepper_pixman_renderer_create_target(PEPPER_FORMAT_ARGB8888,
 					 buffer->pixels, buffer->stride,
