@@ -147,6 +147,12 @@ pepper_wayland_connect(pepper_compositor_t *compositor, const char *socket_name)
 	return conn;
 
 error:
+	if (conn->pixman_renderer)
+		pepper_renderer_destroy(conn->pixman_renderer);
+
+	if (conn->gl_renderer)
+		pepper_renderer_destroy(conn->gl_renderer);
+
 	string_free(conn->socket_name);
 	wl_display_disconnect(conn->display);
 	free(conn);
