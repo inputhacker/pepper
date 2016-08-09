@@ -126,18 +126,15 @@ pepper_wayland_connect(pepper_compositor_t *compositor, const char *socket_name)
 	conn->gl_renderer = pepper_gl_renderer_create(compositor, conn->display,
 						"wayland");
 	conn->pixman_renderer = pepper_pixman_renderer_create(compositor);
-
-	if (!conn->pixman_renderer) {
-		string_free(conn->socket_name);
-		wl_display_disconnect(conn->display);
-		free(conn);
-		return NULL;
-	}
+	PEPPER_CHECK(conn->pixman_renderer, goto error,
+		"pepper_pixman_renderer_create() failed.\n");
 
 	compositor_display = pepper_compositor_get_display(compositor);
 	loop = wl_display_get_event_loop(compositor_display);
 	conn->event_source = wl_event_loop_add_fd(loop, conn->fd, WL_EVENT_READABLE,
 						 handle_wayland_event, conn);
+	PEPPER_CHECK(conn->event_source, goto error,
+		"wl_event_loop_add() failed.\n");
 	wl_event_source_check(conn->event_source);
 
 	pepper_list_init(&conn->seat_list);
@@ -148,6 +145,13 @@ pepper_wayland_connect(pepper_compositor_t *compositor, const char *socket_name)
 	wl_display_roundtrip(conn->display);
 
 	return conn;
+
+error:
+	string_free(conn->socket_name);
+	wl_display_disconnect(conn->display);
+	free(conn);
+
+	return NULL;
 }
 
 PEPPER_API void
