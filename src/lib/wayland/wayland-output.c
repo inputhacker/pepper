@@ -208,7 +208,7 @@ wayland_output_repaint(void *o, const pepper_list_t *plane_list)
 
 		if (plane == output->primary_plane) {
 			const pepper_list_t *render_list = pepper_plane_get_render_list(plane);
-			pixman_region32_t   *damage = pepper_plane_get_damage_region(plane);
+			pepper_region_t   *damage = pepper_plane_get_damage_region(plane);
 
 			if (output->render_pre)
 				output->render_pre(output);

@@ -120,14 +120,14 @@ static void
 output_update_planes(pepper_output_t *output)
 {
 	pepper_plane_t     *plane;
-	pixman_region32_t   clip;
+	pepper_region_t   clip;
 
-	pixman_region32_init(&clip);
+	pepper_region_init(&clip);
 
 	pepper_list_for_each_reverse(plane, &output->plane_list, link)
 	pepper_plane_update(plane, &output->view_list, &clip);
 
-	pixman_region32_fini(&clip);
+	pepper_region_fini(&clip);
 }
 
 static void
@@ -203,7 +203,7 @@ pepper_output_schedule_repaint(pepper_output_t *output)
  */
 PEPPER_API void
 pepper_output_add_damage_region(pepper_output_t *output,
-								pixman_region32_t *region)
+								pepper_region_t *region)
 {
 	pepper_plane_t *plane;
 	pepper_list_for_each(plane, &output->plane_list, link)

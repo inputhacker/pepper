@@ -227,8 +227,8 @@ assign_fb_plane(drm_output_t *output, pepper_view_t *view)
 
 	/* TODO: Other alpha formats like ARGB4444, ABGR8888 ?? */
 	if (gbm_bo_get_format(bo) == GBM_FORMAT_ARGB8888) {
-		pixman_box32_t      box;
-		pixman_region32_t  *opaque;
+		pepper_box_t      box;
+		pepper_region_t  *opaque;
 
 		box.x1 = 0;
 		box.y1 = 0;
@@ -237,7 +237,7 @@ assign_fb_plane(drm_output_t *output, pepper_view_t *view)
 
 		opaque = pepper_surface_get_opaque_region(surface);
 
-		if (pixman_region32_contains_rectangle(opaque, &box) != PIXMAN_REGION_IN) {
+		if (pepper_region_contains_rectangle(opaque, &box) != PEPPER_REGION_IN) {
 			gbm_bo_destroy(bo);
 			return NULL;
 		}
@@ -318,8 +318,8 @@ assign_overlay_plane(drm_output_t *output, pepper_view_t *view)
 	format = gbm_bo_get_format(bo);
 
 	if (format == GBM_FORMAT_ARGB8888) {
-		pixman_box32_t      box;
-		pixman_region32_t  *opaque;
+		pepper_box_t      box;
+		pepper_region_t  *opaque;
 
 		box.x1 = 0;
 		box.y1 = 0;
@@ -328,7 +328,7 @@ assign_overlay_plane(drm_output_t *output, pepper_view_t *view)
 
 		opaque = pepper_surface_get_opaque_region(surface);
 
-		if (pixman_region32_contains_rectangle(opaque, &box) == PIXMAN_REGION_IN)
+		if (pepper_region_contains_rectangle(opaque, &box) == PEPPER_REGION_IN)
 			format = GBM_FORMAT_XRGB8888;
 	}
 
@@ -399,7 +399,7 @@ drm_output_render_gl(drm_output_t *output)
 {
 	const pepper_list_t *render_list = pepper_plane_get_render_list(
 										   output->primary_plane);
-	pixman_region32_t   *damage = pepper_plane_get_damage_region(
+	pepper_region_t   *damage = pepper_plane_get_damage_region(
 									  output->primary_plane);
 	struct gbm_bo       *bo;
 
@@ -422,23 +422,23 @@ drm_output_render_pixman(drm_output_t *output)
 {
 	const pepper_list_t *render_list = pepper_plane_get_render_list(
 										   output->primary_plane);
-	pixman_region32_t   *damage = pepper_plane_get_damage_region(
+	pepper_region_t   *damage = pepper_plane_get_damage_region(
 									  output->primary_plane);
-	pixman_region32_t    total_damage;
+	pepper_region_t    total_damage;
 
 	output->back_fb_index ^= 1;
 	output->back = output->fb[output->back_fb_index];
 
-	pixman_region32_init(&total_damage);
-	pixman_region32_union(&total_damage, damage, &output->previous_damage);
-	pixman_region32_copy(&output->previous_damage, damage);
+	pepper_region_init(&total_damage);
+	pepper_region_union(&total_damage, damage, &output->previous_damage);
+	pepper_region_copy(&output->previous_damage, damage);
 
 	if (output->use_shadow) {
 		pepper_renderer_repaint_output(output->renderer, output->base, render_list,
 									   damage);
 
 		/* Copy shadow image to the back frame buffer. */
-		pixman_image_set_clip_region32(output->back->image, &total_damage);
+		pixman_image_set_clip_region32(output->back->image, (pixman_region32_t *)&total_damage);
 		pixman_image_composite32(PIXMAN_OP_SRC,
 								 output->shadow_image, NULL, output->back->image,
 								 0, 0, 0, 0, 0, 0,
@@ -451,7 +451,7 @@ drm_output_render_pixman(drm_output_t *output)
 									   &total_damage);
 	}
 
-	pixman_region32_fini(&total_damage);
+	pepper_region_fini(&total_damage);
 	pepper_plane_clear_damage_region(output->primary_plane);
 }
 
@@ -717,7 +717,7 @@ fini_pixman_renderer(drm_output_t *output)
 		output->fb_target[i] = NULL;
 	}
 
-	pixman_region32_fini(&output->previous_damage);
+	pepper_region_fini(&output->previous_damage);
 	output->renderer = NULL;
 	output->render_target = NULL;
 }
@@ -743,7 +743,7 @@ init_pixman_renderer(drm_output_t *output)
 		PEPPER_CHECK(output->fb[i], goto error, "drm_buffer_create_dumb() failed.\n");
 	}
 
-	pixman_region32_init(&output->previous_damage);
+	pepper_region_init(&output->previous_damage);
 	output->render_type = DRM_RENDER_TYPE_PIXMAN;
 
 	if (output->use_shadow) {

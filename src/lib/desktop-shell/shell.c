@@ -32,7 +32,7 @@
 void
 shell_get_output_workarea(desktop_shell_t       *shell,
 						  pepper_output_t       *output,
-						  pixman_rectangle32_t  *area)
+						  pepper_rectangle_t  *area)
 {
 	const pepper_output_geometry_t *geom;
 

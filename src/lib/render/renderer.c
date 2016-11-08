@@ -74,7 +74,7 @@ pepper_renderer_flush_surface_damage(pepper_renderer_t *renderer,
 PEPPER_API void
 pepper_renderer_repaint_output(pepper_renderer_t *renderer,
 							   pepper_output_t *output,
-							   const pepper_list_t *view_list, pixman_region32_t *damage)
+							   const pepper_list_t *view_list, pepper_region_t *damage)
 {
 	renderer->repaint_output(renderer, output, view_list, damage);
 }

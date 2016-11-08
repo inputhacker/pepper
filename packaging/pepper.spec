@@ -208,6 +208,7 @@ make %{?_smp_mflags}
 %defattr(-,root,root,-)
 %{_includedir}/pepper/pepper.h
 %{_includedir}/pepper/pepper-utils.h
+%{_includedir}/pepper/pepper-utils-pixman.h
 %{_includedir}/pepper/pepper-output-backend.h
 %{_includedir}/pepper/pepper-input-backend.h
 %{_libdir}/pkgconfig/pepper.pc

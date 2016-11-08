@@ -83,7 +83,7 @@ struct pepper_tdm_output {
 	tbm_surface_h           back, front;
 	pepper_bool_t           page_flip_pending;
 	/*For pixman*/
-	pixman_region32_t       previous_damage;
+	pepper_region_t       previous_damage;
 };
 
 struct pepper_tdm_plane {

@@ -33,7 +33,6 @@
 #include <config.h>
 #include "pepper.h"
 #include <wayland-util.h>
-#include <pixman.h>
 #include "pepper-output-backend.h"
 #include "pepper-input-backend.h"
 
@@ -166,9 +165,9 @@ struct pepper_surface_state {
 	int32_t                     transform;
 	int32_t                     scale;
 
-	pixman_region32_t           damage_region;
-	pixman_region32_t           opaque_region;
-	pixman_region32_t           input_region;
+	pepper_region_t           damage_region;
+	pepper_region_t           opaque_region;
+	pepper_region_t           input_region;
 
 	struct wl_list              frame_callback_list;
 	pepper_event_listener_t    *buffer_destroy_listener;
@@ -199,9 +198,9 @@ struct pepper_surface {
 	 * Buffer is transformed and scaled into surface local coordinate space. */
 	int32_t                 w, h;
 
-	pixman_region32_t       damage_region;
-	pixman_region32_t       opaque_region;
-	pixman_region32_t       input_region;
+	pepper_region_t       damage_region;
+	pepper_region_t       opaque_region;
+	pepper_region_t       input_region;
 	pepper_bool_t           pickable;
 
 	struct wl_list          frame_callback_list;
@@ -243,7 +242,7 @@ struct pepper_wl_region {
 	struct wl_resource     *resource;
 	pepper_list_t           link;
 
-	pixman_region32_t       pixman_region;
+	pepper_region_t       region;
 };
 
 pepper_wl_region_t *
@@ -256,7 +255,7 @@ void
 pepper_wl_region_destroy(pepper_wl_region_t *region);
 
 void
-pepper_transform_pixman_region(pixman_region32_t *region,
+pepper_transform_region(pepper_region_t *region,
 							   const pepper_mat4_t *matrix);
 
 /* Subcompositor */
@@ -514,8 +513,8 @@ struct pepper_view {
 	pepper_mat4_t               global_transform;
 	pepper_mat4_t               global_transform_inverse;
 
-	pixman_region32_t           bounding_region;
-	pixman_region32_t           opaque_region;
+	pepper_region_t           bounding_region;
+	pepper_region_t           opaque_region;
 
 	/* Visibility. */
 	pepper_bool_t               active;
@@ -549,8 +548,8 @@ struct pepper_plane {
 	pepper_output_t    *output;
 
 	pepper_list_t       entry_list;
-	pixman_region32_t   damage_region;
-	pixman_region32_t   clip_region;
+	pepper_region_t   damage_region;
+	pepper_region_t   clip_region;
 
 	pepper_list_t       link;
 };
@@ -560,18 +559,18 @@ pepper_plane_create(pepper_object_t *output, pepper_object_t *above_plane);
 
 void
 pepper_plane_add_damage_region(pepper_plane_t *plane,
-							   pixman_region32_t *region);
+							   pepper_region_t *region);
 
 void
 pepper_plane_update(pepper_plane_t *plane, const pepper_list_t *view_list,
-					pixman_region32_t *clip);
+					pepper_region_t *clip);
 
 void
 pepper_surface_flush_damage(pepper_surface_t *surface);
 
 /* Misc. */
 void
-pepper_pixman_region_global_to_output(pixman_region32_t *region,
+pepper_region_global_to_output(pepper_region_t *region,
 									  pepper_output_t *output);
 
 void

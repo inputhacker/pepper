@@ -180,7 +180,7 @@ struct drm_output {
 	drm_buffer_t           *fb[2];
 	pepper_render_target_t *fb_target[2];
 	int                     back_fb_index;
-	pixman_region32_t       previous_damage;
+	pepper_region_t       previous_damage;
 
 	/* OpenGL */
 	struct gbm_surface     *gbm_surface;

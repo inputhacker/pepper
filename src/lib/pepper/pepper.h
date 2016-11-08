@@ -1246,13 +1246,13 @@ pepper_surface_get_buffer_scale(pepper_surface_t *surface);
 PEPPER_API int32_t
 pepper_surface_get_buffer_transform(pepper_surface_t *surface);
 
-PEPPER_API pixman_region32_t *
+PEPPER_API pepper_region_t *
 pepper_surface_get_damage_region(pepper_surface_t *surface);
 
-PEPPER_API pixman_region32_t *
+PEPPER_API pepper_region_t *
 pepper_surface_get_opaque_region(pepper_surface_t *surface);
 
-PEPPER_API pixman_region32_t *
+PEPPER_API pepper_region_t *
 pepper_surface_get_input_region(pepper_surface_t *surface);
 
 PEPPER_API void
@@ -1371,7 +1371,7 @@ pepper_view_get_global_coordinate(pepper_view_t *view, double lx, double ly,
 
 /* Misc */
 PEPPER_API void
-pepper_pixman_region_global_to_output(pixman_region32_t *region,
+pepper_region_global_to_output(pepper_region_t *region,
 									  pepper_output_t *output);
 
 PEPPER_API void

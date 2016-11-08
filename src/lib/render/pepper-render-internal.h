@@ -57,7 +57,7 @@ struct pepper_renderer {
 	void            (*repaint_output)(pepper_renderer_t *renderer,
 									  pepper_output_t *output,
 									  const pepper_list_t *render_list,
-									  pixman_region32_t *damage);
+									  pepper_region_t *damage);
 };
 
 #endif /* PEPPER_RENDER_INTERNAL_H */

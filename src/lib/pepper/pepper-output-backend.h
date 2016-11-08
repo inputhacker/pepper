@@ -137,7 +137,7 @@ struct pepper_render_item {
 	pepper_mat4_t       transform;      /**< transform matrix of the view */
 	pepper_mat4_t
 	inverse;        /**< inverse matrix of the transform matrix */
-	pixman_region32_t   visible_region; /**< visible region of the view */
+	pepper_region_t   visible_region; /**< visible region of the view */
 };
 
 PEPPER_API pepper_plane_t *
@@ -146,10 +146,10 @@ pepper_output_add_plane(pepper_output_t *output, pepper_plane_t *above_plane);
 PEPPER_API void
 pepper_plane_destroy(pepper_plane_t *plane);
 
-PEPPER_API pixman_region32_t *
+PEPPER_API pepper_region_t *
 pepper_plane_get_damage_region(pepper_plane_t *plane);
 
-PEPPER_API pixman_region32_t *
+PEPPER_API pepper_region_t *
 pepper_plane_get_clip_region(pepper_plane_t *plane);
 
 PEPPER_API const pepper_list_t *
@@ -157,7 +157,7 @@ pepper_plane_get_render_list(pepper_plane_t *plane);
 
 PEPPER_API void
 pepper_plane_subtract_damage_region(pepper_plane_t *plane,
-									pixman_region32_t *damage);
+									pepper_region_t *damage);
 
 PEPPER_API void
 pepper_plane_clear_damage_region(pepper_plane_t *plane);
@@ -168,7 +168,7 @@ pepper_view_assign_plane(pepper_view_t *view, pepper_output_t *output,
 
 PEPPER_API void
 pepper_output_add_damage_region(pepper_output_t *output,
-								pixman_region32_t *region);
+								pepper_region_t *region);
 
 PEPPER_API void
 pepper_output_finish_frame(pepper_output_t *output, struct timespec *ts);

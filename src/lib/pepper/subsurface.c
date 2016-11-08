@@ -191,9 +191,9 @@ surface_state_move(pepper_surface_state_t *from, pepper_surface_state_t *to)
 	/* FIXME: Need to create another one? */
 	to->buffer_destroy_listener = from->buffer_destroy_listener;
 
-	pixman_region32_copy(&to->damage_region, &from->damage_region);
-	pixman_region32_copy(&to->opaque_region, &from->opaque_region);
-	pixman_region32_copy(&to->input_region,  &from->input_region);
+	pepper_region_copy(&to->damage_region, &from->damage_region);
+	pepper_region_copy(&to->opaque_region, &from->opaque_region);
+	pepper_region_copy(&to->input_region,  &from->input_region);
 
 	wl_list_insert_list(&to->frame_callback_list, &from->frame_callback_list);
 
@@ -204,9 +204,9 @@ surface_state_move(pepper_surface_state_t *from, pepper_surface_state_t *to)
 	from->transform = WL_OUTPUT_TRANSFORM_NORMAL;
 	from->buffer_destroy_listener = NULL;
 
-	pixman_region32_clear(&from->damage_region);
-	pixman_region32_clear(&from->opaque_region);
-	pixman_region32_clear(&from->input_region);
+	pepper_region_clear(&from->damage_region);
+	pepper_region_clear(&from->opaque_region);
+	pepper_region_clear(&from->input_region);
 
 	wl_list_init(&from->frame_callback_list);
 }

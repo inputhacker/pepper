@@ -89,9 +89,9 @@ __tdm_renderer_pixman_render(pepper_tdm_output_t *output)
 {
 	const pepper_list_t *render_list = pepper_plane_get_render_list(
 										   output->primary_plane->base);
-	pixman_region32_t   *damage = pepper_plane_get_damage_region(
+	pepper_region_t   *damage = pepper_plane_get_damage_region(
 									  output->primary_plane->base);
-	pixman_region32_t    total_damage;
+	pepper_region_t    total_damage;
 	tbm_surface_h       back;
 	pepper_render_target_t *target;
 
@@ -108,14 +108,14 @@ __tdm_renderer_pixman_render(pepper_tdm_output_t *output)
 		return;
 	}
 
-	pixman_region32_init(&total_damage);
-	pixman_region32_union(&total_damage, damage, &output->previous_damage);
-	pixman_region32_copy(&output->previous_damage, damage);
+	pepper_region_init(&total_damage);
+	pepper_region_union(&total_damage, damage, &output->previous_damage);
+	pepper_region_copy(&output->previous_damage, damage);
 
 	pepper_renderer_repaint_output(output->renderer, output->base, render_list,
 								   &total_damage);
 
-	pixman_region32_fini(&total_damage);
+	pepper_region_fini(&total_damage);
 	pepper_plane_clear_damage_region(output->primary_plane->base);
 
 	output->back = back;
@@ -124,7 +124,7 @@ __tdm_renderer_pixman_render(pepper_tdm_output_t *output)
 static void
 __tdm_renderer_pixman_fini(pepper_tdm_output_t *output)
 {
-	pixman_region32_fini(&output->previous_damage);
+	pepper_region_fini(&output->previous_damage);
 
 	if (output->render_target)
 		pepper_render_target_destroy(output->render_target);
@@ -158,7 +158,7 @@ __tdm_renderer_pixman_init(pepper_tdm_output_t *output)
 	PEPPER_CHECK(output->tbm_surface_queue, goto error,
 				 "tbm_surface_queue_create() failed.\n");
 
-	pixman_region32_init(&output->previous_damage);
+	pepper_region_init(&output->previous_damage);
 	output->render_type = TDM_RENDER_TYPE_PIXMAN;
 
 	return;
@@ -174,7 +174,7 @@ __tdm_renderer_gl_render(pepper_tdm_output_t *output)
 
 	const pepper_list_t *render_list = pepper_plane_get_render_list(
 										   output->primary_plane->base);
-	pixman_region32_t   *damage = pepper_plane_get_damage_region(
+	pepper_region_t   *damage = pepper_plane_get_damage_region(
 									  output->primary_plane->base);
 
 	pepper_renderer_repaint_output(output->renderer, output->base, render_list,

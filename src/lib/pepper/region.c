@@ -46,7 +46,7 @@ region_add(struct wl_client *client, struct wl_resource *resource,
 		   int32_t x, int32_t y, int32_t w, int32_t h)
 {
 	pepper_wl_region_t *region = wl_resource_get_user_data(resource);
-	pixman_region32_union_rect(&region->pixman_region, &region->pixman_region,
+	pepper_region_union_rect(&region->region, &region->region,
 							   x, y, w, h);
 }
 
@@ -55,11 +55,11 @@ region_subtract(struct wl_client *client, struct wl_resource *resource,
 				int32_t x, int32_t y, int32_t w, int32_t h)
 {
 	pepper_wl_region_t    *region = wl_resource_get_user_data(resource);
-	pixman_region32_t   rect;
+	pepper_region_t   rect;
 
-	pixman_region32_init_rect(&rect, x, y, w, h);
-	pixman_region32_subtract(&region->pixman_region, &region->pixman_region, &rect);
-	pixman_region32_fini(&rect);
+	pepper_region_init_rect(&rect, x, y, w, h);
+	pepper_region_subtract(&region->region, &region->region, &rect);
+	pepper_region_fini(&rect);
 }
 
 static const struct wl_region_interface region_implementation = {
@@ -86,7 +86,7 @@ pepper_wl_region_create(pepper_compositor_t   *compositor,
 
 	region->link.item = region;
 	pepper_list_insert(&compositor->region_list, &region->link);
-	pixman_region32_init(&region->pixman_region);
+	pepper_region_init(&region->region);
 
 	return region;
 
@@ -100,7 +100,7 @@ error:
 void
 pepper_wl_region_destroy(pepper_wl_region_t *region)
 {
-	pixman_region32_fini(&region->pixman_region);
+	pepper_region_fini(&region->region);
 	pepper_list_remove(&region->link);
 	free(region);
 }
@@ -119,7 +119,7 @@ add_bbox_point(double *box, int x, int y, const pepper_mat4_t *matrix)
 }
 
 static inline void
-transform_bounding_box(pixman_box32_t *box, const pepper_mat4_t *matrix)
+transform_bounding_box(pepper_box_t *box, const pepper_mat4_t *matrix)
 {
 	double          b[4] = { HUGE_VAL, HUGE_VAL, -HUGE_VAL, -HUGE_VAL };
 
@@ -135,25 +135,25 @@ transform_bounding_box(pixman_box32_t *box, const pepper_mat4_t *matrix)
 }
 
 void
-pepper_transform_pixman_region(pixman_region32_t *region,
+pepper_transform_region(pepper_region_t *region,
 							   const pepper_mat4_t *matrix)
 
 {
-	pixman_region32_t   result;
-	pixman_box32_t     *rects;
+	pepper_region_t   result;
+	pepper_box_t     *rects;
 	int                 i, num_rects;
 
-	pixman_region32_init(&result);
-	rects = pixman_region32_rectangles(region, &num_rects);
+	pepper_region_init(&result);
+	rects = pepper_region_rectangles(region, &num_rects);
 
 	for (i = 0; i < num_rects; i++) {
-		pixman_box32_t box = rects[i];
+		pepper_box_t box = rects[i];
 
 		transform_bounding_box(&box, matrix);
-		pixman_region32_union_rect(&result, &result,
+		pepper_region_union_rect(&result, &result,
 								   box.x1, box.y1, box.x2 - box.x1, box.y2 - box.y1);
 	}
 
-	pixman_region32_copy(region, &result);
-	pixman_region32_fini(&result);
+	pepper_region_copy(region, &result);
+	pepper_region_fini(&result);
 }

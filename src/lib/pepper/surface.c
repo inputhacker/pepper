@@ -83,9 +83,9 @@ pepper_surface_state_init(pepper_surface_state_t *state)
 	state->transform = WL_OUTPUT_TRANSFORM_NORMAL;
 	state->scale = 1;
 
-	pixman_region32_init(&state->damage_region);
-	pixman_region32_init(&state->opaque_region);
-	pixman_region32_init_rect(&state->input_region, INT32_MIN, INT32_MIN,
+	pepper_region_init(&state->damage_region);
+	pepper_region_init(&state->opaque_region);
+	pepper_region_init_rect(&state->input_region, INT32_MIN, INT32_MIN,
 							  UINT32_MAX, UINT32_MAX);
 
 	wl_list_init(&state->frame_callback_list);
@@ -96,9 +96,9 @@ pepper_surface_state_fini(pepper_surface_state_t *state)
 {
 	struct wl_resource *callback, *next;
 
-	pixman_region32_fini(&state->damage_region);
-	pixman_region32_fini(&state->opaque_region);
-	pixman_region32_fini(&state->input_region);
+	pepper_region_fini(&state->damage_region);
+	pepper_region_fini(&state->opaque_region);
+	pepper_region_fini(&state->input_region);
 
 	wl_resource_for_each_safe(callback, next, &state->frame_callback_list)
 	wl_resource_destroy(callback);
@@ -165,7 +165,7 @@ surface_damage(struct wl_client    *client,
 			   int32_t              h)
 {
 	pepper_surface_t *surface = wl_resource_get_user_data(resource);
-	pixman_region32_union_rect(&surface->pending.damage_region,
+	pepper_region_union_rect(&surface->pending.damage_region,
 							   &surface->pending.damage_region, x, y, w, h);
 }
 
@@ -205,9 +205,9 @@ surface_set_opaque_region(struct wl_client   *client,
 
 	if (region_resource) {
 		pepper_wl_region_t *region = wl_resource_get_user_data(region_resource);
-		pixman_region32_copy(&surface->pending.opaque_region, &region->pixman_region);
+		pepper_region_copy(&surface->pending.opaque_region, &region->region);
 	} else {
-		pixman_region32_clear(&surface->pending.opaque_region);
+		pepper_region_clear(&surface->pending.opaque_region);
 	}
 }
 
@@ -220,9 +220,9 @@ surface_set_input_region(struct wl_client   *client,
 
 	if (region_resource) {
 		pepper_wl_region_t *region = wl_resource_get_user_data(region_resource);
-		pixman_region32_copy(&surface->pending.input_region, &region->pixman_region);
+		pepper_region_copy(&surface->pending.input_region, &region->region);
 	} else {
-		pixman_region32_init_rect(&surface->pending.input_region,
+		pepper_region_init_rect(&surface->pending.input_region,
 								  INT32_MIN, INT32_MIN, UINT32_MAX, UINT32_MAX);
 	}
 }
@@ -311,9 +311,9 @@ pepper_surface_create(pepper_compositor_t *compositor,
 	surface->buffer.transform = WL_OUTPUT_TRANSFORM_NORMAL;
 	surface->buffer.scale = 1;
 
-	pixman_region32_init(&surface->damage_region);
-	pixman_region32_init(&surface->opaque_region);
-	pixman_region32_init_rect(&surface->input_region, INT32_MIN, INT32_MIN,
+	pepper_region_init(&surface->damage_region);
+	pepper_region_init(&surface->opaque_region);
+	pepper_region_init_rect(&surface->input_region, INT32_MIN, INT32_MIN,
 							  UINT32_MAX, UINT32_MAX);
 	surface->pickable = PEPPER_TRUE;
 
@@ -352,9 +352,9 @@ pepper_surface_destroy(pepper_surface_t *surface)
 			pepper_buffer_unreference(surface->buffer.buffer);
 	}
 
-	pixman_region32_fini(&surface->damage_region);
-	pixman_region32_fini(&surface->opaque_region);
-	pixman_region32_fini(&surface->input_region);
+	pepper_region_fini(&surface->damage_region);
+	pepper_region_fini(&surface->opaque_region);
+	pepper_region_fini(&surface->input_region);
 
 	pepper_list_remove(&surface->link);
 
@@ -433,14 +433,14 @@ pepper_surface_commit_state(pepper_surface_t *surface,
 	wl_list_init(&state->frame_callback_list);
 
 	/* surface.damage(). */
-	pixman_region32_copy(&surface->damage_region, &state->damage_region);
-	pixman_region32_clear(&state->damage_region);
+	pepper_region_copy(&surface->damage_region, &state->damage_region);
+	pepper_region_clear(&state->damage_region);
 
 	/* surface.set_opaque_region(), surface.set_input_region(). */
-	pixman_region32_copy(&surface->opaque_region, &state->opaque_region);
+	pepper_region_copy(&surface->opaque_region, &state->opaque_region);
 
 	if (surface->pickable)
-		pixman_region32_copy(&surface->input_region, &state->input_region);
+		pepper_region_copy(&surface->input_region, &state->input_region);
 
 	pepper_list_for_each(view, &surface->view_list, surface_link) {
 		/* TODO: Option for enabling/disabling auto resize */
@@ -600,7 +600,7 @@ pepper_surface_get_buffer_transform(pepper_surface_t *surface)
  *
  * The damage region is the current state of the surface which is updated on wl_surface.commit.
  */
-PEPPER_API pixman_region32_t *
+PEPPER_API pepper_region_t *
 pepper_surface_get_damage_region(pepper_surface_t *surface)
 {
 	return &surface->damage_region;
@@ -616,7 +616,7 @@ pepper_surface_get_damage_region(pepper_surface_t *surface)
  *
  * The opaque region is the current state of the surface which is updated on wl_surface.commit.
  */
-PEPPER_API pixman_region32_t *
+PEPPER_API pepper_region_t *
 pepper_surface_get_opaque_region(pepper_surface_t *surface)
 {
 	return &surface->opaque_region;
@@ -631,7 +631,7 @@ pepper_surface_get_opaque_region(pepper_surface_t *surface)
  *
  * The input region is the current state of the surface which is updated on wl_surface.commit.
  */
-PEPPER_API pixman_region32_t *
+PEPPER_API pepper_region_t *
 pepper_surface_get_input_region(pepper_surface_t *surface)
 {
 	return &surface->input_region;
@@ -701,7 +701,7 @@ pepper_surface_flush_damage(pepper_surface_t *surface)
 	pepper_output_t    *output;
 	pepper_bool_t       release_buffer = PEPPER_TRUE;
 
-	if (!pixman_region32_not_empty(&surface->damage_region))
+	if (!pepper_region_not_empty(&surface->damage_region))
 		return;
 
 	pepper_list_for_each(view, &surface->view_list, surface_link)
@@ -716,7 +716,7 @@ pepper_surface_flush_damage(pepper_surface_t *surface)
 			release_buffer = PEPPER_FALSE;
 	}
 
-	pixman_region32_clear(&surface->damage_region);
+	pepper_region_clear(&surface->damage_region);
 
 	if (surface->buffer.buffer && release_buffer) {
 		pepper_buffer_unreference(surface->buffer.buffer);

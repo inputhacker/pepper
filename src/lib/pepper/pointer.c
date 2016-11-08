@@ -66,8 +66,8 @@ pointer_set_cursor(struct wl_client *client, struct wl_resource *resource,
 
 	if (surface != pepper_view_get_surface(cursor_view)) {
 		surface->pickable = PEPPER_FALSE;
-		pixman_region32_fini(&surface->input_region);
-		pixman_region32_init(&surface->input_region);
+		pepper_region_fini(&surface->input_region);
+		pepper_region_init(&surface->input_region);
 		pepper_view_set_surface(cursor_view, surface);
 	}
 

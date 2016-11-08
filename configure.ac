@@ -29,7 +29,7 @@ fi
 AC_SUBST(GCC_CFLAGS)
 
 # pepper
-PEPPER_REQUIRES="wayland-server pixman-1 xkbcommon"
+PEPPER_REQUIRES="wayland-server xkbcommon"
 PKG_CHECK_MODULES(PEPPER, [$PEPPER_REQUIRES])
 PKG_CHECK_MODULES([TBM], [libtbm wayland-tbm-server], [have_tbm=yes], [have_tbm=no])
 if test x$have_tbm = xyes; then
@@ -57,7 +57,7 @@ fi
 # pepper-libinput
 PEPPER_LIBINPUT_REQUIRES="libinput"
 PKG_CHECK_MODULES(PEPPER_LIBINPUT, [$PEPPER_LIBINPUT_REQUIRES])
-PEPPER_LIBINPUT_REQUIRES="$PEPPER_LIBINPUT_REQUIRES pepper"
+#PEPPER_LIBINPUT_REQUIRES="$PEPPER_LIBINPUT_REQUIRES pepper"
 
 PEPPER_LIBINPUT_DIR="-I\$(top_srcdir)/src/lib/libinput"
 PEPPER_LIBINPUT_LIB="\$(top_srcdir)/src/lib/libinput/libpepper-libinput.la"
@@ -85,7 +85,6 @@ AC_SUBST(PEPPER_DESKTOP_SHELL_REQUIRES)
 # pepper-render
 PEPPER_RENDER_REQUIRES="pixman-1 egl glesv2"
 PKG_CHECK_MODULES(PEPPER_RENDER, [$PEPPER_RENDER_REQUIRES])
-PEPPER_RENDER_REQUIRES="$PEPPER_RENDER_REQUIRES pepper"
 
 PEPPER_RENDER_DIR="-I\$(top_srcdir)/src/lib/render"
 PEPPER_RENDER_LIB="\$(top_srcdir)/src/lib/render/libpepper-render.la"
@@ -98,9 +97,8 @@ AC_SUBST(PEPPER_RENDER_LIBS)
 AC_SUBST(PEPPER_RENDER_REQUIRES)
 
 # pepper-drm
-PEPPER_DRM_REQUIRES="libdrm gbm"
+PEPPER_DRM_REQUIRES="libdrm gbm pixman-1"
 PKG_CHECK_MODULES(PEPPER_DRM, [$PEPPER_DRM_REQUIRES])
-PEPPER_DRM_REQUIRES="$PEPPER_DRM_REQUIRES pepper pepper-render pepper-libinput"
 
 PKG_CHECK_MODULES([DRM_SPRD], [libdrm_sprd], [have_drm_sprd=yes], [have_drm_sprd=no])
 if test x$have_drm_sprd = xyes; then
@@ -131,9 +129,9 @@ AC_ARG_ENABLE(tdm,
 AM_CONDITIONAL(ENABLE_TDM, test x$enable_tdm = xyes)
 
 if test x$enable_tdm = xyes; then
-	PEPPER_TDM_REQUIRES="libtbm libtdm"
+	PEPPER_TDM_REQUIRES="libtbm libtdm pixman-1"
 	PKG_CHECK_MODULES(PEPPER_TDM, [$PEPPER_TDM_REQUIRES])
-	PEPPER_TDM_REQUIRES="$PEPPER_TDM_REQUIRES pepper pepper-render pepper-libinput"
+	#PEPPER_TDM_REQUIRES="$PEPPER_TDM_REQUIRES pepper pepper-render pepper-libinput"
 
 	PEPPER_TDM_DIR="-I\$(top_srcdir)/src/lib/tdm"
 	PEPPER_TDM_LIB="\$(top_srcdir)/src/lib/tdm/libpepper-tdm.la"
@@ -148,23 +146,22 @@ if test x$enable_tdm = xyes; then
 fi
 
 # pepper-fbdev
-PEPPER_FBDEV_REQUIRES="pepper pepper-render"
+PEPPER_FBDEV_REQUIRES+="pixman-1"
+PKG_CHECK_MODULES(PEPPER_FBDEV, [$PEPPER_FBDEV_REQUIRES])
 
 PEPPER_FBDEV_DIR="-I\$(top_srcdir)/src/lib/fbdev"
 PEPPER_FBDEV_LIB="\$(top_srcdir)/src/lib/fbdev/libpepper-fbdev.la"
 
-PEPPER_FBDEV_CFLAGS="$PEPPER_DIR $PEPPER_RENDER_DIR $PEPPER_LIBINPUT_DIR $PEPPER_FBDEV_CFLAGS"
-PEPPER_FBDEV_CFLAGS="$PEPPER_FBDEV_CFLAGS $PEPPER_CFLAGS"
-PEPPER_FBDEV_LIBS="$PEPPER_LIB $PEPPER_RENDER_LIB $PEPPER_LIBINPUT_LIB $PEPPER_FBDEV_LIBS"
+PEPPER_FBDEV_CFLAGS+="$PEPPER_CFLAGS $PEPPER_DIR $PEPPER_RENDER_DIR $PEPPER_LIBINPUT_DIR"
+PEPPER_FBDEV_LIBS+="$PEPPER_LIB $PEPPER_RENDER_LIB $PEPPER_LIBINPUT_LIB"
 
 AC_SUBST(PEPPER_FBDEV_CFLAGS)
 AC_SUBST(PEPPER_FBDEV_LIBS)
 AC_SUBST(PEPPER_FBDEV_REQUIRES)
 
 # pepper-wayland
-PEPPER_WAYLAND_REQUIRES="wayland-client"
+PEPPER_WAYLAND_REQUIRES="wayland-client pixman-1"
 PKG_CHECK_MODULES(PEPPER_WAYLAND, [$PEPPER_WAYLAND_REQUIRES])
-PEPPER_WAYLAND_REQUIRES="$PEPPER_WAYLAND_REQUIRES pepper pepper-render"
 
 PEPPER_WAYLAND_DIR="-I\$(top_srcdir)/src/lib/wayland"
 PEPPER_WAYLAND_LIB="\$(top_srcdir)/src/lib/wayland/libpepper-wayland.la"
@@ -186,9 +183,8 @@ AC_ARG_ENABLE(x11,
 AM_CONDITIONAL(ENABLE_X11, test x$enable_x11 = xyes)
 
 if test x$enable_x11 = xyes; then
-    PEPPER_X11_REQUIRES="x11 xcb-shm x11-xcb"
+    PEPPER_X11_REQUIRES="x11 xcb-shm x11-xcb pixman-1"
     PKG_CHECK_MODULES(PEPPER_X11, [$PEPPER_X11_REQUIRES])
-    PEPPER_X11_REQUIRES="$PEPPER_X11_REQUIRES pepper pepper-render"
 
     PEPPER_X11_DIR="-I\$(top_srcdir)/src/lib/x11"
     PEPPER_X11_LIB="\$(top_srcdir)/src/lib/x11/libpepper-x11.la"
@@ -204,7 +200,6 @@ fi
 # doctor
 DOCTOR_REQUIRES="wayland-server pixman-1"
 PKG_CHECK_MODULES(DOCTOR, [$DOCTOR_REQUIRES])
-DOCTOR_REQUIRES="$DOCTOR_REQUIRES pepper pepper-drm pepper-desktop-shell"
 
 DOCTOR_CFLAGS="$PEPPER_DIR $PEPPER_DRM_DIR $PEPPER_DESKTOP_SHELL_DIR $DOCTOR_CFLAGS"
 DOCTOR_LIBS="$PEPPER_LIB $PEPPER_DRM_LIB $PEPPER_DESKTOP_SHELL_LIB $DOCTOR_LIBS"

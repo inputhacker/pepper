@@ -30,6 +30,8 @@
 #include <libudev.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include "drm-internal.h"
 #ifdef HAVE_DRM_SPRD
 #include <sprd_drmif.h>

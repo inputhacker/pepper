@@ -26,51 +26,46 @@
 * DEALINGS IN THE SOFTWARE.
 */
 
-#ifndef PEPPER_RENDER_H
-#define PEPPER_RENDER_H
+#ifndef PEPPER_UTILS_PIXMAN_H
+#define PEPPER_UTILS_PXIMAN_H
 
-#include <pepper.h>
+#include <pixman.h>
+#include <pepper-utils.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+/**
+ * Get pixman format from pepper_format_t
+ *
+ * @param format    pepper_format
+ *
+ * If use this inline function, you should include libpixman library.
+ */
+static inline pixman_format_code_t
+pepper_get_pixman_format(pepper_format_t format)
+{
+	switch (format) {
+	case PEPPER_FORMAT_ARGB8888:
+		return PIXMAN_a8r8g8b8;
+	case PEPPER_FORMAT_XRGB8888:
+		return PIXMAN_x8r8g8b8;
+	case PEPPER_FORMAT_RGB888:
+		return PIXMAN_r8g8b8;
+	case PEPPER_FORMAT_RGB565:
+		return PIXMAN_r5g6b5;
+	case PEPPER_FORMAT_ABGR8888:
+		return PIXMAN_a8b8g8r8;
+	case PEPPER_FORMAT_XBGR8888:
+		return PIXMAN_x8b8g8r8;
+	case PEPPER_FORMAT_BGR888:
+		return PIXMAN_b8g8r8;
+	case PEPPER_FORMAT_BGR565:
+		return PIXMAN_b5g6r5;
+	case PEPPER_FORMAT_ALPHA:
+		return PIXMAN_a8;
+	default:
+		break;
+	}
 
-typedef struct pepper_renderer      pepper_renderer_t;
-typedef struct pepper_render_target pepper_render_target_t;
-
-PEPPER_API void
-pepper_renderer_destroy(pepper_renderer_t *renderer);
-
-PEPPER_API void
-pepper_render_target_destroy(pepper_render_target_t *target);
-
-PEPPER_API pepper_bool_t
-pepper_renderer_set_target(pepper_renderer_t *renderer,
-						   pepper_render_target_t *target);
-
-PEPPER_API pepper_render_target_t *
-pepper_renderer_get_target(pepper_renderer_t *renderer);
-
-PEPPER_API pepper_bool_t
-pepper_renderer_attach_surface(pepper_renderer_t *renderer,
-							   pepper_surface_t *surface, int *w, int *h);
-
-PEPPER_API pepper_bool_t
-pepper_renderer_flush_surface_damage(pepper_renderer_t *renderer,
-									 pepper_surface_t *surface);
-
-PEPPER_API void
-pepper_renderer_repaint_output(pepper_renderer_t *renderer,
-							   pepper_output_t *output,
-							   const pepper_list_t *view_list, pepper_region_t *damage);
-
-PEPPER_API pepper_bool_t
-pepper_renderer_read_pixels(pepper_renderer_t *renderer, int x, int y, int w,
-							int h,
-							void *pixels, pepper_format_t format);
-
-#ifdef __cplusplus
+	return (pixman_format_code_t)0;
 }
-#endif
 
-#endif /* PEPPER_RENDER_H */
+#endif

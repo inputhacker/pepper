@@ -452,7 +452,7 @@ pepper_compositor_pick_view(pepper_compositor_t *compositor,
 		if (!view->surface)
 			continue;
 
-		if (!pixman_region32_contains_point(&view->bounding_region, ix, iy, NULL))
+		if (!pepper_region_contains_point(&view->bounding_region, ix, iy, NULL))
 			continue;
 
 		pepper_view_get_local_coordinate(view, x, y, &lx, &ly);
@@ -463,7 +463,7 @@ pepper_compositor_pick_view(pepper_compositor_t *compositor,
 		if (ilx < 0 || ily < 0 || ilx >= view->w || ily >= view->h)
 			continue;
 
-		if (!pixman_region32_contains_point(&view->surface->input_region, ilx, ily,
+		if (!pepper_region_contains_point(&view->surface->input_region, ilx, ily,
 											NULL))
 			continue;
 

@@ -30,6 +30,7 @@
 #include "pepper-pixman-renderer.h"
 #include "pepper-render-internal.h"
 #include <pepper-output-backend.h>
+#include <pepper-utils-pixman.h>
 
 #ifdef HAVE_TBM
 #include <tbm_surface.h>
@@ -352,7 +353,7 @@ pixman_renderer_read_pixels(pepper_renderer_t *renderer,
 	if (!src)
 		return PEPPER_FALSE;
 
-	pixman_format = get_pixman_format(format);
+	pixman_format = pepper_get_pixman_format(format);
 
 	if (!pixman_format) {
 		/* PEPPER_ERROR("Invalid format.\n"); */
@@ -390,21 +391,21 @@ pixman_transform_from_pepper_mat4(pixman_transform_t *transform,
 
 static void
 repaint_view(pepper_renderer_t *renderer, pepper_output_t *output,
-			 pepper_render_item_t *node, pixman_region32_t *damage)
+			 pepper_render_item_t *node, pepper_region_t *damage)
 {
 	int32_t                  x, y, w, h, scale;
 	pepper_surface_t        *surface = pepper_view_get_surface(node->view);
 
 	pixman_render_target_t  *target = (pixman_render_target_t *)renderer->target;
-	pixman_region32_t        repaint, repaint_surface;
-	pixman_region32_t        surface_blend, *surface_opaque;
+	pepper_region_t        repaint, repaint_surface;
+	pepper_region_t        surface_blend, *surface_opaque;
 	pixman_surface_state_t  *ps = get_surface_state(renderer,
 								  pepper_view_get_surface(node->view));
 
-	pixman_region32_init(&repaint);
-	pixman_region32_intersect(&repaint, &node->visible_region, damage);
+	pepper_region_init(&repaint);
+	pepper_region_intersect(&repaint, &node->visible_region, damage);
 
-	if (pixman_region32_not_empty(&repaint)) {
+	if (pepper_region_not_empty(&repaint)) {
 		pixman_transform_t  trans;
 		pixman_filter_t     filter;
 
@@ -465,19 +466,19 @@ repaint_view(pepper_renderer_t *renderer, pepper_output_t *output,
 		pixman_image_set_transform(ps->image, &trans);
 		pixman_image_set_filter(ps->image, filter, NULL, 0);
 
-		pixman_region32_init(&repaint_surface);
-		pixman_region32_init_rect(&surface_blend, 0, 0, w, h);
+		pepper_region_init(&repaint_surface);
+		pepper_region_init_rect(&surface_blend, 0, 0, w, h);
 
 		if (node->transform.flags <= PEPPER_MATRIX_TRANSLATE) {
 			surface_opaque = pepper_surface_get_opaque_region(surface);
-			pixman_region32_subtract(&surface_blend, &surface_blend, surface_opaque);
+			pepper_region_subtract(&surface_blend, &surface_blend, surface_opaque);
 
-			if (pixman_region32_not_empty(surface_opaque)) {
-				pixman_region32_translate(surface_opaque,
+			if (pepper_region_not_empty(surface_opaque)) {
+				pepper_region_translate(surface_opaque,
 										  (int)node->transform.m[12], (int)node->transform.m[13]);
-				pepper_pixman_region_global_to_output(surface_opaque, output);
-				pixman_region32_intersect(&repaint_surface, &repaint, surface_opaque);
-				pixman_image_set_clip_region32(target->image, &repaint_surface);
+				pepper_region_global_to_output(surface_opaque, output);
+				pepper_region_intersect(&repaint_surface, &repaint, surface_opaque);
+				pixman_image_set_clip_region32(target->image, (pixman_region32_t*)&repaint_surface);
 
 				surface_state_begin_access(ps);
 				pixman_image_composite32(PIXMAN_OP_SRC, ps->image, NULL, target->image,
@@ -489,12 +490,12 @@ repaint_view(pepper_renderer_t *renderer, pepper_output_t *output,
 				surface_state_end_access(ps);
 			}
 
-			if (pixman_region32_not_empty(&surface_blend)) {
-				pixman_region32_translate(&surface_blend,
+			if (pepper_region_not_empty(&surface_blend)) {
+				pepper_region_translate(&surface_blend,
 										  (int)node->transform.m[12], (int)node->transform.m[13]);
-				pepper_pixman_region_global_to_output(&surface_blend, output);
-				pixman_region32_intersect(&repaint_surface, &repaint, &surface_blend);
-				pixman_image_set_clip_region32(target->image, &repaint_surface);
+				pepper_region_global_to_output(&surface_blend, output);
+				pepper_region_intersect(&repaint_surface, &repaint, &surface_blend);
+				pixman_image_set_clip_region32(target->image, (pixman_region32_t*)&repaint_surface);
 
 				surface_state_begin_access(ps);
 				pixman_image_composite32(PIXMAN_OP_OVER, ps->image, NULL, target->image,
@@ -506,11 +507,11 @@ repaint_view(pepper_renderer_t *renderer, pepper_output_t *output,
 				surface_state_end_access(ps);
 			}
 		} else {
-			pixman_region32_translate(&surface_blend,
+			pepper_region_translate(&surface_blend,
 									  (int)node->transform.m[12], (int)node->transform.m[13]);
-			pepper_pixman_region_global_to_output(&surface_blend, output);
-			pixman_region32_intersect(&repaint_surface, &repaint, &surface_blend);
-			pixman_image_set_clip_region32(target->image, &repaint_surface);
+			pepper_region_global_to_output(&surface_blend, output);
+			pepper_region_intersect(&repaint_surface, &repaint, &surface_blend);
+			pixman_image_set_clip_region32(target->image, (pixman_region32_t*)&repaint_surface);
 
 			surface_state_begin_access(ps);
 			pixman_image_composite32(PIXMAN_OP_OVER, ps->image, NULL, target->image,
@@ -522,20 +523,20 @@ repaint_view(pepper_renderer_t *renderer, pepper_output_t *output,
 			surface_state_end_access(ps);
 		}
 
-		pixman_region32_fini(&repaint_surface);
-		pixman_region32_fini(&surface_blend);
+		pepper_region_fini(&repaint_surface);
+		pepper_region_fini(&surface_blend);
 	}
 
-	pixman_region32_fini(&repaint);
+	pepper_region_fini(&repaint);
 }
 
 static void
-clear_background(pixman_renderer_t *renderer, pixman_region32_t *damage)
+clear_background(pixman_renderer_t *renderer, pepper_region_t *damage)
 {
 	pixman_render_target_t *target = (pixman_render_target_t *)
 									 renderer->base.target;
 
-	pixman_image_set_clip_region32(target->image, damage);
+	pixman_image_set_clip_region32(target->image, (pixman_region32_t*)damage);
 	pixman_image_composite32(PIXMAN_OP_SRC, renderer->background, NULL,
 							 target->image,
 							 0, 0, 0, 0, 0, 0,
@@ -547,9 +548,9 @@ static void
 pixman_renderer_repaint_output(pepper_renderer_t *renderer,
 							   pepper_output_t *output,
 							   const pepper_list_t *render_list,
-							   pixman_region32_t *damage)
+							   pepper_region_t *damage)
 {
-	if (pixman_region32_not_empty(damage)) {
+	if (pepper_region_not_empty(damage)) {
 		pepper_list_t       *l;
 		pixman_renderer_t   *pr = (pixman_renderer_t *)renderer;
 
@@ -614,7 +615,7 @@ pepper_pixman_renderer_create_target(pepper_format_t format, void *pixels,
 
 	target->base.destroy    = pixman_render_target_destroy;
 
-	pixman_format = get_pixman_format(format);
+	pixman_format = pepper_get_pixman_format(format);
 	if (!pixman_format)
 		goto error;
 

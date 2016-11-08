@@ -170,7 +170,7 @@ shsurf_xdg_surface_send_configure(shell_surface_t *shsurf, int32_t width,
 		*state = XDG_SURFACE_STATE_MAXIMIZED;
 
 		if (!width && !height) {
-			pixman_rectangle32_t area;
+			pepper_rectangle_t area;
 			shell_get_output_workarea(shsurf->shell, shsurf->maximized.output, &area);
 
 			width = area.width;
@@ -561,7 +561,7 @@ shell_surface_get_output(shell_surface_t *shsurf)
 
 static void
 shell_surface_get_geometry(shell_surface_t *shsurf,
-						   pixman_rectangle32_t *geometry)
+						   pepper_rectangle_t *geometry)
 {
 	double x, y;
 	int    w, h;
@@ -591,7 +591,7 @@ void
 shell_surface_set_maximized(shell_surface_t     *shsurf,
 							pepper_output_t     *output)
 {
-	pixman_rectangle32_t    area;
+	pepper_rectangle_t    area;
 
 	if (shsurf->type == SHELL_SURFACE_TYPE_MAXIMIZED)
 		return ;
@@ -816,22 +816,22 @@ shell_pointer_get_output(desktop_shell_t *shell, pepper_pointer_t *pointer)
 
 		if (tmp_output) {
 			const pepper_output_geometry_t *geom;
-			pixman_region32_t rect;
+			pepper_region_t rect;
 
 			if (!output)
 				output = tmp_output;
 
 			geom = pepper_output_get_geometry(tmp_output);
 
-			pixman_region32_init_rect(&rect, geom->x, geom->y, geom->w, geom->h);
+			pepper_region_init_rect(&rect, geom->x, geom->y, geom->w, geom->h);
 
-			if (pixman_region32_contains_point(&rect, px, py, NULL)) {
+			if (pepper_region_contains_point(&rect, px, py, NULL)) {
 				output = tmp_output;
-				pixman_region32_fini(&rect);
+				pepper_region_fini(&rect);
 				break;
 			}
 
-			pixman_region32_fini(&rect);
+			pepper_region_fini(&rect);
 		}
 	}
 
@@ -1085,7 +1085,7 @@ shell_surface_map_transient(shell_surface_t *shsurf)
 static void
 shell_surface_map_maximized(shell_surface_t *shsurf)
 {
-	pixman_rectangle32_t area;
+	pepper_rectangle_t area;
 
 	shell_get_output_workarea(shsurf->shell, shsurf->maximized.output, &area);
 
@@ -1124,7 +1124,7 @@ get_scale(float output_w, float output_h, float view_w, float view_h)
 static void
 shell_surface_center_on_output_by_scale(shell_surface_t                 *shsurf,
 										const pepper_output_geometry_t  *output,
-										pixman_rectangle32_t            *surface_geom,
+										pepper_rectangle_t            *surface_geom,
 										float                            scale)
 {
 	double x, y;
@@ -1140,7 +1140,7 @@ shell_surface_place_fullscreen_surface(shell_surface_t *shsurf)
 {
 	pepper_output_t                     *output;
 	const pepper_output_geometry_t      *output_geom;
-	pixman_rectangle32_t                 shsurf_geom;
+	pepper_rectangle_t                 shsurf_geom;
 	float                                scale = 0.f;
 
 	output      = shsurf->fullscreen.output;

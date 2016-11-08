@@ -41,6 +41,7 @@
 
 #include <pepper-pixman-renderer.h>
 #include <pepper-gl-renderer.h>
+#include <pepper-utils-pixman.h>
 
 #include "fbdev-internal.h"
 
@@ -214,7 +215,7 @@ fbdev_output_repaint(void *o, const pepper_list_t *plane_list)
 
 		if (plane == output->primary_plane) {
 			const pepper_list_t *render_list = pepper_plane_get_render_list(plane);
-			pixman_region32_t   *damage = pepper_plane_get_damage_region(plane);
+			pepper_region_t   *damage = pepper_plane_get_damage_region(plane);
 
 			pepper_renderer_repaint_output(output->renderer, output->base, render_list,
 										   damage);
@@ -366,7 +367,7 @@ pepper_fbdev_output_create(pepper_fbdev_t *fbdev, const char *renderer)
 	/* TODO: read & set output->use_shadow value from somewhere */
 	output->use_shadow = PEPPER_TRUE;
 	if (output->use_shadow) {
-		pixman_format_code_t pixman_format = get_pixman_format(output->format);
+		pixman_format_code_t pixman_format = pepper_get_pixman_format(output->format);
 
 		output->frame_buffer_image = pixman_image_create_bits(pixman_format,
 									 output->w, output->h,

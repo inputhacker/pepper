@@ -67,17 +67,17 @@ pepper_view_surface_damage(pepper_view_t *view)
 		pepper_plane_entry_t *entry = &view->plane_entries[i];
 
 		if (entry->plane) {
-			pixman_region32_t damage;
+			pepper_region_t damage;
 
-			pixman_region32_init(&damage);
-			pixman_region32_copy(&damage, &view->surface->damage_region);
-			pixman_region32_intersect_rect(&damage, &damage, 0, 0, view->w, view->h);
+			pepper_region_init(&damage);
+			pepper_region_copy(&damage, &view->surface->damage_region);
+			pepper_region_intersect_rect(&damage, &damage, 0, 0, view->w, view->h);
 
-			pepper_transform_pixman_region(&damage, &view->global_transform);
-			pixman_region32_translate(&damage,
+			pepper_transform_region(&damage, &view->global_transform);
+			pepper_region_translate(&damage,
 									  -entry->plane->output->geometry.x,
 									  -entry->plane->output->geometry.y);
-			pixman_region32_intersect(&damage, &damage, &entry->base.visible_region);
+			pepper_region_intersect(&damage, &damage, &entry->base.visible_region);
 			pepper_plane_add_damage_region(entry->plane, &damage);
 		}
 	}
@@ -114,13 +114,13 @@ plane_entry_set_plane(pepper_plane_entry_t *entry, pepper_plane_t *plane)
 	if (entry->plane) {
 		pepper_plane_add_damage_region(entry->plane, &entry->base.visible_region);
 		entry->plane = NULL;
-		pixman_region32_fini(&entry->base.visible_region);
+		pepper_region_fini(&entry->base.visible_region);
 	}
 
 	entry->plane = plane;
 
 	if (entry->plane) {
-		pixman_region32_init(&entry->base.visible_region);
+		pepper_region_init(&entry->base.visible_region);
 		entry->need_damage = PEPPER_TRUE;
 	}
 }
@@ -207,17 +207,17 @@ pepper_view_update(pepper_view_t *view)
 		pepper_mat4_inverse(&view->global_transform_inverse, &view->global_transform);
 
 		/* Bounding region. */
-		pixman_region32_fini(&view->bounding_region);
-		pixman_region32_init_rect(&view->bounding_region, 0, 0, view->w, view->h);
-		pepper_transform_pixman_region(&view->bounding_region, &view->global_transform);
+		pepper_region_fini(&view->bounding_region);
+		pepper_region_init_rect(&view->bounding_region, 0, 0, view->w, view->h);
+		pepper_transform_region(&view->bounding_region, &view->global_transform);
 
 		/* Opaque region. */
 		if (view->surface && pepper_mat4_is_translation(&view->global_transform)) {
-			pixman_region32_copy(&view->opaque_region, &view->surface->opaque_region);
-			pixman_region32_translate(&view->opaque_region,
+			pepper_region_copy(&view->opaque_region, &view->surface->opaque_region);
+			pepper_region_translate(&view->opaque_region,
 									  view->global_transform.m[12], view->global_transform.m[13]);
 		} else {
-			pixman_region32_clear(&view->opaque_region);
+			pepper_region_clear(&view->opaque_region);
 		}
 
 		/* Output overlap. */
@@ -226,15 +226,15 @@ pepper_view_update(pepper_view_t *view)
 
                 if (view->surface) {
 			pepper_list_for_each(output, &view->compositor->output_list, link) {
-				pixman_box32_t   box = {
+				pepper_box_t   box = {
 					output->geometry.x,
 					output->geometry.y,
 					output->geometry.x + output->geometry.w,
 					output->geometry.y + output->geometry.h
 				};
 
-				if (pixman_region32_contains_rectangle(&view->bounding_region,
-													   &box) != PIXMAN_REGION_OUT) {
+				if (pepper_region_contains_rectangle(&view->bounding_region,
+													   &box) != PEPPER_REGION_OUT) {
 					view->output_overlap |= (1 << output->id);
 					if (!(output_overlap_prev & (1 << output->id)))
 						pepper_surface_send_enter(view->surface, output);
@@ -271,8 +271,8 @@ view_init(pepper_view_t *view, pepper_compositor_t *compositor)
 
 	pepper_mat4_init_identity(&view->transform);
 	pepper_mat4_init_identity(&view->global_transform);
-	pixman_region32_init(&view->bounding_region);
-	pixman_region32_init(&view->opaque_region);
+	pepper_region_init(&view->bounding_region);
+	pepper_region_init(&view->opaque_region);
 
 	for (i = 0; i < PEPPER_MAX_OUTPUT_COUNT; i++) {
 		view->plane_entries[i].base.view = view;
@@ -383,8 +383,8 @@ pepper_view_destroy(pepper_view_t *view)
 	if (view->surface)
 		pepper_list_remove(&view->surface_link);
 
-	pixman_region32_fini(&view->opaque_region);
-	pixman_region32_fini(&view->bounding_region);
+	pepper_region_fini(&view->opaque_region);
+	pepper_region_fini(&view->bounding_region);
 
 	free(view);
 }
@@ -855,7 +855,7 @@ pepper_view_is_opaque(pepper_view_t *view)
 	pepper_surface_t       *surface = view->surface;
 	struct wl_shm_buffer   *shm_buffer = wl_shm_buffer_get(
 			surface->buffer.buffer->resource);
-	pixman_box32_t          extent;
+	pepper_box_t          extent;
 
 	if (shm_buffer) {
 		uint32_t shm_format = wl_shm_buffer_get_format(shm_buffer);
@@ -871,8 +871,8 @@ pepper_view_is_opaque(pepper_view_t *view)
 	extent.x2 = view->surface->w;
 	extent.y2 = view->surface->h;
 
-	if (pixman_region32_contains_rectangle(&surface->opaque_region,
-										   &extent) == PIXMAN_REGION_IN)
+	if (pepper_region_contains_rectangle(&surface->opaque_region,
+										   &extent) == PEPPER_REGION_IN)
 		return PEPPER_TRUE;
 
 	return PEPPER_FALSE;

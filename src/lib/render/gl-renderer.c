@@ -231,7 +231,7 @@ struct gl_render_target {
 
 	pepper_mat4_t               proj_mat;
 
-	pixman_region32_t           damages[MAX_BUFFER_COUNT];
+	pepper_region_t           damages[MAX_BUFFER_COUNT];
 	int32_t                     damage_index;
 };
 
@@ -816,11 +816,11 @@ surface_state_flush_shm(gl_surface_state_t *state)
 		state->shm.need_full_upload = PEPPER_FALSE;
 	} else {
 		int                 i, nrects;
-		pixman_box32_t     *rects;
-		pixman_region32_t  *damage;
+		pepper_box_t     *rects;
+		pepper_region_t  *damage;
 
 		damage = pepper_surface_get_damage_region(state->surface);
-		rects = pixman_region32_rectangles(damage, &nrects);
+		rects = pepper_region_rectangles(damage, &nrects);
 
 		glPixelStorei(GL_UNPACK_ROW_LENGTH_EXT, state->shm.pitch);
 		wl_shm_buffer_begin_access(state->shm.buffer);
@@ -974,7 +974,7 @@ clip_line(pepper_vec2_t *in_vertices, pepper_vec2_t *out_vertices, int in_len,
 }
 
 static void
-clip(pepper_vec2_t *vertices, int *len, pixman_box32_t *clip_rect,
+clip(pepper_vec2_t *vertices, int *len, pepper_box_t *clip_rect,
 	 pepper_bool_t is_rect)
 {
 	if (is_rect) {
@@ -1046,7 +1046,7 @@ float_difference(float a, float b)
 static void
 calc_vertices(gl_renderer_t *gr, gl_surface_state_t *state,
 			  pepper_render_item_t *node,
-			  pixman_region32_t *region, pixman_region32_t *surface_region)
+			  pepper_region_t *region, pepper_region_t *surface_region)
 {
 	int             i, j, k, n;
 	int             len;
@@ -1056,12 +1056,12 @@ calc_vertices(gl_renderer_t *gr, gl_surface_state_t *state,
 	pepper_mat4_t  *transform = &node->transform;
 
 	int             nrects, surface_nrects;
-	pixman_box32_t *rects, *surface_rects;
+	pepper_box_t *rects, *surface_rects;
 
 	GLfloat        *vertex_array;
 
-	surface_rects = pixman_region32_rectangles(surface_region, &surface_nrects);
-	rects = pixman_region32_rectangles(region, &nrects);
+	surface_rects = pepper_region_rectangles(surface_region, &surface_nrects);
+	rects = pepper_region_rectangles(region, &nrects);
 	vertex_array = wl_array_add(&gr->vertex_array,
 								surface_nrects * nrects * (8 - 2) * 3 * 2 * 2 * sizeof(GLfloat));
 	gr->triangles = 0;
@@ -1139,7 +1139,7 @@ calc_vertices(gl_renderer_t *gr, gl_surface_state_t *state,
 static void
 repaint_region_clip(gl_renderer_t *gr, gl_surface_state_t *state,
 					pepper_render_item_t *node,
-					pixman_region32_t *damage, pixman_region32_t *surface_region)
+					pepper_region_t *damage, pepper_region_t *surface_region)
 {
 	GLfloat        *vertex_array;
 
@@ -1160,7 +1160,7 @@ repaint_region_clip(gl_renderer_t *gr, gl_surface_state_t *state,
 
 static void
 repaint_view_clip(pepper_renderer_t *renderer, pepper_output_t *output,
-				  pepper_render_item_t *node, pixman_region32_t *damage)
+				  pepper_render_item_t *node, pepper_region_t *damage)
 {
 	gl_renderer_t      *gr = (gl_renderer_t *)renderer;
 	gl_render_target_t *gt = (gl_render_target_t *)renderer->target;
@@ -1169,22 +1169,22 @@ repaint_view_clip(pepper_renderer_t *renderer, pepper_output_t *output,
 	gl_surface_state_t *state = get_surface_state(renderer, surface);
 
 	gl_shader_t        *shader;
-	pixman_region32_t   repaint;
-	pixman_region32_t   surface_blend;
-	pixman_region32_t  *surface_opaque;
+	pepper_region_t   repaint;
+	pepper_region_t   surface_blend;
+	pepper_region_t  *surface_opaque;
 
-	pixman_region32_init(&repaint);
-	pixman_region32_intersect(&repaint, &node->visible_region, damage);
+	pepper_region_init(&repaint);
+	pepper_region_intersect(&repaint, &node->visible_region, damage);
 
-	if (pixman_region32_not_empty(&repaint)) {
+	if (pepper_region_not_empty(&repaint)) {
 		int32_t             i, w, h;
 		float               trans[16];
 		GLint               filter;
 
 		pepper_surface_get_size(surface, &w, &h);
 		surface_opaque = pepper_surface_get_opaque_region(surface);
-		pixman_region32_init_rect(&surface_blend, 0, 0, w, h);
-		pixman_region32_subtract(&surface_blend, &surface_blend, surface_opaque);
+		pepper_region_init_rect(&surface_blend, 0, 0, w, h);
+		pepper_region_subtract(&surface_blend, &surface_blend, surface_opaque);
 
 		for (i = 0; i < 16; i++)
 			trans[i] = (float)gt->proj_mat.m[i];
@@ -1200,7 +1200,7 @@ repaint_view_clip(pepper_renderer_t *renderer, pepper_output_t *output,
 
 		glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
-		if (pixman_region32_not_empty(surface_opaque)) {
+		if (pepper_region_not_empty(surface_opaque)) {
 			if (state->sampler == GL_SHADER_SAMPLER_RGBA)
 				shader = &gr->shaders[GL_SHADER_SAMPLER_RGBX];
 			else
@@ -1216,7 +1216,7 @@ repaint_view_clip(pepper_renderer_t *renderer, pepper_output_t *output,
 			repaint_region_clip(gr, state, node, &repaint, surface_opaque);
 		}
 
-		if (pixman_region32_not_empty(&surface_blend)) {
+		if (pepper_region_not_empty(&surface_blend)) {
 			shader = &gr->shaders[state->sampler];
 
 			gl_shader_use(gr, shader);
@@ -1231,10 +1231,10 @@ repaint_view_clip(pepper_renderer_t *renderer, pepper_output_t *output,
 			glDisable(GL_BLEND);
 		}
 
-		pixman_region32_fini(&surface_blend);
+		pepper_region_fini(&surface_blend);
 	}
 
-	pixman_region32_fini(&repaint);
+	pepper_region_fini(&repaint);
 }
 
 static void
@@ -1256,15 +1256,15 @@ set_vertex(gl_surface_state_t *state, int32_t sx, int32_t sy,
 
 static void
 repaint_region_scissor(gl_renderer_t *gr, gl_surface_state_t *state,
-					   pixman_region32_t *damage, pixman_region32_t *surface_region)
+					   pepper_region_t *damage, pepper_region_t *surface_region)
 {
 	int                 i, j;
 	int                 nrects, surface_nrects;
-	pixman_box32_t     *rects, *surface_rects;
+	pepper_box_t     *rects, *surface_rects;
 	GLfloat             vertex_array[16];
 	gl_render_target_t *gt = (gl_render_target_t *)gr->base.target;
 
-	surface_rects = pixman_region32_rectangles(surface_region, &surface_nrects);
+	surface_rects = pepper_region_rectangles(surface_region, &surface_nrects);
 
 	for (i = 0; i < surface_nrects; i++) {
 		set_vertex(state, surface_rects[i].x1, surface_rects[i].y1, &vertex_array[0]);
@@ -1279,7 +1279,7 @@ repaint_region_scissor(gl_renderer_t *gr, gl_surface_state_t *state,
 							  &vertex_array[2]);
 		glEnableVertexAttribArray(1);
 
-		rects = pixman_region32_rectangles(damage, &nrects);
+		rects = pepper_region_rectangles(damage, &nrects);
 		for (j = 0; j < nrects; j++) {
 			glScissor(rects[j].x1, gt->height - rects[j].y2,
 					  rects[j].x2 - rects[j].x1, rects[j].y2 - rects[j].y1);
@@ -1290,7 +1290,7 @@ repaint_region_scissor(gl_renderer_t *gr, gl_surface_state_t *state,
 
 static void
 repaint_view_scissor(pepper_renderer_t *renderer, pepper_output_t *output,
-					 pepper_render_item_t *node, pixman_region32_t *damage)
+					 pepper_render_item_t *node, pepper_region_t *damage)
 {
 	gl_renderer_t      *gr = (gl_renderer_t *)renderer;
 	gl_render_target_t *gt = (gl_render_target_t *)renderer->target;
@@ -1299,18 +1299,18 @@ repaint_view_scissor(pepper_renderer_t *renderer, pepper_output_t *output,
 	gl_surface_state_t *state = get_surface_state(renderer, surface);
 
 	gl_shader_t        *shader;
-	pixman_region32_t   repaint;
-	pixman_region32_t   surface_blend;
-	pixman_region32_t  *surface_opaque;
+	pepper_region_t   repaint;
+	pepper_region_t   surface_blend;
+	pepper_region_t  *surface_opaque;
 
 	int                 i, w, h;
 	float               trans[16];
 	GLint               filter;
 
-	pixman_region32_init(&repaint);
-	pixman_region32_intersect(&repaint, &node->visible_region, damage);
+	pepper_region_init(&repaint);
+	pepper_region_intersect(&repaint, &node->visible_region, damage);
 
-	if (!pixman_region32_not_empty(&repaint))
+	if (!pepper_region_not_empty(&repaint))
 		goto done;
 
 	if (node->transform.flags <= PEPPER_MATRIX_TRANSLATE) {
@@ -1345,12 +1345,12 @@ repaint_view_scissor(pepper_renderer_t *renderer, pepper_output_t *output,
 
 	pepper_surface_get_size(surface, &w, &h);
 	surface_opaque = pepper_surface_get_opaque_region(surface);
-	pixman_region32_init_rect(&surface_blend, 0, 0, w, h);
-	pixman_region32_subtract(&surface_blend, &surface_blend, surface_opaque);
+	pepper_region_init_rect(&surface_blend, 0, 0, w, h);
+	pepper_region_subtract(&surface_blend, &surface_blend, surface_opaque);
 
 	glEnable(GL_SCISSOR_TEST);
 
-	if (pixman_region32_not_empty(surface_opaque)) {
+	if (pepper_region_not_empty(surface_opaque)) {
 		if (state->sampler == GL_SHADER_SAMPLER_RGBA)
 			shader = &gr->shaders[GL_SHADER_SAMPLER_RGBX];
 		else
@@ -1366,7 +1366,7 @@ repaint_view_scissor(pepper_renderer_t *renderer, pepper_output_t *output,
 		repaint_region_scissor(gr, state, &repaint, surface_opaque);
 	}
 
-	if (pixman_region32_not_empty(&surface_blend)) {
+	if (pepper_region_not_empty(&surface_blend)) {
 		shader = &gr->shaders[state->sampler];
 		gl_shader_use(gr, shader);
 
@@ -1381,15 +1381,15 @@ repaint_view_scissor(pepper_renderer_t *renderer, pepper_output_t *output,
 	}
 
 	glDisable(GL_SCISSOR_TEST);
-	pixman_region32_fini(&surface_blend);
+	pepper_region_fini(&surface_blend);
 
 done:
-	pixman_region32_fini(&repaint);
+	pepper_region_fini(&repaint);
 }
 
 static void
 gl_renderer_repaint_output(pepper_renderer_t *renderer, pepper_output_t *output,
-						   const pepper_list_t *list, pixman_region32_t *damage)
+						   const pepper_list_t *list, pepper_region_t *damage)
 {
 	gl_renderer_t                  *gr = (gl_renderer_t *)renderer;
 	gl_render_target_t             *gt = (gl_render_target_t *)renderer->target;
@@ -1397,7 +1397,7 @@ gl_renderer_repaint_output(pepper_renderer_t *renderer, pepper_output_t *output,
 
 	int                             i;
 	EGLint                          buffer_age = 0;
-	pixman_region32_t               total_damage;
+	pepper_region_t               total_damage;
 
 	if (!gl_renderer_use(gr))
 		return;
@@ -1410,34 +1410,34 @@ gl_renderer_repaint_output(pepper_renderer_t *renderer, pepper_output_t *output,
 						EGL_BUFFER_AGE_EXT, &buffer_age);
 
 	if (!buffer_age || buffer_age - 1 > MAX_BUFFER_COUNT) {
-		pixman_region32_init_rect(&total_damage, geom->x, geom->y, geom->w, geom->h);
+		pepper_region_init_rect(&total_damage, geom->x, geom->y, geom->w, geom->h);
 	} else {
 		int first = gt->damage_index + MAX_BUFFER_COUNT - (buffer_age - 1);
 
-		pixman_region32_init(&total_damage);
-		pixman_region32_copy(&total_damage, damage);
+		pepper_region_init(&total_damage);
+		pepper_region_copy(&total_damage, damage);
 
 		for (i = 0; i < buffer_age - 1; i++)
-			pixman_region32_union(&total_damage, &total_damage,
+			pepper_region_union(&total_damage, &total_damage,
 								  &gt->damages[(first + i) % MAX_BUFFER_COUNT]);
 
-		pixman_region32_copy(&gt->damages[gt->damage_index], damage);
+		pepper_region_copy(&gt->damages[gt->damage_index], damage);
 
 		gt->damage_index += 1;
 		gt->damage_index %= MAX_BUFFER_COUNT;
 	}
 
-	if (pixman_region32_not_empty(&total_damage)) {
+	if (pepper_region_not_empty(&total_damage)) {
 		pepper_list_t *l;
 
 		if (gr->clear_background) {
 			int                 i, nrects;
-			pixman_box32_t     *rects;
+			pepper_box_t     *rects;
 
 			glEnable(GL_SCISSOR_TEST);
 			glClearColor(0.0, 0.0, 0.0, 1.0);
 
-			rects = pixman_region32_rectangles(&total_damage, &nrects);
+			rects = pepper_region_rectangles(&total_damage, &nrects);
 
 			glEnable(GL_SCISSOR_TEST);
 			for (i = 0; i < nrects; i++) {
@@ -1458,7 +1458,7 @@ gl_renderer_repaint_output(pepper_renderer_t *renderer, pepper_output_t *output,
 								 &total_damage);
 	}
 
-	pixman_region32_fini(&total_damage);
+	pepper_region_fini(&total_damage);
 
 	eglSwapBuffers(gr->display, ((gl_render_target_t *)renderer->target)->surface);
 
@@ -1697,7 +1697,7 @@ gl_render_target_destroy(pepper_render_target_t *target)
 	gl_renderer_t      *gr = (gl_renderer_t *)target->renderer;
 
 	for (i = 0; i < MAX_BUFFER_COUNT; i++)
-		pixman_region32_fini(&gt->damages[i]);
+		pepper_region_fini(&gt->damages[i]);
 
 	if (gt->surface != EGL_NO_SURFACE)
 		eglDestroySurface(gr->display, gt->surface);
@@ -1853,7 +1853,7 @@ pepper_gl_renderer_create_target(pepper_renderer_t *renderer,
 					  1);
 
 	for (i = 0; i < MAX_BUFFER_COUNT; i++)
-		pixman_region32_init(&target->damages[i]);
+		pepper_region_init(&target->damages[i]);
 
 	return &target->base;
 

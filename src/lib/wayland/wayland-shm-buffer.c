@@ -101,7 +101,7 @@ wayland_shm_buffer_create(wayland_output_t *output)
 	if (!buffer->target)
 		goto error;
 
-	pixman_region32_init_rect(&buffer->damage, 0, 0, buffer->w, buffer->h);
+	pepper_region_init_rect(&buffer->damage, 0, 0, buffer->w, buffer->h);
 	return buffer;
 
 error:
@@ -121,7 +121,7 @@ void
 wayland_shm_buffer_destroy(wayland_shm_buffer_t *buffer)
 {
 	pepper_render_target_destroy(buffer->target);
-	pixman_region32_fini(&buffer->damage);
+	pepper_region_fini(&buffer->damage);
 	wl_buffer_destroy(buffer->buffer);
 	munmap(buffer->pixels, buffer->size);
 	pepper_list_remove(&buffer->link);

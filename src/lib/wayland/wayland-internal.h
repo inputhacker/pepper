@@ -81,7 +81,7 @@ struct wayland_shm_buffer {
 	int                     w, h;
 
 	pepper_render_target_t *target;
-	pixman_region32_t       damage;
+	pepper_region_t       damage;
 
 	void                   *data;
 };

@@ -30,16 +30,16 @@
 
 void
 pepper_plane_update(pepper_plane_t *plane, const pepper_list_t *view_list,
-					pixman_region32_t *clip)
+					pepper_region_t *clip)
 {
 	int                 x = plane->output->geometry.x;
 	int                 y = plane->output->geometry.y;
 	int                 w = plane->output->geometry.w;
 	int                 h = plane->output->geometry.h;
-	pixman_region32_t   plane_clip;
+	pepper_region_t   plane_clip;
 	pepper_view_t      *view;
 
-	pixman_region32_init(&plane_clip);
+	pepper_region_init(&plane_clip);
 	pepper_list_init(&plane->entry_list);
 
 	pepper_list_for_each(view, view_list, link) {
@@ -56,15 +56,15 @@ pepper_plane_update(pepper_plane_t *plane, const pepper_list_t *view_list,
 			}
 
 			/* Calculate visible region (output space). */
-			pixman_region32_subtract(&entry->base.visible_region,
+			pepper_region_subtract(&entry->base.visible_region,
 									 &view->bounding_region, &plane_clip);
-			pixman_region32_intersect_rect(&entry->base.visible_region,
+			pepper_region_intersect_rect(&entry->base.visible_region,
 										   &entry->base.visible_region, x, y, w, h);
-			pepper_pixman_region_global_to_output(&entry->base.visible_region,
+			pepper_region_global_to_output(&entry->base.visible_region,
 												  plane->output);
 
 			/* Accumulate opaque region of this view (global space). */
-			pixman_region32_union(&plane_clip, &plane_clip, &view->opaque_region);
+			pepper_region_union(&plane_clip, &plane_clip, &view->opaque_region);
 
 			/* Add damage for the new visible region. */
 			if (entry->need_damage) {
@@ -79,12 +79,12 @@ pepper_plane_update(pepper_plane_t *plane, const pepper_list_t *view_list,
 	}
 
 	/* Copy clip region of this plane. */
-	pixman_region32_copy(&plane->clip_region, clip);
+	pepper_region_copy(&plane->clip_region, clip);
 
 	/* Accumulate clip region obsecured by this plane. */
-	pepper_pixman_region_global_to_output(&plane_clip, plane->output);
-	pixman_region32_union(clip, clip, &plane_clip);
-	pixman_region32_fini(&plane_clip);
+	pepper_region_global_to_output(&plane_clip, plane->output);
+	pepper_region_union(clip, clip, &plane_clip);
+	pepper_region_fini(&plane_clip);
 }
 
 /**
@@ -116,8 +116,8 @@ pepper_output_add_plane(pepper_output_t *output, pepper_plane_t *above)
 		pepper_list_insert(output->plane_list.prev, &plane->link);
 
 	pepper_list_init(&plane->entry_list);
-	pixman_region32_init(&plane->damage_region);
-	pixman_region32_init(&plane->clip_region);
+	pepper_region_init(&plane->damage_region);
+	pepper_region_init(&plane->clip_region);
 
 	return plane;
 }
@@ -138,21 +138,21 @@ pepper_plane_destroy(pepper_plane_t *plane)
 	pepper_view_assign_plane(entry->base.view, plane->output, NULL);
 
 	pepper_list_remove(&plane->link);
-	pixman_region32_fini(&plane->damage_region);
-	pixman_region32_fini(&plane->clip_region);
+	pepper_region_fini(&plane->damage_region);
+	pepper_region_fini(&plane->clip_region);
 
 	free(plane);
 }
 
 void
-pepper_plane_add_damage_region(pepper_plane_t *plane, pixman_region32_t *damage)
+pepper_plane_add_damage_region(pepper_plane_t *plane, pepper_region_t *damage)
 {
 	if (!damage) {
-		pixman_region32_union_rect(&plane->damage_region, &plane->damage_region,
+		pepper_region_union_rect(&plane->damage_region, &plane->damage_region,
 								   0, 0, plane->output->geometry.w, plane->output->geometry.h);
 		pepper_output_schedule_repaint(plane->output);
-	} else if (pixman_region32_not_empty(damage)) {
-		pixman_region32_union(&plane->damage_region, &plane->damage_region, damage);
+	} else if (pepper_region_not_empty(damage)) {
+		pepper_region_union(&plane->damage_region, &plane->damage_region, damage);
 		pepper_output_schedule_repaint(plane->output);
 	}
 }
@@ -162,9 +162,9 @@ pepper_plane_add_damage_region(pepper_plane_t *plane, pixman_region32_t *damage)
  *
  * @param plane     plane to get the damage region
  *
- * @returns         #pixman_region32_t
+ * @returns         #pepper_region_t
  */
-PEPPER_API pixman_region32_t *
+PEPPER_API pepper_region_t *
 pepper_plane_get_damage_region(pepper_plane_t *plane)
 {
 	return &plane->damage_region;
@@ -176,9 +176,9 @@ pepper_plane_get_damage_region(pepper_plane_t *plane)
  *
  * @param plane     plane to get the clip region
  *
- * @returns         #pixman_region32_t
+ * @returns         #pepper_region_t
  */
-PEPPER_API pixman_region32_t *
+PEPPER_API pepper_region_t *
 pepper_plane_get_clip_region(pepper_plane_t *plane)
 {
 	return &plane->clip_region;
@@ -206,9 +206,9 @@ pepper_plane_get_render_list(pepper_plane_t *plane)
  */
 PEPPER_API void
 pepper_plane_subtract_damage_region(pepper_plane_t *plane,
-									pixman_region32_t *damage)
+									pepper_region_t *damage)
 {
-	pixman_region32_subtract(&plane->damage_region, &plane->damage_region, damage);
+	pepper_region_subtract(&plane->damage_region, &plane->damage_region, damage);
 }
 
 /**
@@ -220,5 +220,5 @@ pepper_plane_subtract_damage_region(pepper_plane_t *plane,
 PEPPER_API void
 pepper_plane_clear_damage_region(pepper_plane_t *plane)
 {
-	pixman_region32_clear(&plane->damage_region);
+	pepper_region_clear(&plane->damage_region);
 }

@@ -29,28 +29,28 @@
 #include "pepper-internal.h"
 
 /**
- * Transforms a pixman region from global space to output local space
+ * Transforms a pepper region from global space to output local space
  *
- * @param region    pixman region
+ * @param region    pepper region
  * @param output    output object
  */
 PEPPER_API void
-pepper_pixman_region_global_to_output(pixman_region32_t *region,
+pepper_region_global_to_output(pepper_region_t *region,
 									  pepper_output_t *output)
 {
-	pixman_box32_t *box, b;
+	pepper_box_t *box, b;
 	int             num_rects, i;
 	int32_t         scale = output->scale;
 	int32_t         w = output->geometry.w;
 	int32_t         h = output->geometry.h;
 
 	/* Transform into output geometry origin. */
-	pixman_region32_translate(region, output->geometry.x, output->geometry.y);
+	pepper_region_translate(region, output->geometry.x, output->geometry.y);
 
 	if (output->geometry.transform == WL_OUTPUT_TRANSFORM_NORMAL && scale == 1)
 		return;
 
-	box = pixman_region32_rectangles(region, &num_rects);
+	box = pepper_region_rectangles(region, &num_rects);
 
 	switch (output->geometry.transform) {
 	case WL_OUTPUT_TRANSFORM_NORMAL:
