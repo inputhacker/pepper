@@ -31,8 +31,8 @@
 static void
 region_resource_destroy_handler(struct wl_resource *resource)
 {
-	pepper_region_t *region = wl_resource_get_user_data(resource);
-	pepper_region_destroy(region);
+	pepper_wl_region_t *region = wl_resource_get_user_data(resource);
+	pepper_wl_region_destroy(region);
 }
 
 static void
@@ -45,7 +45,7 @@ static void
 region_add(struct wl_client *client, struct wl_resource *resource,
 		   int32_t x, int32_t y, int32_t w, int32_t h)
 {
-	pepper_region_t *region = wl_resource_get_user_data(resource);
+	pepper_wl_region_t *region = wl_resource_get_user_data(resource);
 	pixman_region32_union_rect(&region->pixman_region, &region->pixman_region,
 							   x, y, w, h);
 }
@@ -54,7 +54,7 @@ static void
 region_subtract(struct wl_client *client, struct wl_resource *resource,
 				int32_t x, int32_t y, int32_t w, int32_t h)
 {
-	pepper_region_t    *region = wl_resource_get_user_data(resource);
+	pepper_wl_region_t    *region = wl_resource_get_user_data(resource);
 	pixman_region32_t   rect;
 
 	pixman_region32_init_rect(&rect, x, y, w, h);
@@ -68,13 +68,13 @@ static const struct wl_region_interface region_implementation = {
 	region_subtract,
 };
 
-pepper_region_t *
-pepper_region_create(pepper_compositor_t   *compositor,
+pepper_wl_region_t *
+pepper_wl_region_create(pepper_compositor_t   *compositor,
 					 struct wl_client      *client,
 					 struct wl_resource    *resource,
 					 uint32_t               id)
 {
-	pepper_region_t *region = calloc(1, sizeof(pepper_region_t));
+	pepper_wl_region_t *region = calloc(1, sizeof(pepper_wl_region_t));
 	PEPPER_CHECK(region, return NULL, "calloc(0 failed.\n");
 
 	region->resource = wl_resource_create(client, &wl_region_interface, 1, id);
@@ -98,7 +98,7 @@ error:
 }
 
 void
-pepper_region_destroy(pepper_region_t *region)
+pepper_wl_region_destroy(pepper_wl_region_t *region)
 {
 	pixman_region32_fini(&region->pixman_region);
 	pepper_list_remove(&region->link);

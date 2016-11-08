@@ -54,7 +54,7 @@ compositor_create_region(struct wl_client   *client,
 {
 	pepper_compositor_t *compositor = wl_resource_get_user_data(resource);
 
-	if (!pepper_region_create(compositor, client, resource, id))
+	if (!pepper_wl_region_create(compositor, client, resource, id))
 		wl_resource_post_no_memory(resource);
 }
 
@@ -288,14 +288,14 @@ PEPPER_API void
 pepper_compositor_destroy(pepper_compositor_t *compositor)
 {
 	pepper_surface_t        *surface, *next_surface;
-	pepper_region_t         *region, *next_region;
+	pepper_wl_region_t         *region, *next_region;
 
 	pepper_list_for_each_safe(surface, next_surface, &compositor->surface_list,
 							  link)
 	pepper_surface_destroy(surface);
 
 	pepper_list_for_each_safe(region, next_region, &compositor->region_list, link)
-	pepper_region_destroy(region);
+	pepper_wl_region_destroy(region);
 
 	if (compositor->subcomp)
 		pepper_subcompositor_destroy(compositor->subcomp);

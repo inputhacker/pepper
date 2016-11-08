@@ -204,7 +204,7 @@ surface_set_opaque_region(struct wl_client   *client,
 	pepper_surface_t *surface = wl_resource_get_user_data(resource);
 
 	if (region_resource) {
-		pepper_region_t *region = wl_resource_get_user_data(region_resource);
+		pepper_wl_region_t *region = wl_resource_get_user_data(region_resource);
 		pixman_region32_copy(&surface->pending.opaque_region, &region->pixman_region);
 	} else {
 		pixman_region32_clear(&surface->pending.opaque_region);
@@ -219,7 +219,7 @@ surface_set_input_region(struct wl_client   *client,
 	pepper_surface_t *surface = wl_resource_get_user_data(resource);
 
 	if (region_resource) {
-		pepper_region_t *region = wl_resource_get_user_data(region_resource);
+		pepper_wl_region_t *region = wl_resource_get_user_data(region_resource);
 		pixman_region32_copy(&surface->pending.input_region, &region->pixman_region);
 	} else {
 		pixman_region32_init_rect(&surface->pending.input_region,

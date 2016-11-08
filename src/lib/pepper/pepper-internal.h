@@ -41,7 +41,7 @@
 #define PEPPER_MAX_OUTPUT_COUNT         32
 #define PEPPER_OUTPUT_MAX_TICK_COUNT    10
 
-typedef struct pepper_region        pepper_region_t;
+typedef struct pepper_wl_region        pepper_wl_region_t;
 typedef struct pepper_surface_state pepper_surface_state_t;
 typedef struct pepper_plane_entry   pepper_plane_entry_t;
 typedef struct pepper_input         pepper_input_t;
@@ -237,7 +237,7 @@ void
 pepper_surface_send_frame_callback_done(pepper_surface_t *surface,
 										uint32_t time);
 
-struct pepper_region {
+struct pepper_wl_region {
 	pepper_object_t         base;
 	pepper_compositor_t    *compositor;
 	struct wl_resource     *resource;
@@ -246,14 +246,14 @@ struct pepper_region {
 	pixman_region32_t       pixman_region;
 };
 
-pepper_region_t *
-pepper_region_create(pepper_compositor_t *compositor,
+pepper_wl_region_t *
+pepper_wl_region_create(pepper_compositor_t *compositor,
 					 struct wl_client *client,
 					 struct wl_resource *resource,
 					 uint32_t id);
 
 void
-pepper_region_destroy(pepper_region_t *region);
+pepper_wl_region_destroy(pepper_wl_region_t *region);
 
 void
 pepper_transform_pixman_region(pixman_region32_t *region,
