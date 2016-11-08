@@ -869,6 +869,130 @@ pepper_virtual_terminal_setup(int tty);
 PEPPER_API void
 pepper_virtual_terminal_restore(void);
 
+/*
+ * Regions
+ */
+typedef enum
+{
+    PEPPER_REGION_OUT,
+    PEPPER_REGION_IN,
+    PEPPER_REGION_PART
+} pepper_region_overlap_t;
+
+typedef struct pepper_region_data	pepper_region_data_t;
+typedef struct pepper_box		pepper_box_t;
+typedef struct pepper_rectangle	pepper_rectangle_t;
+typedef struct pepper_region		pepper_region_t;
+
+struct pepper_region_data {
+    long		size;
+    long		numRects;
+/*  pepper_box_t	rects[size];   in memory but not explicitly declared */
+};
+
+struct pepper_rectangle
+{
+    int32_t x, y;
+    uint32_t width, height;
+};
+
+struct pepper_box
+{
+    int32_t x1, y1, x2, y2;
+};
+
+struct pepper_region
+{
+    pepper_box_t          extents;
+    pepper_region_data_t  *data;
+};
+
+/* creation/destruction */
+PEPPER_API void
+pepper_region_init(pepper_region_t *region);
+PEPPER_API void
+pepper_region_init_rect(pepper_region_t *region,
+						int                x,
+						int                y,
+						unsigned int       width,
+						unsigned int       height);
+PEPPER_API pepper_bool_t
+pepper_region_init_rects(pepper_region_t *region,
+						 const pepper_box_t *boxes,
+						 int                count);
+PEPPER_API void
+pepper_region_init_with_extents(pepper_region_t *region,
+								pepper_box_t    *extents);
+PEPPER_API void
+pepper_region_fini(pepper_region_t *region);
+
+
+/* manipulation */
+PEPPER_API void
+pepper_region_translate(pepper_region_t *region,
+						int                x,
+						int                y);
+PEPPER_API pepper_bool_t
+pepper_region_copy(pepper_region_t *dest, pepper_region_t *source);
+PEPPER_API pepper_bool_t
+pepper_region_intersect(pepper_region_t *new_reg,
+						pepper_region_t *reg1,
+						pepper_region_t *reg2);
+PEPPER_API pepper_bool_t
+pepper_region_union(pepper_region_t *new_reg,
+					pepper_region_t *reg1,
+					pepper_region_t *reg2);
+PEPPER_API pepper_bool_t
+pepper_region_intersect_rect(pepper_region_t *dest,
+							 pepper_region_t *source,
+							 int                x,
+							 int                y,
+							 unsigned int       width,
+							 unsigned int       height);
+PEPPER_API pepper_bool_t
+pepper_region_union_rect(pepper_region_t *dest,
+						 pepper_region_t *source,
+						 int                x,
+						 int                y,
+						 unsigned int       width,
+						 unsigned int       height);
+PEPPER_API pepper_bool_t
+pepper_region_subtract(pepper_region_t *reg_d,
+					   pepper_region_t *reg_m,
+					   pepper_region_t *reg_s);
+PEPPER_API pepper_bool_t
+pepper_region_inverse(pepper_region_t *new_reg,
+					  pepper_region_t *reg1,
+					  pepper_box_t    *inv_rect);
+PEPPER_API pepper_bool_t
+pepper_region_contains_point(pepper_region_t *region,
+							 int                x,
+							 int                y,
+							 pepper_box_t    *box);
+PEPPER_API pepper_region_overlap_t
+pepper_region_contains_rectangle(pepper_region_t *region,
+								 pepper_box_t    *prect);
+PEPPER_API pepper_bool_t
+pepper_region_not_empty(pepper_region_t *region);
+PEPPER_API pepper_box_t *
+pepper_region_extents(pepper_region_t *region);
+PEPPER_API int
+pepper_region_n_rects(pepper_region_t *region);
+PEPPER_API pepper_box_t *
+pepper_region_rectangles(pepper_region_t *region,
+						 int               *n_rects);
+PEPPER_API pepper_bool_t
+pepper_region_equal(pepper_region_t *region1,
+					pepper_region_t *region2);
+PEPPER_API pepper_bool_t
+pepper_region_selfcheck(pepper_region_t *region);
+PEPPER_API void
+pepper_region_reset(pepper_region_t *region,
+					pepper_box_t    *box);
+PEPPER_API void
+pepper_region_clear(pepper_region_t *region);
+PEPPER_API int
+pepper_region_print(pepper_region_t *region);
 #ifdef __cplusplus
 }
 #endif
