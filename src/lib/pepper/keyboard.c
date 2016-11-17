@@ -33,6 +33,7 @@
 #include <fcntl.h>
 
 #include "pepper-internal.h"
+#include "pepper-utils-xkb.h"
 
 static void
 keyboard_release(struct wl_client *client, struct wl_resource *resource)
@@ -45,162 +46,74 @@ static const struct wl_keyboard_interface keyboard_impl = {
 };
 
 static void
-clear_keymap(pepper_keyboard_t *keyboard)
-{
-	if (keyboard->state) {
-		xkb_state_unref(keyboard->state);
-		keyboard->state = NULL;
-	}
-
-	if (keyboard->keymap) {
-		xkb_keymap_unref(keyboard->keymap);
-		keyboard->keymap = NULL;
-	}
-
-	if (keyboard->keymap_fd >= 0) {
-		close(keyboard->keymap_fd);
-		keyboard->keymap_fd = -1;
-		keyboard->keymap_len = -1;
-	}
-
-	if (keyboard->pending_keymap) {
-		xkb_keymap_unref(keyboard->pending_keymap);
-		keyboard->pending_keymap = NULL;
-	}
-}
-
-static void
 update_modifiers(pepper_keyboard_t *keyboard)
 {
-	uint32_t mods_depressed, mods_latched, mods_locked, group;
+	if ((keyboard->pending.mods_depressed != keyboard->mods_depressed) ||
+		(keyboard->pending.mods_latched != keyboard->mods_latched) ||
+		(keyboard->pending.mods_locked != keyboard->mods_locked) ||
+		(keyboard->pending.group != keyboard->group)) {
 
-	mods_depressed = xkb_state_serialize_mods(keyboard->state,
-					 XKB_STATE_MODS_DEPRESSED);
-	mods_latched = xkb_state_serialize_mods(keyboard->state,
-											XKB_STATE_MODS_LATCHED);
-	mods_locked = xkb_state_serialize_mods(keyboard->state, XKB_STATE_MODS_LOCKED);
-	group = xkb_state_serialize_mods(keyboard->state, XKB_STATE_LAYOUT_EFFECTIVE);
+		keyboard->mods_depressed = keyboard->pending.mods_depressed;
+		keyboard->mods_latched = keyboard->pending.mods_latched;
+		keyboard->mods_locked = keyboard->pending.mods_locked;
+		keyboard->group = keyboard->pending.group;
 
-	if ((mods_depressed != keyboard->mods_depressed) ||
-		(mods_latched != keyboard->mods_latched) ||
-		(mods_locked != keyboard->mods_locked) || (group != keyboard->group)) {
-		keyboard->mods_depressed = mods_depressed;
-		keyboard->mods_latched = mods_latched;
-		keyboard->mods_locked = mods_locked;
-		keyboard->group = group;
-
-		keyboard->grab->modifiers(keyboard, keyboard->data, mods_depressed,
-								  mods_latched,
-								  mods_locked, group);
+		keyboard->grab->modifiers(keyboard,
+								  keyboard->data,
+								  keyboard->mods_depressed,
+								  keyboard->mods_latched,
+								  keyboard->mods_locked, keyboard->group);
 	}
-}
-
-static void
-update_key(pepper_keyboard_t *keyboard, uint32_t key, uint32_t state)
-{
-	enum xkb_key_direction  direction;
-
-	if (!keyboard->state)
-		return;
-
-	if (state == WL_KEYBOARD_KEY_STATE_PRESSED)
-		direction = XKB_KEY_DOWN;
-	else
-		direction = XKB_KEY_UP;
-
-	xkb_state_update_key(keyboard->state, key + 8, direction);
-	update_modifiers(keyboard);
 }
 
 static void
 update_keymap(pepper_keyboard_t *keyboard)
 {
-	struct wl_resource             *resource;
-	char                           *keymap_str = NULL;
-	char                           *keymap_map = NULL;
+	struct wl_resource *resource;
 
-	struct xkb_state               *state;
-	uint32_t                        mods_latched = 0;
-	uint32_t                        mods_locked = 0;
-	uint32_t                        format;
-
-	if (keyboard->keymap)
-		xkb_keymap_unref(keyboard->keymap);
-
-	if (keyboard->keymap_fd)
+	if (keyboard->keymap_fd >= 0)
 		close(keyboard->keymap_fd);
 
-	if (keyboard->pending_keymap) {
-		format = WL_KEYBOARD_KEYMAP_FORMAT_XKB_V1;
-		keyboard->keymap = xkb_keymap_ref(keyboard->pending_keymap);
-		xkb_keymap_unref(keyboard->pending_keymap);
-		keyboard->pending_keymap = NULL;
+	if (keyboard->xkb_info)
+		pepper_xkb_destroy((struct pepper_xkb_info *)keyboard->xkb_info);
 
-		keymap_str = xkb_keymap_get_as_string(keyboard->keymap,
-											  XKB_KEYMAP_FORMAT_TEXT_V1);
-		PEPPER_CHECK(keymap_str, goto error, "failed to get keymap string\n");
+	keyboard->keymap_format = keyboard->pending.keymap_format;
+	keyboard->keymap_fd = keyboard->pending.keymap_fd;
+	keyboard->keymap_len = keyboard->pending.keymap_len;
+	keyboard->pending.keymap_fd = -1;
 
-		keyboard->keymap_len = strlen(keymap_str) + 1;
-		keyboard->keymap_fd = pepper_create_anonymous_file(keyboard->keymap_len);
-		PEPPER_CHECK(keyboard->keymap_fd, goto error, "failed to create keymap file\n");
+	if (keyboard->keymap_format == WL_KEYBOARD_KEYMAP_FORMAT_NO_KEYMAP) {
+		int fd = open("/dev/null", O_RDONLY);
 
-		keymap_map = mmap(NULL, keyboard->keymap_len, PROT_READ | PROT_WRITE,
-						  MAP_SHARED,
-						  keyboard->keymap_fd, 0);
-		PEPPER_CHECK(keymap_map, goto error, "failed to mmap for keymap\n");
+		wl_resource_for_each(resource, &keyboard->resource_list)
+			wl_keyboard_send_keymap(resource,
+									WL_KEYBOARD_KEYMAP_FORMAT_NO_KEYMAP, fd,
+									0);
 
-		strncpy(keymap_map, keymap_str, keyboard->keymap_len);
-
-		state = xkb_state_new(keyboard->keymap);
-		PEPPER_CHECK(state, goto error, "failed to create xkb state\n");
-
-		if (keyboard->state) {
-			mods_latched = xkb_state_serialize_mods(keyboard->state,
-													XKB_STATE_MODS_LATCHED);
-			mods_locked = xkb_state_serialize_mods(keyboard->state, XKB_STATE_MODS_LOCKED);
-			xkb_state_update_mask(state, 0, mods_latched, mods_locked, 0, 0, 0);
-			xkb_state_unref(keyboard->state);
-		}
-
-		keyboard->state = state;
+		close(fd);
 	} else {
-		format = WL_KEYBOARD_KEYMAP_FORMAT_NO_KEYMAP;
+		wl_resource_for_each(resource, &keyboard->resource_list)
+			wl_keyboard_send_keymap(resource, keyboard->keymap_format,
+									keyboard->keymap_fd,
+									keyboard->keymap_len);
+
 	}
 
-	wl_resource_for_each(resource, &keyboard->resource_list)
-	wl_keyboard_send_keymap(resource, format, keyboard->keymap_fd,
-							keyboard->keymap_len);
+	keyboard->need_update_keymap = 0;
 
-	update_modifiers(keyboard);
-
-	if (!mods_latched && !mods_locked)
-		goto done;
-
-	wl_resource_for_each(resource, &keyboard->resource_list)
-	wl_keyboard_send_modifiers(resource,
-							   wl_display_next_serial(keyboard->seat->compositor->display),
-							   keyboard->mods_depressed, keyboard->mods_latched,
-							   keyboard->mods_locked, keyboard->group);
-	goto done;
-
-error:
-	clear_keymap(keyboard);
-
-done:
-	if (keymap_map)
-		munmap(keymap_map, keyboard->keymap_len);
-
-	if (keymap_str)
-		free(keymap_str);
+	if (keyboard->pending.xkb_info) {
+		keyboard->xkb_info = keyboard->pending.xkb_info;
+		keyboard->pending.xkb_info = NULL;
+	}
 }
 
 void
 pepper_keyboard_handle_event(pepper_keyboard_t *keyboard, uint32_t id,
 							 pepper_input_event_t *event)
 {
-	uint32_t       *keys = keyboard->keys.data;
-	unsigned int    num_keys = keyboard->keys.size / sizeof(uint32_t);
-	unsigned int    i;
+	uint32_t *keys = keyboard->keys.data;
+	unsigned int num_keys = keyboard->keys.size / sizeof(uint32_t);
+	unsigned int i;
 
 	if (id != PEPPER_EVENT_INPUT_DEVICE_KEYBOARD_KEY)
 		return;
@@ -216,18 +129,23 @@ pepper_keyboard_handle_event(pepper_keyboard_t *keyboard, uint32_t id,
 	keyboard->keys.size = num_keys * sizeof(uint32_t);
 
 	if (event->state == PEPPER_KEY_STATE_PRESSED)
-		*(uint32_t *)wl_array_add(&keyboard->keys, sizeof(uint32_t)) = event->key;
+		*(uint32_t *) wl_array_add(&keyboard->keys, sizeof(uint32_t)) = event->key;
 
 	if (keyboard->grab)
 		keyboard->grab->key(keyboard, keyboard->data, event->time, event->key,
 							event->state);
 
-	if (keyboard->pending_keymap && (keyboard->keys.size == 0))
+	if (keyboard->need_update_keymap && keyboard->keys.size == 0) {
 		update_keymap(keyboard);
+		update_modifiers(keyboard);
+	} else {
+		if (keyboard->xkb_info) {
+			pepper_xkb_update_keyboard_modifier(keyboard->xkb_info, keyboard, event);
+		}
+	}
 
-	update_key(keyboard, event->key, event->state);
-
-	pepper_object_emit_event(&keyboard->base, PEPPER_EVENT_KEYBOARD_KEY, event);
+	pepper_object_emit_event(&keyboard->base, PEPPER_EVENT_KEYBOARD_KEY,
+							 event);
 }
 
 static void
@@ -243,15 +161,18 @@ keyboard_handle_focus_destroy(pepper_event_listener_t *listener,
 }
 
 pepper_keyboard_t *
-pepper_keyboard_create(pepper_seat_t *seat)
+pepper_keyboard_create(pepper_seat_t * seat)
 {
 	pepper_keyboard_t *keyboard =
-		(pepper_keyboard_t *)pepper_object_alloc(PEPPER_OBJECT_KEYBOARD,
-				sizeof(pepper_keyboard_t));
+		(pepper_keyboard_t *) pepper_object_alloc(PEPPER_OBJECT_KEYBOARD,
+												  sizeof(pepper_keyboard_t));
 
 	PEPPER_CHECK(keyboard, return NULL, "pepper_object_alloc() failed.\n");
 
 	keyboard->seat = seat;
+	keyboard->keymap_fd = -1;
+	keyboard->pending.keymap_fd = -1;
+
 	wl_list_init(&keyboard->resource_list);
 
 	wl_array_init(&keyboard->keys);
@@ -262,13 +183,20 @@ pepper_keyboard_create(pepper_seat_t *seat)
 void
 pepper_keyboard_destroy(pepper_keyboard_t *keyboard)
 {
-	clear_keymap(keyboard);
-
 	if (keyboard->grab)
 		keyboard->grab->cancel(keyboard, keyboard->data);
 
 	if (keyboard->focus)
 		pepper_event_listener_remove(keyboard->focus_destroy_listener);
+
+	if (keyboard->keymap_fd >= 0)
+		close(keyboard->keymap_fd);
+	if (keyboard->pending.keymap_fd >= 0)
+		close(keyboard->pending.keymap_fd);
+	if (keyboard->xkb_info)
+		pepper_xkb_destroy((struct pepper_xkb_info *)keyboard->xkb_info);
+	if (keyboard->pending.xkb_info)
+		pepper_xkb_destroy((struct pepper_xkb_info *)keyboard->pending.xkb_info);
 
 	wl_array_release(&keyboard->keys);
 	free(keyboard);
@@ -284,8 +212,9 @@ void
 pepper_keyboard_bind_resource(struct wl_client *client,
 							  struct wl_resource *resource, uint32_t id)
 {
-	pepper_seat_t      *seat = (pepper_seat_t *)wl_resource_get_user_data(resource);
-	pepper_keyboard_t  *keyboard = seat->keyboard;
+	pepper_seat_t *seat =
+		(pepper_seat_t *) wl_resource_get_user_data(resource);
+	pepper_keyboard_t *keyboard = seat->keyboard;
 	struct wl_resource *res;
 
 	if (!keyboard)
@@ -299,17 +228,24 @@ pepper_keyboard_bind_resource(struct wl_client *client,
 	}
 
 	wl_list_insert(&keyboard->resource_list, wl_resource_get_link(res));
-	wl_resource_set_implementation(res, &keyboard_impl, keyboard, unbind_resource);
+	wl_resource_set_implementation(res, &keyboard_impl, keyboard,
+								   unbind_resource);
 
 	/* TODO: send repeat info */
-
-	if (keyboard->keymap) {
+	if ((keyboard->keymap_format == WL_KEYBOARD_KEYMAP_FORMAT_NO_KEYMAP)
+		|| (keyboard->keymap_fd < 0) || (keyboard->keymap_len == 0)) {
+		int fd = open("/dev/null", O_RDONLY);
+		wl_keyboard_send_keymap(res, WL_KEYBOARD_KEYMAP_FORMAT_NO_KEYMAP,
+								fd, 0);
+		close(fd);
+	} else {
 		wl_keyboard_send_keymap(res, WL_KEYBOARD_KEYMAP_FORMAT_XKB_V1,
 								keyboard->keymap_fd, keyboard->keymap_len);
-	} else {
-		int fd = open("/dev/null", O_RDONLY);
-		wl_keyboard_send_keymap(res, WL_KEYBOARD_KEYMAP_FORMAT_NO_KEYMAP, fd, 0);
-		close(fd);
+		wl_keyboard_send_modifiers(res,
+								   wl_display_next_serial(keyboard->seat->compositor->display),
+								   keyboard->mods_depressed,
+								   keyboard->mods_latched,
+								   keyboard->mods_locked, keyboard->group);
 	}
 
 	if (!keyboard->focus || !keyboard->focus->surface ||
@@ -318,7 +254,8 @@ pepper_keyboard_bind_resource(struct wl_client *client,
 
 	if (wl_resource_get_client(keyboard->focus->surface->resource) == client) {
 		wl_keyboard_send_enter(res, keyboard->focus_serial,
-							   keyboard->focus->surface->resource, &keyboard->keys);
+							   keyboard->focus->surface->resource,
+							   &keyboard->keys);
 	}
 }
 
@@ -381,22 +318,26 @@ pepper_keyboard_set_focus(pepper_keyboard_t *keyboard, pepper_view_t *focus)
 		pepper_event_listener_remove(keyboard->focus_destroy_listener);
 		pepper_object_emit_event(&keyboard->base, PEPPER_EVENT_FOCUS_LEAVE,
 								 keyboard->focus);
-		pepper_object_emit_event(&keyboard->focus->base, PEPPER_EVENT_FOCUS_LEAVE,
-								 keyboard);
+		pepper_object_emit_event(&keyboard->focus->base,
+								 PEPPER_EVENT_FOCUS_LEAVE, keyboard);
 	}
 
 	keyboard->focus = focus;
 
 	if (focus) {
-		keyboard->focus_serial = wl_display_next_serial(
-									 keyboard->seat->compositor->display);
+		keyboard->focus_serial =
+			wl_display_next_serial(keyboard->seat->compositor->display);
 
 		keyboard->focus_destroy_listener =
-			pepper_object_add_event_listener(&focus->base, PEPPER_EVENT_OBJECT_DESTROY, 0,
-											 keyboard_handle_focus_destroy, keyboard);
+			pepper_object_add_event_listener(&focus->base,
+											 PEPPER_EVENT_OBJECT_DESTROY, 0,
+											 keyboard_handle_focus_destroy,
+											 keyboard);
 
-		pepper_object_emit_event(&keyboard->base, PEPPER_EVENT_FOCUS_ENTER, focus);
-		pepper_object_emit_event(&focus->base, PEPPER_EVENT_FOCUS_ENTER, keyboard);
+		pepper_object_emit_event(&keyboard->base, PEPPER_EVENT_FOCUS_ENTER,
+								 focus);
+		pepper_object_emit_event(&focus->base, PEPPER_EVENT_FOCUS_ENTER,
+								 keyboard);
 	}
 }
 
@@ -425,8 +366,8 @@ PEPPER_API void
 pepper_keyboard_send_leave(pepper_keyboard_t *keyboard, pepper_view_t *view)
 {
 	struct wl_resource *resource;
-	struct wl_client   *client;
-	uint32_t            serial;
+	struct wl_client *client;
+	uint32_t serial;
 
 	if (!view || !view->surface || !view->surface->resource)
 		return;
@@ -450,8 +391,8 @@ PEPPER_API void
 pepper_keyboard_send_enter(pepper_keyboard_t *keyboard, pepper_view_t *view)
 {
 	struct wl_resource *resource;
-	struct wl_client   *client;
-	uint32_t            serial;
+	struct wl_client *client;
+	uint32_t serial;
 
 	if (!view || !view->surface || !view->surface->resource)
 		return;
@@ -460,9 +401,10 @@ pepper_keyboard_send_enter(pepper_keyboard_t *keyboard, pepper_view_t *view)
 	serial = wl_display_next_serial(keyboard->seat->compositor->display);
 
 	wl_resource_for_each(resource, &keyboard->resource_list) {
-		if (wl_resource_get_client(resource) == client)
+		if (wl_resource_get_client(resource) == client) {
 			wl_keyboard_send_enter(resource, serial, view->surface->resource,
 								   &keyboard->keys);
+		}
 	}
 }
 
@@ -479,10 +421,10 @@ PEPPER_API void
 pepper_keyboard_send_key(pepper_keyboard_t *keyboard, pepper_view_t *view,
 						 uint32_t time, uint32_t key, uint32_t state)
 {
-	struct wl_resource     *resource;
-	struct wl_client       *client;
-	uint32_t                serial;
-	pepper_input_event_t    event;
+	struct wl_resource *resource;
+	struct wl_client *client;
+	uint32_t serial;
+	pepper_input_event_t event;
 
 	if (!view || !view->surface || !view->surface->resource)
 		return;
@@ -512,13 +454,14 @@ pepper_keyboard_send_key(pepper_keyboard_t *keyboard, pepper_view_t *view,
  * @param group     (none)
  */
 PEPPER_API void
-pepper_keyboard_send_modifiers(pepper_keyboard_t *keyboard, pepper_view_t *view,
-							   uint32_t depressed, uint32_t latched,
-							   uint32_t locked, uint32_t group)
+pepper_keyboard_send_modifiers(pepper_keyboard_t *keyboard,
+							   pepper_view_t *view, uint32_t depressed,
+							   uint32_t latched, uint32_t locked,
+							   uint32_t group)
 {
 	struct wl_resource *resource;
-	struct wl_client   *client;
-	uint32_t            serial;
+	struct wl_client *client;
+	uint32_t serial;
 
 	if (!view || !view->surface || !view->surface->resource)
 		return;
@@ -528,7 +471,8 @@ pepper_keyboard_send_modifiers(pepper_keyboard_t *keyboard, pepper_view_t *view,
 
 	wl_resource_for_each(resource, &keyboard->resource_list) {
 		if (wl_resource_get_client(resource) == client)
-			wl_keyboard_send_modifiers(resource, serial, depressed, latched, locked, group);
+			wl_keyboard_send_modifiers(resource, serial, depressed, latched,
+									   locked, group);
 	}
 }
 
@@ -591,12 +535,63 @@ PEPPER_API void
 pepper_keyboard_set_keymap(pepper_keyboard_t *keyboard,
 						   struct xkb_keymap *keymap)
 {
-	xkb_keymap_unref(keyboard->pending_keymap);
-	if (keymap)
-		keyboard->pending_keymap = xkb_keymap_ref(keymap);
-	else
-		keyboard->pending_keymap = NULL;
+	if (keyboard->pending.xkb_info)
+		pepper_xkb_destroy(keyboard->pending.xkb_info);
 
-	if (keyboard->keys.size == 0)
+	keyboard->pending.xkb_info = pepper_xkb_create(keymap);
+	pepper_xkb_set_keyboard(keyboard->pending.xkb_info, keyboard);
+}
+
+/**
+ * Set xkb keymap information for the given keyboard
+ *
+ * @param keyboard  keyboard object
+ * @param keymap_format    wayland keymap format
+ * @param keymap_fd        keymap file descriptor
+ * @param keymap_len       length of file
+ *
+ * This function might send wl_keyboard.keymap
+ */
+PEPPER_API void
+pepper_keyboard_set_keymap_info(pepper_keyboard_t *keyboard,
+								uint32_t keymap_format,
+								int keymap_fd, uint32_t keymap_len)
+{
+	if (keyboard->pending.keymap_fd >= 0)
+		close(keyboard->pending.keymap_fd);
+
+	keyboard->pending.keymap_fd = dup(keymap_fd);
+	keyboard->pending.keymap_len = keymap_len;
+	keyboard->pending.keymap_format = keymap_format;
+
+	if (keyboard->keys.size == 0) {
 		update_keymap(keyboard);
+	} else {
+		keyboard->need_update_keymap = 1;
+	}
+}
+
+/**
+ * Set modifiers for the given keyboard
+ *
+ * @param keyboard     keyboard object
+ * @param depressed
+ * @param latched
+ * @param locked
+ * @param group
+ *
+ * This function might send wl_keyboard.modifiers
+ */
+PEPPER_API void
+pepper_keyboard_set_modifiers(pepper_keyboard_t *keyboard,
+							  uint32_t depressed, uint32_t latched,
+							  uint32_t locked, uint32_t group)
+{
+	keyboard->pending.mods_depressed = depressed;
+	keyboard->pending.mods_latched = latched;
+	keyboard->pending.mods_locked = locked;
+	keyboard->pending.group = group;
+
+	if (!keyboard->need_update_keymap)
+		update_modifiers(keyboard);
 }

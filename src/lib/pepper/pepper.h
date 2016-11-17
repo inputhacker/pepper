@@ -1151,6 +1151,17 @@ PEPPER_API void
 pepper_keyboard_set_keymap(pepper_keyboard_t *keyboard,
 						   struct xkb_keymap *keymap);
 
+PEPPER_API void
+pepper_keyboard_set_keymap_info(pepper_keyboard_t *keyboard,
+						   uint32_t keymap_format,
+						   int keymap_fd,
+						   uint32_t keymap_len);
+
+PEPPER_API void
+pepper_keyboard_set_modifiers(pepper_keyboard_t *keyboard,
+							   uint32_t depressed, uint32_t latched,
+							   uint32_t locked, uint32_t group);
+
 /* Touch. */
 struct pepper_touch_grab {
 	void    (*down)(pepper_touch_t *touch, void *data, uint32_t time, int32_t id,
