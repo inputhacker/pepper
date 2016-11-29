@@ -1589,9 +1589,6 @@ setup_display(gl_renderer_t *gr, void *native_display, const char *platform)
 	if (!egl_platform)
 		goto use_legacy;
 
-	if (!extensions)
-		goto use_legacy;
-
 	if (!strstr(extensions, "EGL_EXT_platform_base"))
 		goto use_legacy;
 
