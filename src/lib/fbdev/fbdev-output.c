@@ -363,6 +363,7 @@ pepper_fbdev_output_create(pepper_fbdev_t *fbdev, const char *renderer)
 	}
 
 	close(fd);
+	fd = -1;
 
 	/* TODO: read & set output->use_shadow value from somewhere */
 	output->use_shadow = PEPPER_TRUE;

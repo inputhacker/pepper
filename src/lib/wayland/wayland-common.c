@@ -121,6 +121,9 @@ pepper_wayland_connect(pepper_compositor_t *compositor, const char *socket_name)
 
 	conn->socket_name = string_copy(socket_name);
 	conn->display = wl_display_connect(socket_name);
+	PEPPER_CHECK(conn->display, goto error,
+		"wl_display_connect() failed.\n");
+
 	conn->fd = wl_display_get_fd(conn->display);
 
 	conn->gl_renderer = pepper_gl_renderer_create(compositor, conn->display,
