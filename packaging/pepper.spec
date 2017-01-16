@@ -26,9 +26,6 @@ BuildRequires:  pkgconfig(xkbcommon)
 BuildRequires:	doxygen
 BuildRequires:	pkgconfig(wayland-tbm-client)
 BuildRequires:  pkgconfig(wayland-tbm-server)
-%if ("%{?tizen_target_name}" == "TM1")
-BuildRequires:  pkgconfig(libdrm_sprd)
-%endif
 BuildRequires:  pkgconfig(libtbm)
 %if "%{ENABLE_TDM}" == "1"
 BuildRequires:  pkgconfig(libtdm)
