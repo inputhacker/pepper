@@ -318,7 +318,7 @@ pepper_log(const char *domain, int level, const char *format, ...);
 
 #define PEPPER_ERROR(fmt, ...)                                                          \
     do {                                                                                \
-        pepper_log("ERROR", 0, "%s:%s: "fmt, __FILE__, __FUNCTION__, ##__VA_ARGS__);	\
+        pepper_log("ERROR", 0, "%s:%s: " fmt, __FILE__, __FUNCTION__, ##__VA_ARGS__);	\
     } while (0)
 
 #define PEPPER_TRACE(fmt, ...)                                                          \
