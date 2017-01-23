@@ -44,3 +44,19 @@ x11_backend_LDADD  = $(SAMPLES_LIBS)
 x11_backend_SOURCES = x11-backend.c
 endif
 
+# headless input backend
+noinst_PROGRAMS += headless-input-backend
+
+headless_input_backend_CFLAGS = $(SAMPLES_CFLAGS)
+headless_input_backend_LDADD  = $(SAMPLES_LIBS)
+
+headless_input_backend_SOURCES = headless-input-backend.c
+
+# headless output backend
+noinst_PROGRAMS += headless-output-backend
+
+headless_output_backend_CFLAGS = $(SAMPLES_CFLAGS)
+headless_output_backend_LDADD  = $(SAMPLES_LIBS)
+
+headless_output_backend_SOURCES = headless-output-backend.c
+

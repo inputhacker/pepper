@@ -16,4 +16,5 @@ SUBDIRS += lib/x11
 endif
 
 SUBDIRS += samples          \
+           bin/headless     \
            bin/doctor
