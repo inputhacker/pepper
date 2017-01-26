@@ -27,6 +27,7 @@
 */
 
 #include "pepper-keyrouter-wayland.h"
+#include "pepper-internal.h"
 
 #define MIN(a,b) ((a)<(b)?(a):(b))
 
@@ -38,8 +39,9 @@ typedef struct ungrab_list_data ungrab_list_data_t;
 
 struct pepper_keyrouter_wl
 {
-	int count;
 	struct wl_display *display;
+	pepper_compositor_t *compositor;
+
 	pepper_list_t resources;
 	pepper_list_t clients;
 
@@ -73,24 +75,49 @@ struct ungrab_list_data
 
 pepper_keyrouter_wl_t *keyrouter_wl = NULL;
 
+static void
+_pepper_keyrouter_wl_key_send(pepper_seat_t *seat, struct wl_client *client,
+                              unsigned int key, unsigned int state,
+                              unsigned int time)
+{
+	struct wl_resource *resource;
+	pepper_keyboard_t *keyboard_info;
+
+	keyboard_info = pepper_seat_get_keyboard(seat);
+
+	wl_resource_for_each(resource, pepper_keyboard_get_resource_list(keyboard_info)) {
+		if (wl_resource_get_client(resource) == client)
+			wl_keyboard_send_key(resource, wl_display_get_serial(keyrouter_wl->display), time, key, state);
+	}
+}
+
 PEPPER_API pepper_bool_t
-pepper_keyrouter_wl_key_process(int key, int state)
+pepper_keyrouter_wl_key_process(void *data, unsigned int key, unsigned int state, unsigned int time)
 {
 	pepper_list_t delivery_list;
+	pepper_list_t *seat_list;
 	keyrouter_key_info_t *info;
 	int count = 0;
+	pepper_seat_t *seat = (pepper_seat_t *)data;
 
 	pepper_list_init(&delivery_list);
 	count = pepper_keyrouter_key_process(keyrouter_wl->keyrouter, key, state, &delivery_list);
 
-	fprintf(stderr, "count: %d : ", count);
-
 	if (count > 0) {
 		pepper_list_for_each(info, &delivery_list, link) {
-			fprintf(stderr, "info->data: %p ", info->data);
+			if (seat && pepper_object_get_type((pepper_object_t *)seat) == PEPPER_OBJECT_SEAT) {
+				_pepper_keyrouter_wl_key_send(seat, (struct wl_client *)info->data, key, state, time);
+			}
+			else {
+				seat_list = (pepper_list_t *)pepper_compositor_get_seat_list(keyrouter_wl->compositor);
+				if (!pepper_list_empty(seat_list)) {
+					pepper_list_for_each(seat, seat_list, link) {
+						_pepper_keyrouter_wl_key_send(seat, (struct wl_client *)info->data, key, state, time);
+					}
+				}
+			}
 		}
 	}
-	fprintf(stderr, "\n");
 }
 
 static void
@@ -368,6 +395,21 @@ _pepper_keyrouter_wl_cb_bind(struct wl_client *client, void *data, uint32_t vers
 }
 
 PEPPER_API void
+pepper_keyrouter_wl_event_handler(pepper_event_listener_t *listener,
+                               pepper_object_t *object,
+                               uint32_t id, void *info, void *data)
+{
+	pepper_input_event_t *event;
+
+	PEPPER_CHECK((id == PEPPER_EVENT_INPUT_DEVICE_KEYBOARD_KEY),
+	             return, "%d event is not handled by keyrouter\n", id);
+	PEPPER_CHECK(info, return, "Invalid event\n");
+
+	event = (pepper_input_event_t *)info;
+	pepper_keyrouter_wl_key_process(data, event->key, event->state, event->time);
+}
+
+PEPPER_API void
 pepper_keyrouter_wl_grab_print(void)
 {
 	PEPPER_CHECK(keyrouter_wl, return, "Wayland Keyrouter is not initialized\n");
@@ -391,6 +433,7 @@ pepper_keyrouter_wl_init(pepper_compositor_t *compositor)
 	keyrouter_wl = (pepper_keyrouter_wl_t *)calloc(1, sizeof(pepper_keyrouter_wl_t));
 	PEPPER_CHECK(keyrouter_wl, return PEPPER_FALSE, "Failed to allocate memory for keyrouter_wl\n");
 	keyrouter_wl->display = display;
+	keyrouter_wl->compositor = compositor;
 
 	pepper_list_init(&keyrouter_wl->resources);
 	pepper_list_init(&keyrouter_wl->clients);
@@ -431,13 +474,13 @@ pepper_keyrouter_wl_deinit(void)
 			wl_list_remove(&destroy_listener->link);
 			free(destroy_listener);
 		}
-		pepper_list_remove(cdata);
+		pepper_list_remove(&cdata->link);
 		free(cdata);
 	}
 
 	pepper_list_for_each_safe(rdata, rtmp, &keyrouter_wl->resources, link) {
 		wl_resource_destroy(rdata->resource);
-		pepper_list_remove(rdata);
+		pepper_list_remove(&rdata->link);
 		free(rdata);
 	}
 
