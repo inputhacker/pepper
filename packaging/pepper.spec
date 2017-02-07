@@ -27,6 +27,7 @@ BuildRequires:	doxygen
 BuildRequires:	pkgconfig(wayland-tbm-client)
 BuildRequires:  pkgconfig(wayland-tbm-server)
 BuildRequires:  pkgconfig(libtbm)
+BuildRequires:  pkgconfig(tizen-extension-server)
 %if "%{ENABLE_TDM}" == "1"
 BuildRequires:  pkgconfig(libtdm)
 %endif
@@ -71,6 +72,21 @@ Requires: pepper-desktop-shell = %{version}-%{release}
 
 %description desktop-shell-devel
 This package includes desktop-shell development module files.
+
+###### headless
+%package headless
+Summary: Headless module for pepper package
+
+%description headless
+This package includes headless module files.
+
+###### headless-devel
+%package headless-devel
+Summary: Headless development module for pepper package
+Requires: pepper-headless = %{version}-%{release}
+
+%description headless-devel
+This package includes headless development module files.
 
 ###### render
 %package render
@@ -183,6 +199,9 @@ make %{?_smp_mflags}
 %post desktop-shell -p /sbin/ldconfig
 %postun desktop-shell -p /sbin/ldconfig
 
+%post headless -p /sbin/ldconfig
+%postun headless -p /sbin/ldconfig
+
 %post render -p /sbin/ldconfig
 %postun render -p /sbin/ldconfig
 
@@ -238,6 +257,20 @@ make %{?_smp_mflags}
 %{_includedir}/pepper/xdg-shell-client-protocol.h
 %{_libdir}/pkgconfig/pepper-desktop-shell.pc
 %{_libdir}/libpepper-desktop-shell.so
+
+%files headless
+%manifest %{name}.manifest
+%defattr(-,root,root,-)
+%{_libdir}/libpepper-headless.so.*
+%{_bindir}/headless-client
+
+%files headless-devel
+%manifest %{name}.manifest
+%defattr(-,root,root,-)
+%{_includedir}/pepper/pepper-headless.h
+#%{_includedir}/pepper/pepper-headless-client-protocol.h
+%{_libdir}/pkgconfig/pepper-headless.pc
+%{_libdir}/libpepper-headless.so
 
 %files render
 %manifest %{name}.manifest

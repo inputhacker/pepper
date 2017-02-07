@@ -21,15 +21,13 @@
 * DEALINGS IN THE SOFTWARE.
 */
 
-#include <pepper.h>
+#include "headless-internal.h"
 
-struct pepper_module_info
+void init_pepper_headless()
 {
-	pepper_object_t base;
-	char *module_name;
-	
-};
+}
 
-PEPPER_API
-input_backend_init(pepper_compositor_t *compositor, 
+void fini_pepper_headless()
+{
+}
 

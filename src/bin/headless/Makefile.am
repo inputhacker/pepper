@@ -1,6 +1,6 @@
 bin_PROGRAMS = headless
 
-doctor_CFLAGS  = $(DOCTOR_CFLAGS)
-doctor_LDADD  = $(DOCTOR_LIBS)
+headless_CFLAGS  = $(HEADLESS_CFLAGS)
+headless_LDADD  = $(HEADLESS_LIBS)
 
-doctor_SOURCES = server.c
+headless_SOURCES = server.c
