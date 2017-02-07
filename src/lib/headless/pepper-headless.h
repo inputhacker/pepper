@@ -1,5 +1,5 @@
 /*
-* Copyright © 2017 Samsung Electronics co., Ltd. All Rights Reserved.
+* Copyright 짤 2017 Samsung Electronics co., Ltd. All Rights Reserved.
 *
 * Permission is hereby granted, free of charge, to any person obtaining a
 * copy of this software and associated documentation files (the "Software"),
@@ -21,30 +21,20 @@
 * DEALINGS IN THE SOFTWARE.
 */
 
+#ifndef PEPPER_HEADLESS_H
+#define PEPPER_HEADLESS_H
+
 #include <pepper.h>
-#include <pepper-wayland.h>
 
-int
-main(int argc, char **argv)
-{
-	pepper_compositor_t *compositor;
-	pepper_wayland_t    *conn;
-	pepper_output_t     *output;
-	struct wl_display   *display;
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-	compositor = pepper_compositor_create("wayland-1");
-	PEPPER_ASSERT(compositor);
+PEPPER_API pepper_bool_t
+pepper_headless_init(pepper_compositor_t *compositor);
 
-	conn = pepper_wayland_connect(compositor, "wayland-0");
-	PEPPER_ASSERT(conn);
-
-	output = pepper_wayland_output_create(conn, 640, 480, "pixman");
-	PEPPER_ASSERT(output);
-
-	display = pepper_compositor_get_display(compositor);
-	PEPPER_ASSERT(display);
-
-	wl_display_run(display);
-
-	return 0;
+#ifdef __cplusplus
 }
+#endif
+
+#endif /* PEPPER_HEADLESS_H */

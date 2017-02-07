@@ -44,3 +44,21 @@ x11_backend_LDADD  = $(SAMPLES_LIBS)
 x11_backend_SOURCES = x11-backend.c
 endif
 
+pkgdir = $(libdir)/headless/modules
+pkg_LTLIBRARIES = headless-input-backend.la headless-output-backend.la
+
+AM_CFLAGS = $(GCC_CFLAGS)
+
+headless_input_backend_includedir=$(includedir)/pepper
+#headless_input_backend_include_HEADERS = pepper
+
+headless_input_backend_la_SOURCES = headless-input-backend.c
+headless_input_backend_la_CFLAGS = $(AM_CFLAGS) $(PEPPER_HEADLESS_CFLAGS)
+headless_input_backend_la_LDFLAGS = -module -avoid-version $(PEPPER_HEADLESS_LIBS)
+
+headless_output_backend_includedir=$(includedir)/pepper
+#headless_output_backend_include_HEADERS = pepper
+
+headless_output_backend_la_SOURCES = headless-output-backend.c
+headless_output_backend_la_CFLAGS = $(AM_CFLAGS) $(PEPPER_HEADLESS_CFLAGS)
+headless_output_backend_la_LDFLAGS = -module -avoid-version $(PEPPER_HEADLESS_LIBS)

@@ -13,7 +13,7 @@ AC_SUBST([PEPPER_VERSION_MICRO], [pepper_micro_version])
 AC_SUBST([PEPPER_VERSION], [pepper_version])
 
 AC_CONFIG_HEADERS([config.h])
-AM_INIT_AUTOMAKE([1.11 foreign no-dist-gzip dist-xz])
+AM_INIT_AUTOMAKE([1.11 foreign no-dist-gzip dist-xz subdir-objects])
 AM_SILENT_RULES([yes])
 
 AC_PROG_CC
@@ -95,6 +95,19 @@ PEPPER_DESKTOP_SHELL_LIBS="$PEPPER_LIB"
 AC_SUBST(PEPPER_DESKTOP_SHELL_CFLAGS)
 AC_SUBST(PEPPER_DESKTOP_SHELL_LIBS)
 AC_SUBST(PEPPER_DESKTOP_SHELL_REQUIRES)
+
+# pepper-headless
+PEPPER_HEADLESS_REQUIRES="pepper"
+
+PEPPER_HEADLESS_DIR="-I\$(top_srcdir)/src/lib/headless"
+PEPPER_HEADLESS_LIB="\$(top_srcdir)/src/lib/headless/libpepper-headless.la"
+
+PEPPER_HEADLESS_CFLAGS="$PEPPER_DIR $PEPPER_CFLAGS"
+PEPPER_HEADLESS_LIBS="$PEPPER_LIB"
+
+AC_SUBST(PEPPER_HEADLESS_CFLAGS)
+AC_SUBST(PEPPER_HEADLESS_LIBS)
+AC_SUBST(PEPPER_HEADLESS_REQUIRES)
 
 # pepper-render
 PEPPER_RENDER_REQUIRES="pixman-1 egl glesv2"
@@ -221,6 +234,16 @@ DOCTOR_LIBS="$PEPPER_LIB $PEPPER_DRM_LIB $PEPPER_DESKTOP_SHELL_LIB $DOCTOR_LIBS"
 AC_SUBST(DOCTOR_CFLAGS)
 AC_SUBST(DOCTOR_LIBS)
 
+# headless
+HEADLESS_REQUIRES="wayland-server tizen-extension-server"
+PKG_CHECK_MODULES(HEADLESS, [$HEADLESS_REQUIRES])
+
+HEADLESS_CFLAGS="$PEPPER_DIR $PEPPER_CFLAGS $HEADLESS_CFLAGS"
+HEADLESS_LIBS="$PEPPER_LIB $HEADLESS_LIBS"
+
+AC_SUBST(HEADLESS_CFLAGS)
+AC_SUBST(HEADLESS_LIBS)
+
 # shell client
 SHELL_CLIENT_REQUIRES="wayland-client pixman-1"
 PKG_CHECK_MODULES(SHELL_CLIENT, [$SHELL_CLIENT_REQUIRES])
@@ -289,7 +312,9 @@ src/lib/render/Makefile
 src/lib/drm/Makefile
 src/lib/fbdev/Makefile
 src/lib/wayland/Makefile
+src/lib/headless/Makefile
 src/bin/doctor/Makefile
+src/bin/headless/Makefile
 src/samples/Makefile
 pkgconfig/pepper.pc
 pkgconfig/pepper-render.pc
@@ -299,6 +324,7 @@ pkgconfig/pepper-keyrouter.pc
 pkgconfig/pepper-libinput.pc
 pkgconfig/pepper-wayland.pc
 pkgconfig/pepper-desktop-shell.pc
+pkgconfig/pepper-headless.pc
 ])
 
 if test x$enable_tdm = xyes; then

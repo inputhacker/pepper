@@ -1,0 +1,14 @@
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+libdir=@libdir@
+includedir=@includedir@
+libexecdir=@libexecdir@
+pkglibexecdir=${libexecdir}/@PACKAGE@
+
+Name: Pepper Headless Library
+Description: Pepper headless library header and library files
+Version: @PEPPER_HEADLESS_VERSION@
+
+Requires.private: @PEPPER_HEADLESS_REQUIRES@
+Cflags: -I${includedir}/pepper
+Libs: -L${libdir} -lpepper-headless
