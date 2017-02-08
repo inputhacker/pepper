@@ -21,7 +21,7 @@
 * DEALINGS IN THE SOFTWARE.
 */
 
-#include <pepper.h>
+#include "server.h"
 
 struct wl_display   *display;
 pepper_compositor_t *compositor;
@@ -32,6 +32,12 @@ pepper_event_listener_t *seat_add_listener = NULL;
 pepper_event_listener_t *input_device_add_listener = NULL;
 pepper_event_listener_t *input_device_remove_listener = NULL;
 pepper_event_listener_t *input_event_listener = NULL;
+
+void *input_backend_handle = NULL;
+void *output_backend_handle = NULL;
+
+headless_io_backend_func_t input_func;
+headless_io_backend_func_t output_func;
 
 static void
 seat_add_callback(pepper_event_listener_t    *listener,
@@ -108,6 +114,51 @@ headless_display_init()
 	return 0;
 }
 
+static void *
+load_io_module(const char *module, const char *sym_prefix, headless_io_backend_func_t *func_ptr)
+{
+	void *handle = NULL;
+	char module_path[PATH_MAX];
+	char sym[SYM_MAX];
+
+       snprintf(module_path, sizeof(module_path), "%s/%s", module_basedir, module);
+	handle = dlopen(module_path, (RTLD_NOW | RTLD_GLOBAL));
+
+	if (!handle)
+	{
+		PEPPER_ERROR("Failed on loading headless module : %s", module_path);
+		func_ptr->backend_init = NULL;
+		func_ptr->backend_fini = NULL;
+	}
+
+	snprintf(sym, sizeof(sym), "%s_init", sym_prefix);
+	func_ptr->backend_init = dlsym(handle, sym);
+	snprintf(sym, sizeof(sym), "%s_fini", sym_prefix);
+	func_ptr->backend_fini = dlsym(handle, sym);
+
+	if (!func_ptr->backend_init)
+	{
+		PEPPER_ERROR("Failed on getting initialization function for input backend");
+
+		handle = NULL;
+		func_ptr->backend_init = NULL;
+		func_ptr->backend_fini = NULL;
+	}
+
+	return handle;
+}
+
+static void
+unload_io_module(void *handle, headless_io_backend_func_t *func_ptr)
+{
+	if (!func_ptr || !handle)
+		return;
+
+	if (func_ptr->backend_fini)
+		func_ptr->backend_fini(NULL);
+	dlclose(handle);
+}
+
 static int
 headless_input_init()
 {
@@ -144,6 +195,17 @@ headless_input_init()
 	//pepper_keyrouter_wl_init();
 
 	//headless input module (backend) init
+	input_backend_handle = load_io_module("headless-input-backend.so", "headless_input_backend", &input_func);
+
+	if (!input_backend_handle)
+	{
+		PEPPER_ERROR("Failed on loading input module...");
+		return 0;
+	}
+
+	input_func.backend_init(NULL);
+
+	return 1;
 }
 
 static int
@@ -153,6 +215,17 @@ headless_output_init()
 
 
 	//headless output module (backend) init
+	output_backend_handle = load_io_module("headless-output-backend.so", "headless_output_backend", &output_func);
+
+	if (!output_backend_handle)
+	{
+		PEPPER_ERROR("Failed on loading output module...");
+		return 0;
+	}
+
+	output_func.backend_init(NULL);
+
+	return 1;
 }
 
 static int
@@ -164,32 +237,62 @@ headless_display_shutdown()
 static int
 headless_input_shutdown()
 {
+	unload_io_module(input_backend_handle, &input_func);
 }
 
 static int
 headless_output_shutdown()
 {
+	unload_io_module(output_backend_handle, &output_func);
+}
+
+static void headless_init()
+{
+	input_func.backend_init = NULL;
+	input_func.backend_fini = NULL;
+	output_func.backend_init = NULL;
+	output_func.backend_fini = NULL;
+
+	PEPPER_TRACE("%s -- begin", __FUNCTION__);
+
+	headless_display_init();
+	headless_input_init();
+	headless_output_init();
+
+	PEPPER_TRACE("%s -- end", __FUNCTION__);
+}
+
+static void
+headless_shutdown()
+{
+	PEPPER_TRACE("%s -- begin", __FUNCTION__);
+
+	headless_output_shutdown();
+	headless_input_shutdown();
+	headless_display_shutdown();
+
+	PEPPER_TRACE("%s -- end", __FUNCTION__);
 }
 
 static void
 headless_run()
 {
+	PEPPER_TRACE("%s -- begin", __FUNCTION__);
+
 	/* Enter main loop. */
 	wl_display_run(display);
+
+	PEPPER_TRACE("%s -- end", __FUNCTION__);
 }
 
 int
 main(int argc, char **argv)
 {
-	headless_display_init();
-	headless_input_init();
-	headless_output_init();
+	headless_init();
 
 	headless_run();
 
-	headless_output_shutdown();
-	headless_input_shutdown();
-	headless_display_shutdown();
+	headless_shutdown();
 
 	return 0;
 }
