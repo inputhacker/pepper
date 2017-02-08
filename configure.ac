@@ -13,7 +13,7 @@ AC_SUBST([PEPPER_VERSION_MICRO], [pepper_micro_version])
 AC_SUBST([PEPPER_VERSION], [pepper_version])
 
 AC_CONFIG_HEADERS([config.h])
-AM_INIT_AUTOMAKE([1.11 foreign no-dist-gzip dist-xz])
+AM_INIT_AUTOMAKE([1.11 foreign no-dist-gzip dist-xz subdir-objects])
 AM_SILENT_RULES([yes])
 
 AC_PROG_CC
