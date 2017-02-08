@@ -44,7 +44,7 @@ x11_backend_LDADD  = $(SAMPLES_LIBS)
 x11_backend_SOURCES = x11-backend.c
 endif
 
-pkgdir = $(libdir)/headless/modules
+pkgdir = $(libdir)/pepper/modules
 pkg_LTLIBRARIES = headless-input-backend.la headless-output-backend.la
 
 AM_CFLAGS = $(GCC_CFLAGS)
