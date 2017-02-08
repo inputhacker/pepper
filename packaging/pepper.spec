@@ -262,13 +262,15 @@ make %{?_smp_mflags}
 %manifest %{name}.manifest
 %defattr(-,root,root,-)
 %{_libdir}/libpepper-headless.so.*
-%{_bindir}/headless-client
+%{_bindir}/headless
+%{_libdir}/pepper/modules/*.so
+#%{_bindir}/headless-client
 
 %files headless-devel
 %manifest %{name}.manifest
 %defattr(-,root,root,-)
 %{_includedir}/pepper/pepper-headless.h
-#%{_includedir}/pepper/pepper-headless-client-protocol.h
+%{_includedir}/pepper/pepper-headless-client-protocol.h
 %{_libdir}/pkgconfig/pepper-headless.pc
 %{_libdir}/libpepper-headless.so
 
