@@ -26,16 +26,6 @@
 #include <dlfcn.h>
 #include <pepper-input-backend.h>
 
-#ifdef PATH_MAX
-#undef PATH_MAX
-#endif
-#define PATH_MAX 1024
-
-#ifdef SYM_MAX
-#undef SYM_MAX
-#endif
-#define SYM_MAX 1024
-
 struct wl_display   *display;
 pepper_compositor_t *compositor;
 pepper_seat_t *seat = NULL;
@@ -114,12 +104,19 @@ input_device_remove_callback(pepper_event_listener_t    *listener,
 static int
 headless_display_init()
 {
-	compositor = pepper_compositor_create("wayland-0");
+	const char *socket_name = NULL;
+
+	socket_name = getenv("WAYLAND_DISPLAY");
+	if (!socket_name)
+		socket_name = "wayland-0";
+
+	compositor = pepper_compositor_create(socket_name);
 	if (!compositor)
 		return -1;
 
 	display = pepper_compositor_get_display(compositor);
-	if (!display) {
+	if (!display)
+	{
 		pepper_compositor_destroy(compositor);
 		return -1;
 	}
@@ -134,12 +131,14 @@ load_io_module(const char *module, const char *sym_prefix, headless_io_backend_f
 	char module_path[PATH_MAX];
 	char sym[SYM_MAX];
 
+	PEPPER_TRACE("%s -- begin\n", __FUNCTION__);
+
        snprintf(module_path, sizeof(module_path), "%s/%s", module_basedir, module);
 	handle = dlopen(module_path, (RTLD_NOW | RTLD_GLOBAL));
 
 	if (!handle)
 	{
-		PEPPER_ERROR("Failed on loading headless module : %s", module_path);
+		PEPPER_ERROR("Failed on loading headless module : %s\n", module_path);
 		func_ptr->backend_init = NULL;
 		func_ptr->backend_fini = NULL;
 	}
@@ -151,12 +150,14 @@ load_io_module(const char *module, const char *sym_prefix, headless_io_backend_f
 
 	if (!func_ptr->backend_init)
 	{
-		PEPPER_ERROR("Failed on getting initialization function for input backend");
+		PEPPER_ERROR("Failed on getting initialization function for input backend\n");
 
 		handle = NULL;
 		func_ptr->backend_init = NULL;
 		func_ptr->backend_fini = NULL;
 	}
+
+	PEPPER_TRACE("%s -- end\n", __FUNCTION__);
 
 	return handle;
 }
@@ -266,36 +267,36 @@ static void headless_init()
 	output_func.backend_init = NULL;
 	output_func.backend_fini = NULL;
 
-	PEPPER_TRACE("%s -- begin", __FUNCTION__);
+	PEPPER_TRACE("%s -- begin\n", __FUNCTION__);
 
 	headless_display_init();
 	headless_input_init();
 	headless_output_init();
 
-	PEPPER_TRACE("%s -- end", __FUNCTION__);
+	PEPPER_TRACE("%s -- end\n", __FUNCTION__);
 }
 
 static void
 headless_shutdown()
 {
-	PEPPER_TRACE("%s -- begin", __FUNCTION__);
+	PEPPER_TRACE("%s -- begin\n", __FUNCTION__);
 
 	headless_output_shutdown();
 	headless_input_shutdown();
 	headless_display_shutdown();
 
-	PEPPER_TRACE("%s -- end", __FUNCTION__);
+	PEPPER_TRACE("%s -- end\n", __FUNCTION__);
 }
 
 static void
 headless_run()
 {
-	PEPPER_TRACE("%s -- begin", __FUNCTION__);
+	PEPPER_TRACE("%s -- begin\n", __FUNCTION__);
 
 	/* Enter main loop. */
 	wl_display_run(display);
 
-	PEPPER_TRACE("%s -- end", __FUNCTION__);
+	PEPPER_TRACE("%s -- end\n", __FUNCTION__);
 }
 
 int
