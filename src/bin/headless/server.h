@@ -24,8 +24,6 @@
 #ifndef _PEPPER_HEADLESS_SERVER_H
 #define _PEPPER_HEADLESS_SERVER_H
 
-#include <pepper.h>
-
 #ifdef PATH_MAX
 #undef PATH_MAX
 #define PATH_MAX 1024
@@ -40,7 +38,7 @@ const char *module_basedir = "/usr/lib/pepper/modules/";
 
 typedef struct headless_io_backend_func headless_io_backend_func_t;
 
-typedef struct headless_io_backend_func
+struct headless_io_backend_func
 {
 	int (*backend_init)(void *headless);
 	int (*backend_fini)(void *headless);
