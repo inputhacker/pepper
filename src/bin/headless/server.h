@@ -24,15 +24,8 @@
 #ifndef _PEPPER_HEADLESS_SERVER_H
 #define _PEPPER_HEADLESS_SERVER_H
 
-#ifdef PATH_MAX
-#undef PATH_MAX
 #define PATH_MAX 1024
-#endif
-
-#ifdef SYM_MAX
-#undef SYM_MAX
 #define SYM_MAX 1024
-#endif
 
 const char *module_basedir = "/usr/lib/pepper/modules/";
 

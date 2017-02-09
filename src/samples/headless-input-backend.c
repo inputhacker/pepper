@@ -32,11 +32,17 @@ PEPPER_API int headless_input_backend_fini(void *);
 PEPPER_API int
 headless_input_backend_init(void *headless)
 {
+	PEPPER_TRACE("%s -- begin\n", __FUNCTION__);
+	PEPPER_TRACE("%s -- end\n", __FUNCTION__);
+
 	return 0;
 }
 
 PEPPER_API int
 headless_input_backend_fini(void *headless)
 {
+	PEPPER_TRACE("%s -- begin\n", __FUNCTION__);
+	PEPPER_TRACE("%s -- end\n", __FUNCTION__);
+
 	return 0;
 }
