@@ -22,6 +22,18 @@
 */
 
 #include "server.h"
+#include <pepper.h>
+#include <dlfcn.h>
+
+#ifdef PATH_MAX
+#undef PATH_MAX
+#define PATH_MAX 1024
+#endif
+
+#ifdef SYM_MAX
+#undef SYM_MAX
+#define SYM_MAX 1024
+#endif
 
 struct wl_display   *display;
 pepper_compositor_t *compositor;

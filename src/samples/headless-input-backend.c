@@ -25,12 +25,18 @@
 
 #include <pepper.h>
 
+PEPPER_API int headless_input_backend_init(void *);
+PEPPER_API int headless_input_backend_fini(void *);
+
+
 PEPPER_API int
 headless_input_backend_init(void *headless)
 {
+	return 0;
 }
 
 PEPPER_API int
 headless_input_backend_fini(void *headless)
 {
+	return 0;
 }

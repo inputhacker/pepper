@@ -1,5 +1,5 @@
 /*
-* Copyright 짤 2017 Samsung Electronics co., Ltd. All Rights Reserved.
+* Copyright © 2017 Samsung Electronics co., Ltd. All Rights Reserved.
 *
 * Permission is hereby granted, free of charge, to any person obtaining a
 * copy of this software and associated documentation files (the "Software"),
@@ -31,7 +31,10 @@ extern "C" {
 #endif
 
 PEPPER_API pepper_bool_t
-pepper_headless_init(pepper_compositor_t *compositor);
+pepper_headless_init(void *);
+
+PEPPER_API void
+pepper_headless_fini(void *);
 
 #ifdef __cplusplus
 }

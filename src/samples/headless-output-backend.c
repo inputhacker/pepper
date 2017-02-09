@@ -25,12 +25,21 @@
 
 #include <pepper.h>
 
+//Prototype
+
+PEPPER_API int headless_output_backend_init(void *);
+PEPPER_API int headless_output_backend_fini(void *);
+
+//Implementation
+
 PEPPER_API int
 headless_output_backend_init(void *headless)
 {
+	return 0;
 }
 
 PEPPER_API int
 headless_output_backend_fini(void *headless)
 {
+	return 0;
 }

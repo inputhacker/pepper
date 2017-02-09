@@ -23,11 +23,16 @@
 
 #include "headless-internal.h"
 
-void init_pepper_headless()
+PEPPER_API pepper_bool_t
+pepper_headless_init(void *headless)
 {
+	pepper_bool_t ret = PEPPER_TRUE;
+
+	return ret;
 }
 
-void fini_pepper_headless()
+PEPPER_API void
+pepper_headless_fini(void *headless)
 {
 }
 
