@@ -246,21 +246,28 @@ static int
 headless_display_shutdown()
 {
 	pepper_compositor_destroy(compositor);
+
+	return 0;
 }
 
 static int
 headless_input_shutdown()
 {
 	unload_io_module(input_backend_handle, &input_func);
+
+	return 0;
 }
 
 static int
 headless_output_shutdown()
 {
 	unload_io_module(output_backend_handle, &output_func);
+
+	return 0;
 }
 
-static void headless_init()
+static void
+headless_init()
 {
 	input_func.backend_init = NULL;
 	input_func.backend_fini = NULL;
