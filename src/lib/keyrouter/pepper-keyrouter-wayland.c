@@ -91,7 +91,7 @@ _pepper_keyrouter_wl_key_send(pepper_seat_t *seat, struct wl_client *client,
 	}
 }
 
-PEPPER_API pepper_bool_t
+PEPPER_API void
 pepper_keyrouter_wl_key_process(void *data, unsigned int key, unsigned int state, unsigned int time)
 {
 	pepper_list_t delivery_list;
