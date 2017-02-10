@@ -206,7 +206,14 @@ headless_input_init()
 	keyboard_input = pepper_input_device_create(compositor, caps, NULL, NULL);
 	PEPPER_CHECK(keyboard_input, return -1, "Failed on pepper_input_device_create()...");
 
-	//pepper_keyrouter_wl_init();
+	//Pepper keyrouter initialization
+	pepper_bool_t res = pepper_keyrouter_wl_init(compositor);
+
+	if (res == PEPPER_FALSE)
+	{
+		PEPPER_ERROR("Failed on initializing pepper keyrouter...\n");
+		return -1;
+	}
 
 	//headless input module (backend) init
 	input_backend_handle = load_io_module("headless-input-backend.so", "headless_input_backend", &input_func);
@@ -266,7 +273,7 @@ headless_output_shutdown()
 	return 0;
 }
 
-static void
+static int
 headless_init()
 {
 	input_func.backend_init = NULL;
@@ -277,10 +284,22 @@ headless_init()
 	PEPPER_TRACE("%s -- begin\n", __FUNCTION__);
 
 	headless_display_init();
-	headless_input_init();
-	headless_output_init();
+
+	if (0 > headless_input_init())
+	{
+		PEPPER_ERROR("Failed on input init...\n");
+		return 0;
+	}
+
+	if (0 > headless_output_init())
+	{
+		PEPPER_ERROR("Failed on output init...\n");
+		return 0;
+	}
 
 	PEPPER_TRACE("%s -- end\n", __FUNCTION__);
+
+	return 1;
 }
 
 static void
@@ -309,7 +328,14 @@ headless_run()
 int
 main(int argc, char **argv)
 {
-	headless_init();
+	int ret;
+	ret = headless_init();
+
+	if (!ret)
+	{
+		PEPPER_ERROR("Failed on headless init...\n");
+		return -1;
+	}
 
 	headless_run();
 
