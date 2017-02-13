@@ -96,6 +96,7 @@ compositor_bind_socket(pepper_compositor_t *compositor, int socket_fd,
 					   const char *name)
 {
 	struct stat buf;
+	int name_length;
 	socklen_t size, name_size;
 	const char *runtime_dir;
 	long flags;
@@ -117,9 +118,15 @@ compositor_bind_socket(pepper_compositor_t *compositor, int socket_fd,
 	}
 
 	compositor->addr.sun_family = AF_LOCAL;
-	name_size = snprintf(compositor->addr.sun_path,
+
+	name_length = snprintf(compositor->addr.sun_path,
 						 sizeof compositor->addr.sun_path,
-						 "%s/%s", runtime_dir, name) + 1;
+						 "%s/%s", runtime_dir, name);
+
+	if (name_length < 0 || name_length == INT32_MAX)
+		goto err_addr;
+
+	name_size = name_length + 1;
 	if (name_size > (int)sizeof(compositor->addr.sun_path)) {
 		PEPPER_ERROR("socket path \"%s/%s\" plus null terminator"
 					 " exceeds 108 bytes\n", runtime_dir, name);
