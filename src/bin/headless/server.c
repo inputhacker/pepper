@@ -225,7 +225,7 @@ headless_input_init()
 		return 0;
 	}
 
-	input_func.backend_init(NULL);
+	input_func.backend_init(compositor);
 
 	return 1;
 }
