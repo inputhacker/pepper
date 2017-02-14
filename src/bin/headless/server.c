@@ -25,6 +25,7 @@
 #include <pepper.h>
 #include <dlfcn.h>
 #include <pepper-input-backend.h>
+#include <pepper-keyrouter-wayland.h>
 
 struct wl_display   *display;
 pepper_compositor_t *compositor;
