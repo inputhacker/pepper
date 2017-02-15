@@ -21,23 +21,11 @@
 * DEALINGS IN THE SOFTWARE.
 */
 
-//pepper_input_device_create
-
-#include <pepper.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netdb.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <sys/epoll.h>
 
-#ifdef SIZE_EPOLL
-# undef SIZE_EPOLL
-#endif
-#define SIZE_EPOLL 16
+#include <pepper.h>
+#include <pepper-input-backend.h>
 
 #ifdef SIZE_BUFFER
 # undef SIZE_BUFFER
@@ -47,6 +35,10 @@
 PEPPER_API int headless_input_backend_init(void *);
 PEPPER_API int headless_input_backend_fini(void *);
 
+static const char *_headless_input_device_get_property(void *device, const char *key);
+
+typedef struct key_event key_event_t;
+
 typedef struct _Input_Global_DB
 {
 	pepper_compositor_t *compositor;
@@ -54,21 +46,91 @@ typedef struct _Input_Global_DB
 	struct wl_event_loop *event_loop;
 	struct wl_event_source *event_source;
 
+	pepper_input_device_t *device;
+
 	pepper_bool_t init;
-	int enable_log;
+	pepper_list_t event_queue;
 } Input_Global_DB;
+
+struct key_event
+{
+	int keycode;
+	int state;
+	pepper_list_t link;
+};
 
 Input_Global_DB input_db;
 
-static void
-event_process(struct input_event *ev)
+pepper_input_device_backend_t _headless_input_device_backend = {
+	_headless_input_device_get_property
+};
+
+static const char *
+_headless_input_device_get_property(void *device, const char *key)
 {
+	return NULL;
+}
+
+static unsigned long
+_headless_input_get_current_time(void)
+{
+	struct timespec tp;
+	if (clock_gettime(CLOCK_MONOTONIC, &tp) == 0)
+		return (tp.tv_sec * 1000) + (tp.tv_nsec / 1000000L);
+
+	return 0;
+}
+
+static void
+_headless_input_event_send(int keycode, int state)
+{
+	pepper_input_event_t event;
+
+	event.time = _headless_input_get_current_time();
+	event.key = keycode;
+	if (state) event.state = PEPPER_KEY_STATE_PRESSED;
+	else event.state = PEPPER_KEY_STATE_RELEASED;
+
+	pepper_object_emit_event((pepper_object_t *)input_db.device,
+							 PEPPER_EVENT_INPUT_DEVICE_KEYBOARD_KEY, &event);
+}
+
+static void
+_headless_input_event_queue(int keycode, int state)
+{
+	key_event_t *kinfo;
+	kinfo = (key_event_t *)calloc(1, sizeof(key_event_t));
+	PEPPER_CHECK(kinfo, return, "Failed to alloc for key event\n");
+
+	pepper_list_init(&kinfo->link);
+	kinfo->keycode = keycode;
+	kinfo->state = state;
+
+	pepper_list_insert(&input_db.event_queue, &kinfo->link);
+}
+
+static void
+_headless_input_event_flush(void)
+{
+	key_event_t *kinfo, *ktmp;
+
+	pepper_list_for_each_safe(kinfo, ktmp, &input_db.event_queue, link) {
+		_headless_input_event_send(kinfo->keycode, kinfo->state);
+		pepper_list_remove(&kinfo->link);
+		free(kinfo);
+	}
+}
+
+static void
+_headless_input_event_process(struct input_event *ev)
+{
+	unsigned int time;
 	switch (ev->type) {
 		case EV_KEY:
-			PEPPER_TRACE("key event: code: %d, value: %d\n", ev->code, ev->value);
+			_headless_input_event_queue(ev->code, ev->value);
 			break;
 		case EV_SYN:
-			PEPPER_TRACE("sync\n");
+			_headless_input_event_flush();
 			break;
 		default:
 			break;
@@ -83,8 +145,8 @@ _headless_input_backend_event_loop(int fd, uint32_t mask, void *data)
 
 	memset(iev, 0, sizeof(struct input_event)*SIZE_BUFFER);
 	if ((len = read(fd,  &iev, sizeof(iev))) != -1) {
-		for (i = 0; i < len / sizeof(iev[0]); i++) {
-			event_process(&iev[i]);
+		for (i = 0; i < (int)(len / sizeof(iev[0])); i++) {
+			_headless_input_event_process(&iev[i]);
 		}
 	}
 
@@ -100,6 +162,8 @@ _headless_input_open_device(const char *path)
 		PEPPER_ERROR("Failed to open %s\n", path);
 		return;
 	}
+	input_db.device = pepper_input_device_create(input_db.compositor, WL_SEAT_CAPABILITY_KEYBOARD,
+				   &_headless_input_device_backend, NULL);
 	input_db.event_source = wl_event_loop_add_fd(input_db.event_loop, fd, WL_EVENT_READABLE,
 	                                             _headless_input_backend_event_loop, NULL);
 }
@@ -120,6 +184,8 @@ headless_input_backend_init(void *headless)
 		PEPPER_ERROR("Current input backend is already initialized\n");
 		return 0;
 	}
+
+	pepper_list_init(&input_db.event_queue);
 
 	input_db.init = PEPPER_TRUE;
 

@@ -62,6 +62,8 @@ _handle_keyboard_event(pepper_input_event_t *info, void *data)
 
 	keyboard_info = pepper_seat_get_keyboard(seat);
 
+	PEPPER_TRACE("Keyboard Event: time: %d, key: %d, state: %d\n", info->time, info->key, info->state);
+
 	wl_resource_for_each(resource, pepper_keyboard_get_resource_list(keyboard_info)) {
 		wl_keyboard_send_key(resource, wl_display_get_serial(display), info->time, info->key, info->state);
 	}
