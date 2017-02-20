@@ -36,6 +36,7 @@ struct pepper_headless_buffer
 {
 	struct wl_resource *buffer;
 	enum tizen_headless_buffer_type type;
+	void *data;
 	pepper_list_t link;
 };
 

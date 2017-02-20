@@ -22,6 +22,7 @@
 */
 
 #include "headless-internal.h"
+#include "pepper-headless-output.h"
 
 static void
 _headless_destroy(struct wl_client *client,
@@ -90,6 +91,26 @@ _headless_set_buffer_data_array(struct wl_client *client,
 	 */
 
 	//TODO : make association between the given buffer and the given data
+
+	pepper_headless_buffer_t *buf = NULL;
+	pepper_headless_buffer_t *tbuf = NULL;
+
+	pepper_headless_t *headless = (pepper_headless_t *)wl_resource_get_user_data(resource);
+	PEPPER_CHECK(headless, return, "Failed to get headless data from resource...\n");
+
+	pepper_list_for_each_safe(buf, tbuf, &headless->buffers, link)
+	{
+		if (buf->buffer == buffer)
+		{
+			if (buf->data)
+				wl_array_release((buf->data);
+
+			buf->data = data;
+			break;
+		}
+	}
+
+	return;
 }
 
 static void
@@ -103,6 +124,21 @@ _headless_display_buffer(struct wl_client *client,
 	 */
 
 	//TODO : get the data from the given buffer and call display buffer callback of output backend
+
+	pepper_headless_buffer_t *buf = NULL;
+	pepper_headless_buffer_t *tbuf = NULL;
+
+	pepper_headless_t *headless = (pepper_headless_t *)wl_resource_get_user_data(resource);
+	PEPPER_CHECK(headless, return, "Failed to get headless data from resource...\n");
+
+	pepper_list_for_each_safe(buf, tbuf, &headless->buffers, link)
+	{
+		if (buffer == buf->buffer)
+		{
+			//TODO : call headless output backend(s) with foudn data
+			break;
+		}
+	}
 }
 
 static const struct tizen_headless_interface headless_interface = {
