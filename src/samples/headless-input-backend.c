@@ -190,7 +190,7 @@ _headless_input_open_device(const char *path)
 	int fd;
 	device_data_t *device_info;
 
-	if ((fd = open(path, O_RDONLY)) <= 0) {
+	if ((fd = open(path, O_RDONLY)) < 0) {
 		PEPPER_ERROR("Failed to open %s\n", path);
 		return;
 	}
@@ -220,7 +220,7 @@ failed:
 		free(device_info);
 		device_info = NULL;
 	}
-	if (fd > 0) {
+	if (fd >= 0) {
 		close(fd);
 	}
 }
