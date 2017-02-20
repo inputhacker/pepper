@@ -147,17 +147,38 @@ _headless_input_event_process(struct input_event *ev, pepper_input_device_t *dev
 	}
 }
 
+static void
+_headless_input_close_device(pepper_input_device_t *device)
+{
+	device_data_t *dinfo, *dtmp;
+
+	pepper_list_for_each_safe(dinfo, dtmp, &input_info.device_list, link) {
+		if (dinfo->device == device) {
+			wl_event_source_remove(dinfo->event_source);
+			pepper_input_device_destroy(dinfo->device);
+			pepper_list_remove(&dinfo->link);
+			free(dinfo);
+		}
+	}
+}
+
 static int
 _headless_input_backend_event_loop(int fd, uint32_t mask, void *data)
 {
 	struct input_event iev[SIZE_BUFFER];
 	int i, len;
 
-	memset(iev, 0, sizeof(struct input_event)*SIZE_BUFFER);
-	if ((len = read(fd,  &iev, sizeof(iev))) != -1) {
-		for (i = 0; i < (int)(len / sizeof(iev[0])); i++) {
-			_headless_input_event_process(&iev[i], (pepper_input_device_t *)data);
+	if (mask & WL_EVENT_READABLE) {
+		memset(iev, 0, sizeof(struct input_event)*SIZE_BUFFER);
+		if ((len = read(fd,  &iev, sizeof(iev))) != -1) {
+			for (i = 0; i < (int)(len / sizeof(iev[0])); i++) {
+				_headless_input_event_process(&iev[i], (pepper_input_device_t *)data);
+			}
 		}
+	}
+
+	if (mask & (WL_EVENT_HANGUP | WL_EVENT_ERROR)) {
+		_headless_input_close_device((pepper_input_device_t *)data);
 	}
 
 	return 1;
@@ -182,7 +203,7 @@ _headless_input_open_device(const char *path)
 	                                                 &_headless_input_device_backend, NULL);
 	PEPPER_CHECK(device_info->device, goto failed, "Failed to create pepper input device\n");
 
-	device_info->event_source = wl_event_loop_add_fd(input_info.event_loop, fd, WL_EVENT_READABLE,
+	device_info->event_source = wl_event_loop_add_fd(input_info.event_loop, fd, WL_EVENT_READABLE | WL_EVENT_HANGUP | WL_EVENT_ERROR,
 	                                                 _headless_input_backend_event_loop, device_info->device);
 	PEPPER_CHECK(device_info->event_source, goto failed, "Failed to create pepper input device\n");
 
