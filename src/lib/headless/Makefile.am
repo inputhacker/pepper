@@ -5,13 +5,13 @@ CLEANFILES =
 
 AM_CFLAGS = $(GCC_CFLAGS)
 
-BUILT_SOURCES += protocol/pepper-headless-protocol.c         \
-	protocol/pepper-headless-server-protocol.h  \
-	protocol/pepper-headless-client-protocol.h
+BUILT_SOURCES += protocol/tizen-headless-protocol.c         \
+	protocol/tizen-headless-server-protocol.h  \
+	protocol/tizen-headless-client-protocol.h
 
 libpepper_headless_includedir=$(includedir)/pepper
 libpepper_headless_include_HEADERS = pepper-headless.h                    \
-	protocol/pepper-headless-client-protocol.h
+	protocol/tizen-headless-client-protocol.h
 
 libpepper_headless_la_CFLAGS = $(AM_CFLAGS)                    \
 	-I$(srcdir)/protocol/           \

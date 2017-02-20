@@ -26,5 +26,27 @@
 
 #include "pepper-headless.h"
 
+struct pepper_headless_resource
+{
+	struct wl_resource *resource;
+	pepper_list_t link;
+};
+
+struct pepper_headless_buffer
+{
+	struct wl_resource *buffer;
+	enum tizen_headless_buffer_type type;
+	pepper_list_t link;
+};
+
+struct pepper_headless {
+	struct wl_global *global;
+	struct wl_display *display;
+	pepper_compositor_t *compositor;
+
+	pepper_list_t resources;
+	pepper_list_t buffers;
+};
+
 #endif /* PEPPER_HEADLESS_INTERNAL_H */
 

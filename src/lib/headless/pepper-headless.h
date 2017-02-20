@@ -25,16 +25,21 @@
 #define PEPPER_HEADLESS_H
 
 #include <pepper.h>
+#include "tizen-headless-server-protocol.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-PEPPER_API pepper_bool_t
-pepper_headless_init(void *);
+typedef struct pepper_headless pepper_headless_t;
+typedef struct pepper_headless_resource pepper_headless_resource_t;
+typedef struct pepper_headless_buffer pepper_headless_buffer_t;
+
+PEPPER_API pepper_headless_t *
+pepper_headless_create(pepper_compositor_t *compositor);
 
 PEPPER_API void
-pepper_headless_fini(void *);
+pepper_headless_destroy(pepper_headless_t *headless);
 
 #ifdef __cplusplus
 }
