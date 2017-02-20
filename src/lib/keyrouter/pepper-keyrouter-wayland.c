@@ -39,6 +39,7 @@ typedef struct ungrab_list_data ungrab_list_data_t;
 
 struct pepper_keyrouter_wl
 {
+	struct wl_global *global;
 	struct wl_display *display;
 	pepper_compositor_t *compositor;
 
@@ -488,6 +489,10 @@ pepper_keyrouter_wl_deinit(void)
 		pepper_keyrouter_destroy(keyrouter_wl->keyrouter);
 		keyrouter_wl->keyrouter = NULL;
 	}
+
+	if (keyrouter_wl->global)
+		wl_global_destroy(keyrouter_wl->global);
+
 	free(keyrouter_wl);
 	keyrouter_wl = NULL;
 }
