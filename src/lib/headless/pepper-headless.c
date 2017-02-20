@@ -103,7 +103,7 @@ _headless_set_buffer_data_array(struct wl_client *client,
 		if (buf->buffer == buffer)
 		{
 			if (buf->data)
-				wl_array_release((buf->data);
+				wl_array_release(buf->data);
 
 			buf->data = data;
 			break;
