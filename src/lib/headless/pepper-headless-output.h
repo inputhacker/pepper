@@ -25,23 +25,17 @@
 #define PEPPER_HEADLESS_OUTPUT_H
 
 #include <headless-internal.h>
-#include <pepper-headless.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-typedef struct pepper_headless_output_backend pepper_headless_output_backend_t;
-
 struct pepper_headless_output_backend
 {
 	pepper_headless_output_backend_t* (*backend_init)(pepper_headless_t *);
 	void (*backend_fini)(pepper_headless_output_backend_t *);
-
 	pepper_bool_t (*display_buffer)(void *data);
 };
-
-PEPPER_API pepper_headless_output_backend_t *backend_alloc(void);
 
 #ifdef __cplusplus
 }

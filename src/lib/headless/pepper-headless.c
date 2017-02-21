@@ -21,8 +21,9 @@
 * DEALINGS IN THE SOFTWARE.
 */
 
-#include <headless-internal.h>
 #include <pepper-headless.h>
+#include <pepper-headless-output.h>
+#include <tizen-headless-server-protocol.h>
 
 static void
 _headless_destroy(struct wl_client *client,
