@@ -21,37 +21,17 @@
 * DEALINGS IN THE SOFTWARE.
 */
 
-#ifndef PEPPER_HEADLESS_INTERNAL_H
-#define PEPPER_HEADLESS_INTERNAL_H
+#ifndef PEPPER_HEADLESS_INPUT_H
+#define PEPPER_HEADLESS_INPUT_H
 
-#include <pepper-headless.h>
-#include <pepper-headless-output.h>
-#include <tizen-headless-server-protocol.h>
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-struct pepper_headless_resource
-{
-	struct wl_resource *resource;
-	pepper_list_t link;
-};
 
-struct pepper_headless_buffer
-{
-	struct wl_resource *buffer;
-	enum tizen_headless_buffer_type type;
-	void *data;
-	pepper_list_t link;
-};
 
-struct pepper_headless {
-	struct wl_global *global;
-	struct wl_display *display;
-	pepper_compositor_t *compositor;
+#ifdef __cplusplus
+}
+#endif
 
-	pepper_headless_output_backend_t *output_backend;
-
-	pepper_list_t resources;
-	pepper_list_t buffers;
-};
-
-#endif /* PEPPER_HEADLESS_INTERNAL_H */
-
+#endif /* PEPPER_HEADLESS_INPUT_H */

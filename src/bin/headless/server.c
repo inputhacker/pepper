@@ -22,13 +22,12 @@
 */
 
 #include "server.h"
-#include <pepper.h>
 #include <dlfcn.h>
+#include <pepper-headless.h>
 #include <pepper-input-backend.h>
 #include <pepper-keyrouter-wayland.h>
 
 struct wl_display   *display;
-pepper_compositor_t *compositor;
 pepper_seat_t *seat = NULL;
 pepper_input_device_t *keyboard_input = NULL;
 
@@ -104,27 +103,20 @@ input_device_remove_callback(pepper_event_listener_t    *listener,
 	//pepper_input_device_t *device = (pepper_input_device_t *)info;
 }
 
-static int
-headless_display_init()
+static pepper_compositor_t *
+headless_display_create()
 {
 	const char *socket_name = NULL;
+	pepper_compositor_t *compositor = NULL;
 
 	socket_name = getenv("WAYLAND_DISPLAY");
+
 	if (!socket_name)
 		socket_name = "wayland-0";
 
 	compositor = pepper_compositor_create(socket_name);
-	if (!compositor)
-		return -1;
 
-	display = pepper_compositor_get_display(compositor);
-	if (!display)
-	{
-		pepper_compositor_destroy(compositor);
-		return -1;
-	}
-
-	return 0;
+	return compositor;
 }
 
 static void *
@@ -177,9 +169,10 @@ unload_io_module(void *handle, headless_io_backend_func_t *func_ptr)
 }
 
 static int
-headless_input_init()
+headless_input_init(pepper_headless_t *headless)
 {
 	//core input
+	pepper_compositor_t *compositor = pepper_headless_get_compositor(headless);
 
 	seat_add_listener = pepper_object_add_event_listener((pepper_object_t *)compositor,
 			PEPPER_EVENT_COMPOSITOR_SEAT_ADD,
@@ -227,16 +220,17 @@ headless_input_init()
 		return 0;
 	}
 
-	input_func.backend_init(compositor);
+	input_func.backend_init(headless);
 
 	return 1;
 }
 
 static int
-headless_output_init()
+headless_output_init(pepper_headless_t *headless)
 {
 	//core output
-
+	pepper_headless_output_backend_t *output_backend = NULL;
+	output_backend = pepper_headless_get_output_backend(headless);
 
 	//headless output module (backend) init
 	output_backend_handle = load_io_module("headless-output-backend.so", "headless_output_backend", &output_func);
@@ -247,14 +241,16 @@ headless_output_init()
 		return 0;
 	}
 
-	output_func.backend_init(NULL);
+	output_backend = output_func.backend_init(headless);
+	PEPPER_CHECK(output_backend, return 0, "Failed to init output backend...\n");
 
 	return 1;
 }
 
 static int
-headless_display_shutdown()
+headless_display_destroy(pepper_headless_t *headless)
 {
+	pepper_compositor_t *compositor = pepper_headless_get_compositor(headless);
 	pepper_compositor_destroy(compositor);
 
 	return 0;
@@ -276,7 +272,7 @@ headless_output_shutdown()
 	return 0;
 }
 
-static int
+static pepper_headless_t *
 headless_init()
 {
 	input_func.backend_init = NULL;
@@ -284,46 +280,61 @@ headless_init()
 	output_func.backend_init = NULL;
 	output_func.backend_fini = NULL;
 
+	pepper_headless_t *headless = NULL;
+	pepper_compositor_t *compositor = NULL;
+
 	PEPPER_TRACE("%s -- begin\n", __FUNCTION__);
 
-	headless_display_init();
+	compositor = headless_display_create();
+	PEPPER_CHECK(compositor, return 0, "Failed to create pepper compositor...\n");
 
-	if (0 > headless_input_init())
+	headless = pepper_headless_create(compositor);
+	PEPPER_CHECK(headless, return 0, "Failed to create pepper headless...\n");
+
+	if (0 > headless_input_init(headless))
 	{
 		PEPPER_ERROR("Failed on input init...\n");
-		return 0;
+		goto error;
 	}
 
-	if (0 > headless_output_init())
+	if (0 > headless_output_init(headless))
 	{
 		PEPPER_ERROR("Failed on output init...\n");
-		return 0;
+		goto error;
 	}
 
 	PEPPER_TRACE("%s -- end\n", __FUNCTION__);
 
-	return 1;
+	return headless;
+
+error:
+
+	headless_shutdown(headless);
+
+	PEPPER_TRACE("%s -- end\n", __FUNCTION__);
+
+	return NULL;
 }
 
 static void
-headless_shutdown()
+headless_shutdown(pepper_headless_t *headless)
 {
 	PEPPER_TRACE("%s -- begin\n", __FUNCTION__);
 
 	headless_output_shutdown();
 	headless_input_shutdown();
-	headless_display_shutdown();
+	headless_display_destroy(headless);
 
 	PEPPER_TRACE("%s -- end\n", __FUNCTION__);
 }
 
 static void
-headless_run()
+headless_run(pepper_headless_t *headless)
 {
 	PEPPER_TRACE("%s -- begin\n", __FUNCTION__);
 
 	/* Enter main loop. */
-	wl_display_run(display);
+	wl_display_run(pepper_headless_get_display(headless));
 
 	PEPPER_TRACE("%s -- end\n", __FUNCTION__);
 }
@@ -332,16 +343,12 @@ int
 main(int argc, char **argv)
 {
 	int ret;
-	ret = headless_init();
+	pepper_headless_t *headless = NULL;
 
-	if (!ret)
-	{
-		PEPPER_ERROR("Failed on headless init...\n");
-		return -1;
-	}
+	headless = headless_init();
+	PEPPER_CHECK(headless, return -1, "Failed on headless init...\n");
 
-	headless_run();
-
+	headless_run(headless);
 	headless_shutdown();
 
 	return 0;

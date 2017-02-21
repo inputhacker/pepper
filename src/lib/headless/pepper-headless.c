@@ -21,8 +21,8 @@
 * DEALINGS IN THE SOFTWARE.
 */
 
-#include "headless-internal.h"
-#include "pepper-headless-output.h"
+#include <headless-internal.h>
+#include <pepper-headless.h>
 
 static void
 _headless_destroy(struct wl_client *client,
@@ -161,6 +161,7 @@ _cb_client_destroy(struct wl_listener *l, void *data)
 	//TODO : Do something with given client if there are ...
 }
 
+/*
 static void
 _client_destroy_handler_add(pepper_headless_t *headless, struct wl_client *client)
 {
@@ -185,6 +186,7 @@ error:
 		free(destroy_listener);
 
 }
+*/
 
 static void
 _tizen_headless_cb_destroy(struct wl_resource *resource)
@@ -239,11 +241,29 @@ error:
 	return;
 }
 
+PEPPER_API struct wl_display *
+pepper_headless_get_display(pepper_headless_t *headless)
+{
+	return headless->display;
+}
+
+PEPPER_API pepper_compositor_t *
+pepper_headless_get_compositor(pepper_headless_t *headless)
+{
+	return headless->compositor;
+}
+
+PEPPER_API pepper_headless_output_backend_t *
+pepper_headless_get_output_backend(pepper_headless_t *headless)
+{
+	return headless->output_backend;
+}
+
 PEPPER_API pepper_headless_t *
 pepper_headless_create(pepper_compositor_t *compositor)
 {
 	pepper_headless_t *headless = NULL;
-	struct wl_display *display = NULL;
+	struct wl_display *display = pepper_compositor_get_display(compositor);
 
 	PEPPER_CHECK(compositor, goto error, "Invalid argument (compositor == NULL)...\n");
 

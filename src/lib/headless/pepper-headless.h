@@ -25,7 +25,7 @@
 #define PEPPER_HEADLESS_H
 
 #include <pepper.h>
-#include "tizen-headless-server-protocol.h"
+#include <pepper-headless-output.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -34,6 +34,15 @@ extern "C" {
 typedef struct pepper_headless pepper_headless_t;
 typedef struct pepper_headless_resource pepper_headless_resource_t;
 typedef struct pepper_headless_buffer pepper_headless_buffer_t;
+
+PEPPER_API struct wl_display *
+pepper_headless_get_display(pepper_headless_t *headless);
+
+PEPPER_API pepper_compositor_t *
+pepper_headless_get_compositor(pepper_headless_t *headless);
+
+PEPPER_API pepper_headless_output_backend_t *
+pepper_headless_get_output_backend(pepper_headless_t *headless);
 
 PEPPER_API pepper_headless_t *
 pepper_headless_create(pepper_compositor_t *compositor);

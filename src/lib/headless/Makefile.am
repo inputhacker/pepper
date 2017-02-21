@@ -10,7 +10,7 @@ BUILT_SOURCES += protocol/tizen-headless-protocol.c         \
 	protocol/tizen-headless-client-protocol.h
 
 libpepper_headless_includedir=$(includedir)/pepper
-libpepper_headless_include_HEADERS = pepper-headless.h                    \
+libpepper_headless_include_HEADERS = pepper-headless.h \
 	protocol/tizen-headless-client-protocol.h
 
 libpepper_headless_la_CFLAGS = $(AM_CFLAGS)                    \
@@ -20,7 +20,11 @@ libpepper_headless_la_CFLAGS = $(AM_CFLAGS)                    \
 libpepper_headless_la_LIBADD = $(PEPPER_HEADLESS_LIBS)
 
 libpepper_headless_la_SOURCES = headless-internal.h       \
-	pepper-headless.c	\
+	pepper-headless-output.h \
+	pepper-headless-output.c \
+	pepper-headless-input.h \
+	pepper-headless-input.c \
+	pepper-headless.c \
 	$(BUILT_SOURCES)
 
 CLEANFILES += $(BUILT_SOURCES)

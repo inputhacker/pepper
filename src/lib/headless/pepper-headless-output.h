@@ -21,37 +21,30 @@
 * DEALINGS IN THE SOFTWARE.
 */
 
-#ifndef PEPPER_HEADLESS_INTERNAL_H
-#define PEPPER_HEADLESS_INTERNAL_H
+#ifndef PEPPER_HEADLESS_OUTPUT_H
+#define PEPPER_HEADLESS_OUTPUT_H
 
+#include <headless-internal.h>
 #include <pepper-headless.h>
-#include <pepper-headless-output.h>
-#include <tizen-headless-server-protocol.h>
 
-struct pepper_headless_resource
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef struct pepper_headless_output_backend pepper_headless_output_backend_t;
+
+struct pepper_headless_output_backend
 {
-	struct wl_resource *resource;
-	pepper_list_t link;
+	pepper_headless_output_backend_t* (*backend_init)(pepper_headless_t *);
+	void (*backend_fini)(pepper_headless_output_backend_t *);
+
+	pepper_bool_t (*display_buffer)(void *data);
 };
 
-struct pepper_headless_buffer
-{
-	struct wl_resource *buffer;
-	enum tizen_headless_buffer_type type;
-	void *data;
-	pepper_list_t link;
-};
+PEPPER_API pepper_headless_output_backend_t *backend_alloc(void);
 
-struct pepper_headless {
-	struct wl_global *global;
-	struct wl_display *display;
-	pepper_compositor_t *compositor;
+#ifdef __cplusplus
+}
+#endif
 
-	pepper_headless_output_backend_t *output_backend;
-
-	pepper_list_t resources;
-	pepper_list_t buffers;
-};
-
-#endif /* PEPPER_HEADLESS_INTERNAL_H */
-
+#endif /* PEPPER_HEADLESS_OUTPUT_H */

@@ -24,6 +24,10 @@
 #ifndef _PEPPER_HEADLESS_SERVER_H
 #define _PEPPER_HEADLESS_SERVER_H
 
+#include <pepper.h>
+#include <pepper-headless.h>
+#include <pepper-headless-output.h>
+
 #define PATH_MAX 1024
 #define SYM_MAX 1024
 
@@ -33,8 +37,8 @@ typedef struct headless_io_backend_func headless_io_backend_func_t;
 
 struct headless_io_backend_func
 {
-	int (*backend_init)(void *headless);
-	int (*backend_fini)(void *headless);
+	pepper_headless_output_backend_t* (*backend_init)(pepper_headless_t *);
+	void (*backend_fini)(pepper_headless_output_backend_t *);
 };
 
 #endif /* _PEPPER_HEADLESS_SERVER_H */

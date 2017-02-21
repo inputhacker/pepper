@@ -24,28 +24,63 @@
 //pepper_output_device_create
 
 #include <pepper.h>
+#include <pepper-headless.h>
+#include <pepper-headless-output.h>
 
 //Prototype
-
-PEPPER_API int headless_output_backend_init(void *);
-PEPPER_API int headless_output_backend_fini(void *);
+PEPPER_API pepper_bool_t headless_output_display_buffer(void *);
+PEPPER_API pepper_headless_output_backend_t* headless_output_backend_init(pepper_headless_t *);
+PEPPER_API void headless_output_backend_fini(pepper_headless_output_backend_t *);
 
 //Implementation
-
-PEPPER_API int
-headless_output_backend_init(void *headless)
+PEPPER_API pepper_bool_t
+headless_output_display_buffer(void *data)
 {
+	pepper_bool_t ret = PEPPER_FALSE;
+
 	PEPPER_TRACE("%s -- begin\n", __FUNCTION__);
+
+	//TODO : display buffer data to the output(s)
+	PEPPER_TRACE("%s : display buffer data to output(s)...\n", __FUNCTION__);
+
 	PEPPER_TRACE("%s -- end\n", __FUNCTION__);
 
-	return 0;
+	return ret;
 }
 
-PEPPER_API int
-headless_output_backend_fini(void *headless)
+PEPPER_API pepper_headless_output_backend_t *
+headless_output_backend_init(pepper_headless_t *headless)
+{
+	pepper_headless_output_backend_t *backend = NULL;
+
+	PEPPER_TRACE("%s -- begin\n", __FUNCTION__);
+
+	backend = (pepper_headless_output_backend_t *)calloc(1, sizeof(pepper_headless_output_backend_t));
+	PEPPER_CHECK(backend, goto error, "Failed to allocate memory for headless output backend...\n");
+
+//	backend->backend_init = headless_output_backend_init;
+	backend->backend_fini = headless_output_backend_fini;
+	backend->display_buffer = headless_output_display_buffer;
+
+	PEPPER_TRACE("%s -- end\n", __FUNCTION__);
+
+	return backend;
+
+error:
+	if (backend)
+	{
+		free(backend);
+		backend = NULL;
+	}
+
+	return NULL;
+}
+
+PEPPER_API void
+headless_output_backend_fini(pepper_headless_output_backend_t* backend)
 {
 	PEPPER_TRACE("%s -- begin\n", __FUNCTION__);
 	PEPPER_TRACE("%s -- end\n", __FUNCTION__);
 
-	return 0;
+	return;
 }
