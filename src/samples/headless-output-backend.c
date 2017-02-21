@@ -21,9 +21,6 @@
 * DEALINGS IN THE SOFTWARE.
 */
 
-//pepper_output_device_create
-
-#include <pepper.h>
 #include <pepper-headless.h>
 #include <pepper-headless-output.h>
 
@@ -58,7 +55,7 @@ headless_output_backend_init(pepper_headless_t *headless)
 	backend = (pepper_headless_output_backend_t *)calloc(1, sizeof(pepper_headless_output_backend_t));
 	PEPPER_CHECK(backend, goto error, "Failed to allocate memory for headless output backend...\n");
 
-//	backend->backend_init = headless_output_backend_init;
+	backend->backend_init = headless_output_backend_init;
 	backend->backend_fini = headless_output_backend_fini;
 	backend->display_buffer = headless_output_display_buffer;
 
