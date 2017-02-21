@@ -257,8 +257,8 @@ make %{?_smp_mflags}
 %files keyrouter-devel
 %manifest %{name}.manifest
 %defattr(-,root,root,-)
-%{_includedir}/pepper/pepper-keyrouter.h
-%{_includedir}/pepper/pepper-keyrouter-wayland.h
+%{_includedir}/keyrouter/pepper-keyrouter.h
+%{_includedir}/keyrouter/pepper-keyrouter-wayland.h
 %{_libdir}/pkgconfig/pepper-keyrouter.pc
 
 %files libinput
