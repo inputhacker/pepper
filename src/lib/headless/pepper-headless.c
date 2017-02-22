@@ -276,6 +276,7 @@ pepper_headless_create(pepper_compositor_t *compositor)
 
 	headless->compositor = compositor;
 	headless->global = wl_global_create(display, &tizen_headless_interface, 1, headless, _tizen_headless_cb_bind);
+	headless->display = display;
 	PEPPER_CHECK(headless->global, goto error, "Failed to create global for tizen headless interface...\n");
 
 	return headless;
