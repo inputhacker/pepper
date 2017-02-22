@@ -34,12 +34,31 @@ pepper_event_listener_t *seat_add_listener = NULL;
 pepper_event_listener_t *input_device_add_listener = NULL;
 pepper_event_listener_t *input_device_remove_listener = NULL;
 pepper_event_listener_t *input_event_listener = NULL;
+pepper_event_listener_t *keyboard_add_listener = NULL;
+
 
 void *input_backend_handle = NULL;
 void *output_backend_handle = NULL;
 
 headless_io_backend_func_t input_func;
 headless_io_backend_func_t output_func;
+
+static void
+_handle_keyboard_add_event(pepper_event_listener_t    *listener,
+						  pepper_object_t            *object,
+						  uint32_t                    id,
+						  void                       *info,
+						  void                       *data)
+{
+	pepper_keyboard_t *keyboard = (pepper_keyboard_t *)info;
+	PEPPER_TRACE("Keyboard is added\n");
+
+	/* The following action (set keymap) do not affect the current keymap system.
+	 * This is only for showing how to set the keymap.
+	 */
+	pepper_keyboard_set_keymap_info(keyboard, WL_KEYBOARD_KEYMAP_FORMAT_NO_KEYMAP, -1, 0);
+}
+
 
 static void
 seat_add_callback(pepper_event_listener_t    *listener,
@@ -50,6 +69,8 @@ seat_add_callback(pepper_event_listener_t    *listener,
 {
 	pepper_seat_t *event = info;
 	PEPPER_TRACE("Seat is added: %s, %p\n", pepper_seat_get_name(event), event);
+
+	keyboard_add_listener = pepper_object_add_event_listener((pepper_object_t *)event, PEPPER_EVENT_SEAT_KEYBOARD_ADD, 0, _handle_keyboard_add_event, data);
 }
 
 static void
