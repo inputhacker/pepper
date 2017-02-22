@@ -294,7 +294,7 @@ make %{?_smp_mflags}
 %{_libdir}/libpepper-headless.so.*
 %{_bindir}/headless
 %{_libdir}/pepper/modules/*.so
-#%{_bindir}/headless-client
+%{_bindir}/headless-client
 
 %files headless-devel
 %manifest %{name}.manifest
