@@ -100,8 +100,10 @@ input_device_remove_callback(pepper_event_listener_t    *listener,
 						  void                       *info,
 						  void                       *data)
 {
-	//pepper_input_device_t *device = (pepper_input_device_t *)info;
+	pepper_input_device_t *device = (pepper_input_device_t *)info;
 	//pepper_headless_t *headless = (pepper_headless_t *)data;
+
+	if (seat) pepper_seat_remove_input_device(seat, device);
 }
 
 static pepper_compositor_t *
