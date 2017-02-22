@@ -25,6 +25,7 @@
 #include <fcntl.h>
 
 #include <pepper.h>
+#include <pepper-headless.h>
 #include <pepper-input-backend.h>
 
 #ifdef SIZE_BUFFER
@@ -248,11 +249,12 @@ failed:
 }
 
 PEPPER_API int
-headless_input_backend_init(void *headless)
+headless_input_backend_init(void *data)
 {
 	PEPPER_TRACE("%s -- begin\n", __FUNCTION__);
+	pepper_headless_t *headless = data;
 
-	input_info.compositor = (pepper_compositor_t *)headless;
+	input_info.compositor = pepper_headless_get_compositor(headless);
 	PEPPER_CHECK(input_info.compositor, return 0, "Invalid compositor\n");
 
 	input_info.display = pepper_compositor_get_display(input_info.compositor);
@@ -281,7 +283,7 @@ headless_input_backend_init(void *headless)
 }
 
 PEPPER_API int
-headless_input_backend_fini(void *headless)
+headless_input_backend_fini(void *data)
 {
 	device_data_t *dinfo, *dtmp;
 
