@@ -2,6 +2,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 #include <wayland-client.h>
 #include <tizen-extension-client-protocol.h>
 #include <protocol/tizen-headless-client-protocol.h>
@@ -31,9 +32,9 @@
 typedef struct tizen_keyrouter_notify tizen_keyrouter_notify_t;
 struct tizen_keyrouter_notify
 {
-	int keycode;
-	int error;
-	int mode;
+	unsigned int keycode;
+	unsigned int mode;
+	unsigned int error;
 };
 
 typedef struct headless_info headless_info_t;
@@ -47,9 +48,52 @@ struct headless_info
 
 	unsigned int has_keymap:1;
 	unsigned int enter:1;
+	unsigned int caps_updated:1;
+	unsigned int notified:1;
+	unsigned int need_exit:1;
 
 	struct wl_array array;
 };
+
+//function prototype
+static void
+do_action(headless_info_t *headless, int keycode)
+{
+	unsigned int *uint_ptr = NULL;
+	struct wl_buffer *buffer = NULL;
+	struct wl_array headless_data_array;
+
+	//data variables
+	unsigned int led_number, red, green, blue;
+
+	buffer = tizen_headless_create_buffer(headless->tz_headless, TIZEN_HEADLESS_BUFFER_TYPE_ARRAY);
+	ERROR_CHECK(buffer, return, "Failed to create tizen headless buffer...\n");
+
+	wl_array_init(&headless_data_array);
+
+	uint_ptr = wl_array_add(&headless_data_array, sizeof(unsigned int));
+	*uint_ptr = led_number = keycode;//LED number
+	uint_ptr = wl_array_add(&headless_data_array, sizeof(unsigned int));
+	*uint_ptr = red = 0xff;//R
+	uint_ptr = wl_array_add(&headless_data_array, sizeof(unsigned int));
+	*uint_ptr = green = 0xff;//G
+	uint_ptr = wl_array_add(&headless_data_array, sizeof(unsigned int));
+	*uint_ptr = blue = 0xff;//B
+
+	TRACE("LED number : %d, R : %d, G : %d, B : %d\n", led_number, red, green, blue);
+
+	tizen_headless_set_buffer_data_array(headless->tz_headless, buffer, &headless_data_array);
+	wl_display_roundtrip(headless->display);
+
+	TRACE("Set buffer data ... done !\n");
+
+	tizen_headless_display_buffer(headless->tz_headless, buffer);
+	wl_display_roundtrip(headless->display);
+
+	TRACE("Display buffer ... done !\n");
+
+	wl_array_release(&headless_data_array);
+}
 
 // wl_keyboard listener
 static void keyboard_keymap(void *, struct wl_keyboard *, unsigned int, int fd, unsigned int);
@@ -160,6 +204,9 @@ keyboard_key(void *data, struct wl_keyboard *keyboard, unsigned int serial, unsi
 		//TODO : do anything with the given keycode
 		//           ex> call application callback(s)
 		TRACE("keycode : %d, state : %d, timestamp : %d\n", keycode, state, timestamp);
+
+		if (state)
+			do_action(headless, keycode);
 	}
 	else
 	{
@@ -193,15 +240,19 @@ seat_handle_capabilities(void *data, struct wl_seat *seat, enum wl_seat_capabili
 		}
 
 		headless->keyboard = wl_seat_get_keyboard(seat);
+		ERROR_CHECK(headless->keyboard, return, "Failed to get wl_keyboard from a seat !\n");
+
 		wl_keyboard_set_user_data(headless->keyboard, headless);
 		wl_keyboard_add_listener(headless->keyboard, &keyboard_listener, headless);
+		headless->caps_updated = 1;
+
 		TRACE("seat caps update : keyboard added\n");
 	}
 	else if (!(caps & WL_SEAT_CAPABILITY_KEYBOARD) && (headless->keyboard))
 	{
 		wl_keyboard_release(headless->keyboard);
 		headless->keyboard = NULL;
-
+		headless->caps_updated = 1;
 	}
 }
 
@@ -233,6 +284,7 @@ keygrab_notify_list(void *data, struct tizen_keyrouter *tizen_keyrouter, struct 
 	}
 
 	wl_array_release(&headless->array);
+	headless->notified = 1;
 }
 
 static void getgrab_notify_list(void *data, struct tizen_keyrouter *tizen_keyrouter, struct wl_surface *surface, struct wl_array *notify_result)
@@ -291,8 +343,92 @@ handle_global_remove(void *data, struct wl_registry *registry, unsigned int id)
 	//TODO : remove/cleanup global and related information
 }
 
+static int
+_grab_wait(headless_info_t *headless)
+{
+	int ret;
+
+	while (!headless->notified)
+	{
+		ret = wl_display_roundtrip(headless->display);
+		if ((0 > ret) && (errno != EAGAIN && (errno != EINVAL)))
+		{
+			TRACE("Wayland socket error ! (errno=%d)\n", errno);
+			return 0;
+		}
+	}
+
+	return 1;
+}
+
+static int
+grab_keys(headless_info_t *headless)
+{
+	int ret;
+	unsigned int *uint_ptr = NULL;
+
+	struct wl_array keygrab_array;
+
+	TRACE("Waiting tizen_keyrouter...\n");
+	while(!headless->tz_keyrouter)
+		wl_display_roundtrip(headless->display);
+	TRACE("...done...\n");
+
+	TRACE("Waiting wl_seat...\n");
+	while (!headless->seat)
+		wl_display_roundtrip(headless->display);
+	TRACE("...done...\n");
+
+	TRACE("Waiting for capabilities to be updated...\n");
+	while(!headless->caps_updated)
+		wl_display_roundtrip(headless->display);
+	TRACE("...done...\n");
+
+	TRACE("Waiting wl_keyboard...\n");
+	while(!headless->keyboard)
+		wl_display_roundtrip(headless->display);
+	TRACE("...done...\n");
+
+	wl_array_init(&keygrab_array);
+
+	//grab informa key(100), mode(OR_EXCLUSIVE) and error
+	uint_ptr = wl_array_add(&keygrab_array, sizeof(unsigned int));
+	*uint_ptr = 169;//menu key in mobile
+	uint_ptr = wl_array_add(&keygrab_array, sizeof(unsigned int));
+	*uint_ptr = TIZEN_KEYROUTER_MODE_OVERRIDABLE_EXCLUSIVE;
+	uint_ptr = wl_array_add(&keygrab_array, sizeof(unsigned int));
+	*uint_ptr = 0;
+
+	//grab informa key(200), mode(OR_EXCLUSIVE) and error
+	uint_ptr = wl_array_add(&keygrab_array, sizeof(unsigned int));
+	*uint_ptr = 139;//home key in mobile
+	uint_ptr = wl_array_add(&keygrab_array, sizeof(unsigned int));
+	*uint_ptr = TIZEN_KEYROUTER_MODE_OVERRIDABLE_EXCLUSIVE;
+	uint_ptr = wl_array_add(&keygrab_array, sizeof(unsigned int));
+	*uint_ptr = 0;
+
+	//grab informa key(300), mode(OR_EXCLUSIVE) and error
+	uint_ptr = wl_array_add(&keygrab_array, sizeof(unsigned int));
+	*uint_ptr = 158;//back key in mobile
+	uint_ptr = wl_array_add(&keygrab_array, sizeof(unsigned int));
+	*uint_ptr = TIZEN_KEYROUTER_MODE_OVERRIDABLE_EXCLUSIVE;
+	uint_ptr = wl_array_add(&keygrab_array, sizeof(unsigned int));
+	*uint_ptr = 0;
+
+	TRACE("Waiting for requesting grab for keys...\n");
+	headless->notified = 0;
+	tizen_keyrouter_set_keygrab_list(headless->tz_keyrouter, NULL, &keygrab_array);
+	ret = _grab_wait(headless);
+	TRACE("...done...\n");
+
+	wl_array_release(&keygrab_array);
+
+	return ret;
+}
+
 int main()
 {
+	int ret;
 	const char *socket_name = NULL;
 	headless_info_t *headless = NULL;
 	struct wl_registry *registry = NULL;
@@ -312,10 +448,10 @@ int main()
 	ERROR_CHECK(registry, return 0, "Failed to get registry...\n");
 	wl_registry_add_listener(registry, &registry_listener, headless);
 
-	wl_display_dispatch(headless->display);
-	wl_display_roundtrip(headless->display);
+	ret = grab_keys(headless);
+	ERROR_CHECK(ret, headless->need_exit = 1, "Failed to grab keys...\n");
 
-	while (-1 != wl_display_dispatch(headless->display))
+	while ((-1 != wl_display_dispatch(headless->display)) && !headless->need_exit)
 	{
 		;
 	}
