@@ -24,6 +24,15 @@
 #include <pepper-headless.h>
 #include <pepper-headless-output.h>
 
+typedef struct display_data display_data_t;
+struct display_data
+{
+	int led;//LED number
+	int red;//R
+	int green;//G
+	int blue;//B
+};
+
 //Prototype
 PEPPER_API pepper_bool_t headless_output_display_buffer(void *);
 PEPPER_API pepper_headless_output_backend_t* headless_output_backend_init(pepper_headless_t *);
@@ -34,11 +43,26 @@ PEPPER_API pepper_bool_t
 headless_output_display_buffer(void *data)
 {
 	pepper_bool_t ret = PEPPER_FALSE;
+	struct wl_array array;
+	display_data_t *dp_data_ptr = NULL;
+	unsigned int led, red, green, blue;
 
 	PEPPER_TRACE("%s -- begin\n", __FUNCTION__);
 
 	//TODO : display buffer data to the output(s)
-	PEPPER_TRACE("%s : display buffer data to output(s)...\n", __FUNCTION__);
+	wl_array_init(&array);
+	wl_array_copy(&array, data);
+
+	wl_array_for_each(dp_data_ptr, &array)
+	{
+		led = dp_data_ptr->led;
+		red = dp_data_ptr->red;
+		green = dp_data_ptr->green;
+		blue = dp_data_ptr->blue;
+
+		PEPPER_TRACE("%s : display buffer data to output(s)...\n", __FUNCTION__);
+		PEPPER_TRACE("LED number : %d, R : %d, G : %d, B : %d\n", led, red, green, blue);
+	}
 
 	PEPPER_TRACE("%s -- end\n", __FUNCTION__);
 

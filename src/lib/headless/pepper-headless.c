@@ -52,7 +52,6 @@ _headless_create_buffer(struct wl_client *client,
 
 	pepper_headless_t *headless = NULL;
 	pepper_headless_buffer_t *headless_buffer = NULL;
-	//pepper_list_t *list = NULL;
 
 	headless = (pepper_headless_t *)wl_resource_get_user_data(resource);
 	PEPPER_CHECK(headless, goto error, "Failed to get headless data from resource...\n");
@@ -106,7 +105,16 @@ _headless_set_buffer_data_array(struct wl_client *client,
 			if (buf->data)
 				wl_array_release(buf->data);
 
-			buf->data = data;
+			buf->data = (struct wl_array *)calloc(1, sizeof(struct wl_array));
+
+			if (!buf->data)
+			{
+				printf("Failed to allocate memory for buffer data...\n");
+				return;
+			}
+
+			wl_array_init(buf->data);
+			wl_array_copy(buf->data, data);
 			break;
 		}
 	}
@@ -136,7 +144,10 @@ _headless_display_buffer(struct wl_client *client,
 	{
 		if (buffer == buf->buffer)
 		{
-			//TODO : call headless output backend(s) with foudn data
+			//TODO : call headless output backend(s) with the data found
+			if (!buf->data) continue;
+
+			headless->output_backend->display_buffer(buf->data);
 			break;
 		}
 	}
