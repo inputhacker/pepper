@@ -50,6 +50,9 @@ struct pepper_headless {
 	struct wl_display *display;
 	pepper_compositor_t *compositor;
 
+	pepper_seat_t *seat;
+	pepper_input_device_t *input_device;
+
 	pepper_headless_output_backend_t *output_backend;
 
 	pepper_list_t resources;

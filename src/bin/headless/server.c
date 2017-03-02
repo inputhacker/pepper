@@ -27,15 +27,13 @@
 #include <pepper-keyrouter-wayland.h>
 
 struct wl_display   *display;
-pepper_seat_t *seat = NULL;
-pepper_input_device_t *keyboard_input = NULL;
 
 pepper_event_listener_t *seat_add_listener = NULL;
 pepper_event_listener_t *input_device_add_listener = NULL;
 pepper_event_listener_t *input_device_remove_listener = NULL;
 pepper_event_listener_t *input_event_listener = NULL;
 pepper_event_listener_t *keyboard_add_listener = NULL;
-
+pepper_event_listener_t *keyboard_event_listener = NULL;
 
 void *input_backend_handle = NULL;
 void *output_backend_handle = NULL;
@@ -51,14 +49,14 @@ _handle_keyboard_add_event(pepper_event_listener_t    *listener,
 						  void                       *data)
 {
 	pepper_keyboard_t *keyboard = (pepper_keyboard_t *)info;
-	PEPPER_TRACE("Keyboard is added\n");
+	PEPPER_TRACE("[%s] Keyboard is added\n", __FUNCTION__);
 
-	/* The following action (set keymap) do not affect the current keymap system.
-	 * This is only for showing how to set the keymap.
-	 */
 	pepper_keyboard_set_keymap_info(keyboard, WL_KEYBOARD_KEYMAP_FORMAT_NO_KEYMAP, -1, 0);
+	keyboard_event_listener = pepper_object_add_event_listener((pepper_object_t *)keyboard,
+									PEPPER_EVENT_KEYBOARD_KEY, 0,
+									pepper_keyrouter_wl_event_handler,
+									pepper_keyboard_get_seat(keyboard));
 }
-
 
 static void
 seat_add_callback(pepper_event_listener_t    *listener,
@@ -68,37 +66,9 @@ seat_add_callback(pepper_event_listener_t    *listener,
 				  void                       *data)
 {
 	pepper_seat_t *event = info;
-	PEPPER_TRACE("Seat is added: %s, %p\n", pepper_seat_get_name(event), event);
+	PEPPER_TRACE("[%s] Seat is added: %s, %p\n", __FUNCTION__, pepper_seat_get_name(event), event);
 
 	keyboard_add_listener = pepper_object_add_event_listener((pepper_object_t *)event, PEPPER_EVENT_SEAT_KEYBOARD_ADD, 0, _handle_keyboard_add_event, data);
-}
-
-static void
-_handle_keyboard_event(pepper_input_event_t *info, void *data)
-{
-	struct wl_resource *resource;
-	pepper_keyboard_t *keyboard_info;
-	pepper_headless_t *headless = (pepper_headless_t *)data;
-
-	keyboard_info = pepper_seat_get_keyboard(seat);
-
-	PEPPER_TRACE("Keyboard Event: time: %d, key: %d, state: %d\n", info->time, info->key, info->state);
-
-	wl_resource_for_each(resource, pepper_keyboard_get_resource_list(keyboard_info)) {
-		wl_keyboard_send_key(resource, wl_display_get_serial(headless->display), info->time, info->key, info->state);
-	}
-}
-
-static void
-_handle_input_event(pepper_event_listener_t *listener,
-						 pepper_object_t *object,
-						 uint32_t id, void *info, void *data)
-{
-	switch (id) {
-		case PEPPER_EVENT_INPUT_DEVICE_KEYBOARD_KEY:
-			_handle_keyboard_event((pepper_input_event_t *)info, data);
-			break;
-	}
 }
 
 static void
@@ -109,9 +79,9 @@ input_device_add_callback(pepper_event_listener_t    *listener,
 						  void                       *data)
 {
 	pepper_input_device_t *device = (pepper_input_device_t *)info;
+	pepper_headless_t *headless = (pepper_headless_t *)data;
 
-	if (seat) pepper_seat_add_input_device(seat, device);
-	input_event_listener = pepper_object_add_event_listener((pepper_object_t *)device, PEPPER_EVENT_ALL, 0, _handle_input_event, data);
+	if (headless->seat) pepper_seat_add_input_device(headless->seat, device);
 }
 
 static void
@@ -122,9 +92,9 @@ input_device_remove_callback(pepper_event_listener_t    *listener,
 						  void                       *data)
 {
 	pepper_input_device_t *device = (pepper_input_device_t *)info;
-	//pepper_headless_t *headless = (pepper_headless_t *)data;
+	pepper_headless_t *headless = (pepper_headless_t *)data;
 
-	if (seat) pepper_seat_remove_input_device(seat, device);
+	if (headless->seat) pepper_seat_remove_input_device(headless->seat, device);
 }
 
 static pepper_compositor_t *
@@ -195,7 +165,6 @@ unload_io_module(void *handle, headless_io_backend_func_t *func_ptr)
 static int
 headless_input_init(pepper_headless_t *headless)
 {
-	//core input
 	pepper_compositor_t *compositor = headless->compositor;
 
 	seat_add_listener = pepper_object_add_event_listener((pepper_object_t *)compositor,
@@ -210,8 +179,8 @@ headless_input_init(pepper_headless_t *headless)
 			PEPPER_EVENT_COMPOSITOR_INPUT_DEVICE_REMOVE,
 			0, input_device_remove_callback, headless);
 
-	seat = pepper_compositor_add_seat(compositor, "seat0");
-	PEPPER_CHECK(seat, return -1, "Failed to pepper_compositor_add_seat()...");
+	headless->seat = pepper_compositor_add_seat(compositor, "seat0");
+	PEPPER_CHECK(headless->seat, return -1, "Failed to pepper_compositor_add_seat()...");
 
 	uint32_t caps = 0;
 	if (getenv("HEADLESS_INPUT_KEYBOARD"))
@@ -223,8 +192,8 @@ headless_input_init(pepper_headless_t *headless)
 	if (!caps)
 		caps = WL_SEAT_CAPABILITY_KEYBOARD;
 
-	keyboard_input = pepper_input_device_create(compositor, caps, NULL, NULL);
-	PEPPER_CHECK(keyboard_input, return -1, "Failed on pepper_input_device_create()...");
+	headless->input_device = pepper_input_device_create(compositor, caps, NULL, NULL);
+	PEPPER_CHECK(headless->input_device, return -1, "Failed on pepper_input_device_create()...");
 
 	//Pepper keyrouter initialization
 	pepper_bool_t res = pepper_keyrouter_wl_init(compositor);
@@ -252,8 +221,6 @@ headless_input_init(pepper_headless_t *headless)
 static int
 headless_output_init(pepper_headless_t *headless)
 {
-	//core output
-
 	//headless output module (backend) init
 	output_backend_handle = load_io_module("headless-output-backend.so", "headless_output_backend", &output_func);
 
