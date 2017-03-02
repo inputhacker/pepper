@@ -88,7 +88,10 @@ _pepper_keyrouter_wl_key_send(pepper_seat_t *seat, struct wl_client *client,
 
 	wl_resource_for_each(resource, pepper_keyboard_get_resource_list(keyboard_info)) {
 		if (wl_resource_get_client(resource) == client)
+		{
 			wl_keyboard_send_key(resource, wl_display_get_serial(keyrouter_wl->display), time, key, state);
+			PEPPER_TRACE("[%s] key : %d, state : %d, time : %d\n", __FUNCTION__, key, state, time);
+		}
 	}
 }
 
@@ -402,7 +405,7 @@ pepper_keyrouter_wl_event_handler(pepper_event_listener_t *listener,
 {
 	pepper_input_event_t *event;
 
-	PEPPER_CHECK((id == PEPPER_EVENT_INPUT_DEVICE_KEYBOARD_KEY),
+	PEPPER_CHECK((id == PEPPER_EVENT_KEYBOARD_KEY),
 	             return, "%d event is not handled by keyrouter\n", id);
 	PEPPER_CHECK(info, return, "Invalid event\n");
 
