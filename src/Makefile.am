@@ -16,6 +16,6 @@ if ENABLE_X11
 SUBDIRS += lib/x11
 endif
 
-SUBDIRS += samples          \
-           bin/headless     \
+SUBDIRS += samples             \
+           bin/headless        \
            bin/doctor

@@ -1,5 +1,4 @@
 lib_LTLIBRARIES = libpepper-headless.la
-bin_PROGRAMS = headless-client
 
 BUILT_SOURCES =
 CLEANFILES =
@@ -39,6 +38,3 @@ $(srcdir)/protocol/%-server-protocol.h : $(srcdir)/protocol/%.xml
 $(srcdir)/protocol/%-client-protocol.h : $(srcdir)/protocol/%.xml
 	$(AM_V_GEN)$(wayland_scanner) client-header < $< > $@
 
-headless_client_CFLAGS = $(HEADLESS_CLIENT_CFLAGS) -I$(srcdir)/protocol/
-headless_client_LDADD = $(HEADLESS_CLIENT_LIBS) libpepper-headless.la
-headless_client_SOURCES = headless-client.c
