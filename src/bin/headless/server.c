@@ -26,8 +26,7 @@
 #include <pepper-input-backend.h>
 #include <pepper-keyrouter-wayland.h>
 
-struct wl_display   *display;
-
+/* pepper object event listeners */
 pepper_event_listener_t *seat_add_listener = NULL;
 pepper_event_listener_t *input_device_add_listener = NULL;
 pepper_event_listener_t *input_device_remove_listener = NULL;
@@ -35,9 +34,9 @@ pepper_event_listener_t *input_event_listener = NULL;
 pepper_event_listener_t *keyboard_add_listener = NULL;
 pepper_event_listener_t *keyboard_event_listener = NULL;
 
+/* input/output backend handle and structure function pointer(s) */
 void *input_backend_handle = NULL;
 void *output_backend_handle = NULL;
-
 headless_io_backend_func_t input_func;
 headless_io_backend_func_t output_func;
 
@@ -49,7 +48,8 @@ _handle_keyboard_add_event(pepper_event_listener_t    *listener,
 						  void                       *data)
 {
 	pepper_keyboard_t *keyboard = (pepper_keyboard_t *)info;
-	PEPPER_TRACE("[%s] Keyboard is added\n", __FUNCTION__);
+
+	PEPPER_TRACE("[%s] keyboard added\n", __FUNCTION__);
 
 	pepper_keyboard_set_keymap_info(keyboard, WL_KEYBOARD_KEYMAP_FORMAT_NO_KEYMAP, -1, 0);
 	keyboard_event_listener = pepper_object_add_event_listener((pepper_object_t *)keyboard,
@@ -66,9 +66,13 @@ seat_add_callback(pepper_event_listener_t    *listener,
 				  void                       *data)
 {
 	pepper_seat_t *event = info;
-	PEPPER_TRACE("[%s] Seat is added: %s, %p\n", __FUNCTION__, pepper_seat_get_name(event), event);
 
-	keyboard_add_listener = pepper_object_add_event_listener((pepper_object_t *)event, PEPPER_EVENT_SEAT_KEYBOARD_ADD, 0, _handle_keyboard_add_event, data);
+	PEPPER_TRACE("[%s] seat added : %s, %p\n", __FUNCTION__, pepper_seat_get_name(event), event);
+
+	keyboard_add_listener = pepper_object_add_event_listener((pepper_object_t *)event,
+									PEPPER_EVENT_SEAT_KEYBOARD_ADD,
+									0,
+									_handle_keyboard_add_event, data);
 }
 
 static void
@@ -81,7 +85,8 @@ input_device_add_callback(pepper_event_listener_t    *listener,
 	pepper_input_device_t *device = (pepper_input_device_t *)info;
 	pepper_headless_t *headless = (pepper_headless_t *)data;
 
-	if (headless->seat) pepper_seat_add_input_device(headless->seat, device);
+	if (headless->seat)
+		pepper_seat_add_input_device(headless->seat, device);
 }
 
 static void
@@ -94,7 +99,8 @@ input_device_remove_callback(pepper_event_listener_t    *listener,
 	pepper_input_device_t *device = (pepper_input_device_t *)info;
 	pepper_headless_t *headless = (pepper_headless_t *)data;
 
-	if (headless->seat) pepper_seat_remove_input_device(headless->seat, device);
+	if (headless->seat)
+		pepper_seat_remove_input_device(headless->seat, device);
 }
 
 static pepper_compositor_t *
@@ -159,7 +165,9 @@ unload_io_module(void *handle, headless_io_backend_func_t *func_ptr)
 
 	if (func_ptr->backend_fini)
 		func_ptr->backend_fini(NULL);
+
 	dlclose(handle);
+	handle = NULL;
 }
 
 static int
@@ -195,7 +203,7 @@ headless_input_init(pepper_headless_t *headless)
 	headless->input_device = pepper_input_device_create(compositor, caps, NULL, NULL);
 	PEPPER_CHECK(headless->input_device, return -1, "Failed on pepper_input_device_create()...");
 
-	//Pepper keyrouter initialization
+	/* pepper keyrouter initialization */
 	pepper_bool_t res = pepper_keyrouter_wl_init(compositor);
 
 	if (res == PEPPER_FALSE)
@@ -204,8 +212,10 @@ headless_input_init(pepper_headless_t *headless)
 		return -1;
 	}
 
-	//headless input module (backend) init
-	input_backend_handle = load_io_module("headless-input-backend.so", "headless_input_backend", &input_func);
+	/* headless input module (backend) init */
+	input_backend_handle = load_io_module("headless-input-backend.so",
+											"headless_input_backend",
+											&input_func);
 
 	if (!input_backend_handle)
 	{
@@ -221,8 +231,10 @@ headless_input_init(pepper_headless_t *headless)
 static int
 headless_output_init(pepper_headless_t *headless)
 {
-	//headless output module (backend) init
-	output_backend_handle = load_io_module("headless-output-backend.so", "headless_output_backend", &output_func);
+	/* headless output module (backend) init */
+	output_backend_handle = load_io_module("headless-output-backend.so",
+											"headless_output_backend",
+											&output_func);
 
 	if (!output_backend_handle)
 	{
@@ -245,15 +257,24 @@ headless_display_destroy(pepper_headless_t *headless)
 }
 
 static int
-headless_input_shutdown()
+headless_input_shutdown(pepper_headless_t *headless)
 {
 	unload_io_module(input_backend_handle, &input_func);
+
+	pepper_event_listener_remove(seat_add_listener);
+	pepper_event_listener_remove(input_device_add_listener);
+	pepper_event_listener_remove(input_device_remove_listener);
+
+	pepper_input_device_destroy(headless->input_device);
+	pepper_seat_destroy(headless->seat);
+
+	pepper_keyrouter_wl_deinit();
 
 	return 0;
 }
 
 static int
-headless_output_shutdown()
+headless_output_shutdown(pepper_headless_t *headless)
 {
 	unload_io_module(output_backend_handle, &output_func);
 
@@ -265,8 +286,8 @@ headless_shutdown(pepper_headless_t *headless)
 {
 	PEPPER_TRACE("%s -- begin\n", __FUNCTION__);
 
-	headless_output_shutdown();
-	headless_input_shutdown();
+	headless_output_shutdown(headless);
+	headless_input_shutdown(headless);
 	headless_display_destroy(headless);
 
 	PEPPER_TRACE("%s -- end\n", __FUNCTION__);
