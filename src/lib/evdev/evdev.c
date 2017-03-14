@@ -39,16 +39,65 @@
 #define EVENT_MAX 32
 
 static void
+_evdev_keyboard_event_post(pepper_input_device_t *device, uint32_t keycode, int state, uint32_t time)
+{
+	pepper_input_event_t event;
+
+	event.time = time;
+	event.key = keycode;
+	event.state = state ? PEPPER_KEY_STATE_PRESSED : PEPPER_KEY_STATE_RELEASED;
+
+	pepper_object_emit_event((pepper_object_t *)device,
+								PEPPER_EVENT_INPUT_DEVICE_KEYBOARD_KEY, &event);
+}
+
+static void
+_evdev_keyboard_event_flush(pepper_evdev_t *evdev)
+{
+	evdev_key_event_t *event = NULL;
+	evdev_key_event_t *tmp = NULL;
+
+	pepper_list_for_each_safe(event, tmp, &evdev->key_event_queue, link)
+	{
+		_evdev_keyboard_event_post(event->device, event->keycode, event->state, event->time);
+		pepper_list_remove(&event->link);
+		free(event);
+	}
+}
+
+static void
+_evdev_keyboard_event_queue(uint32_t keycode, int state, uint32_t time, evdev_device_info_t *device_info)
+{
+	evdev_key_event_t *event = NULL;
+	pepper_evdev_t *evdev = device_info->evdev;
+
+	event = (evdev_key_event_t *)calloc(1, sizeof(evdev_key_event_t));
+	PEPPER_CHECK(event, return, "[%s] Failed to allocate memory for key event.\n", __FUNCTION__);
+
+	event->keycode = keycode;
+	event->state = state;
+	event->time = time;
+	event->device = device_info->device;
+
+	pepper_list_insert(&evdev->key_event_queue, &event->link);
+}
+
+static void
 _evdev_keyboard_event_process(struct input_event *ev, evdev_device_info_t *device_info)
 {
+	 uint32_t timestamp;
+
+	/* FIXME : need to think about using current time vs. time within event from kernel */
+	timestamp = ev->time.tv_sec * 1000 + ev->time.tv_usec / 1000;
+
 	switch (ev->type)
 	{
 		case EV_KEY:
-			/* TODO : add an event into the event queue */
+			_evdev_keyboard_event_queue((uint32_t)ev->code, ev->value, timestamp, device_info);
 			break;
 
 		case EV_SYN:
-			/* TODO : flush events from the event queue */
+			_evdev_keyboard_event_flush(device_info->evdev);
 			break;
 
 		default:
@@ -183,8 +232,14 @@ pepper_evdev_destroy(pepper_evdev_t *evdev)
 	if (!evdev)
 		return;
 
-	pepper_list_remove(&evdev->key_event_queue);
+	/* clean-up/destroy key event queue */
+	if (!pepper_list_empty(&evdev->key_event_queue))
+	{
+		_evdev_keyboard_event_flush(evdev);
+		pepper_list_remove(&evdev->key_event_queue);
+	}
 
+	/* clean-up/destory device list */
 	if (!pepper_list_empty(&evdev->device_list))
 	{
 		pepper_list_for_each_safe(device_info, tmp, &evdev->device_list, link)
