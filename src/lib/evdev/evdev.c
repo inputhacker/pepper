@@ -21,8 +21,94 @@
 * DEALINGS IN THE SOFTWARE.
 */
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+
 #include <evdev-internal.h>
 #include <pepper-evdev.h>
+#include <pepper-input-backend.h>
+
+static int
+_evdev_keyboard_event_fd_read(int fd, unsigned int mask, void *data)
+{
+	/* FIXME : read events from given fd and create pepper key event(s) */
+
+	return 0;
+}
+
+static int
+_evdev_keyboard_device_open(pepper_evdev_t *evdev, const char *path)
+{
+	int fd;
+	unsigned int event_mask;
+	evdev_device_info_t *device_info = NULL;
+	pepper_input_device_t *device = NULL;
+
+	PEPPER_CHECK(path, return 0, "[%s] Given path is NULL.\n", __FUNCTION__);
+
+	fd = open(path, O_RDONLY | O_NONBLOCK | O_CLOEXEC);
+	PEPPER_CHECK(fd>=0, return 0, "[%s] Failed to open Given path of device.\n", __FUNCTION__);
+
+	device = pepper_input_device_create(evdev->compositor, WL_SEAT_CAPABILITY_KEYBOARD,
+			NULL, NULL);
+	PEPPER_CHECK(device, goto error, "[%s] Failed to create pepper input device.\n", __FUNCTION__);
+
+	device_info = (evdev_device_info_t *)calloc(1, sizeof(evdev_device_info_t));
+	PEPPER_CHECK(device_info, goto error, "[%s] Failed to allocate memory for device info...\n", __FUNCTION__);
+
+	pepper_list_init(&device_info->link);
+
+	event_mask = WL_EVENT_ERROR | WL_EVENT_HANGUP | WL_EVENT_READABLE;
+	device_info->evdev = evdev;
+	device_info->device = device;
+	device_info->event_source = wl_event_loop_add_fd(evdev->event_loop,
+			fd, event_mask, _evdev_keyboard_event_fd_read, device_info);
+	PEPPER_CHECK(device_info->event_source, goto error, "[%s] Failed to add fd as an event source...\n", __FUNCTION__);
+
+	pepper_list_insert(&evdev->device_list, &device_info->link);
+
+	return 1;
+
+error:
+	if (device)
+	{
+		pepper_input_device_destroy(device);
+		device = NULL;
+	}
+
+	if (device_info)
+	{
+		if (device_info->event_source)
+			wl_event_source_remove(device_info->event_source);
+
+		free(device_info);
+		device_info = NULL;
+	}
+
+	if (fd >=0)
+		close(fd);
+
+	return 0;
+}
+
+PEPPER_API int
+pepper_evdev_device_probe(pepper_evdev_t *evdev, uint32_t caps)
+{
+	int probed = 0;
+
+	/* FIXME : probe input device under /dev/input directory */
+
+	/* Open specific device node for example */
+	if (caps & WL_SEAT_CAPABILITY_KEYBOARD)
+	{
+		probed += _evdev_keyboard_device_open(evdev, "/dev/input/event0");
+		probed += _evdev_keyboard_device_open(evdev, "/dev/input/event1");
+	}
+
+	return probed;
+}
 
 PEPPER_API pepper_evdev_t *
 pepper_evdev_create(pepper_compositor_t *compositor)
@@ -45,11 +131,29 @@ pepper_evdev_create(pepper_compositor_t *compositor)
 PEPPER_API void
 pepper_evdev_destroy(pepper_evdev_t *evdev)
 {
+	evdev_device_info_t *device_info = NULL;
+	evdev_device_info_t *tmp = NULL;
+
 	if (!evdev)
 		return;
 
 	pepper_list_remove(&evdev->key_event_queue);
-	pepper_list_remove(&evdev->device_list);
+
+	if (!pepper_list_empty(&evdev->device_list))
+	{
+		pepper_list_for_each_safe(device_info, tmp, &evdev->device_list, link)
+		{
+			if (device_info->device)
+				pepper_input_device_destroy(device_info->device);
+			if (device_info->event_source)
+				wl_event_source_remove(device_info->event_source);
+
+			pepper_list_remove(&device_info->link);
+			free(device_info);
+		}
+
+		pepper_list_remove(&evdev->device_list);
+	}
 
 	free(evdev);
 }
