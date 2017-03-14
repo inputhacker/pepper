@@ -25,15 +25,61 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <string.h>
+#include <errno.h>
+#include <stdint.h>
 
 #include <evdev-internal.h>
 #include <pepper-evdev.h>
 #include <pepper-input-backend.h>
 
-static int
-_evdev_keyboard_event_fd_read(int fd, unsigned int mask, void *data)
+#ifdef EVENT_MAX
+#undef EVENT_MAX
+#endif
+#define EVENT_MAX 32
+
+static void
+_evdev_keyboard_event_process(struct input_event *ev, evdev_device_info_t *device_info)
 {
-	/* FIXME : read events from given fd and create pepper key event(s) */
+	switch (ev->type)
+	{
+		case EV_KEY:
+			/* TODO : add an event into the event queue */
+			break;
+
+		case EV_SYN:
+			/* TODO : flush events from the event queue */
+			break;
+
+		default:
+			break;
+	}
+}
+
+static int
+_evdev_keyboard_event_fd_read(int fd, uint32_t mask, void *data)
+{
+	uint32_t i;
+	int nread;
+	struct input_event ev[EVENT_MAX];
+	evdev_device_info_t *device_info = (evdev_device_info_t *)data;
+
+	PEPPER_CHECK(mask & (WL_EVENT_HANGUP | WL_EVENT_ERROR),
+					return 0,
+					"[%s] With the given fd, there is an error or it's been hung-up.\n",
+					__FUNCTION__);
+
+	if (!(mask & WL_EVENT_READABLE))
+		return 0;
+
+	nread = read(fd, &ev, sizeof(ev));
+	PEPPER_CHECK(nread>=0, return 0, "[%s] Failed on reading given fd. (error : %s, fd:%d)\n",
+					__FUNCTION__, strerror(errno), fd);
+
+	for (i = 0 ; i < (nread / sizeof(ev[0])); i++)
+	{
+		_evdev_keyboard_event_process(&ev[i], device_info);
+	}
 
 	return 0;
 }
@@ -42,7 +88,7 @@ static int
 _evdev_keyboard_device_open(pepper_evdev_t *evdev, const char *path)
 {
 	int fd;
-	unsigned int event_mask;
+	uint32_t event_mask;
 	evdev_device_info_t *device_info = NULL;
 	pepper_input_device_t *device = NULL;
 
