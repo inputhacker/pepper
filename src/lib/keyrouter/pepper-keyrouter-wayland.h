@@ -28,9 +28,11 @@
 
 #include "pepper-keyrouter.h"
 
-PEPPER_API pepper_bool_t pepper_keyrouter_wl_init(pepper_compositor_t *compositor);
-PEPPER_API void pepper_keyrouter_wl_deinit(void);
-PEPPER_API void pepper_keyrouter_wl_event_handler(pepper_event_listener_t *listener, pepper_object_t *object, uint32_t id, void *info, void *data);
-PEPPER_API void pepper_keyrouter_wl_key_process(void *data, unsigned int key, unsigned int state, unsigned int time);
+typedef struct pepper_keyrouter_wl pepper_keyrouter_wl_t;
 
-PEPPER_API void pepper_keyrouter_wl_grab_print(void);
+PEPPER_API pepper_keyrouter_wl_t *pepper_keyrouter_wl_init(pepper_compositor_t *compositor);
+PEPPER_API void pepper_keyrouter_wl_deinit(pepper_keyrouter_wl_t *keyrouter_wl);
+PEPPER_API void pepper_keyrouter_wl_event_handler(pepper_event_listener_t *listener, pepper_object_t *object, uint32_t id, void *info, void *data);
+PEPPER_API void pepper_keyrouter_wl_key_process(pepper_keyrouter_wl_t *keyrouter_wl, unsigned int key, unsigned int state, unsigned int time);
+
+PEPPER_API void pepper_keyrouter_wl_grab_print(pepper_keyrouter_wl_t *keyrouter_wl);

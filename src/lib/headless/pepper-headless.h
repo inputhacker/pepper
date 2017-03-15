@@ -26,6 +26,7 @@
 
 #include <pepper.h>
 #include <headless-internal.h>
+#include <pepper-keyrouter-wayland.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -52,6 +53,7 @@ struct pepper_headless {
 
 	pepper_seat_t *seat;
 	pepper_input_device_t *input_device;
+	pepper_keyrouter_wl_t *keyrouter;
 
 	pepper_headless_output_backend_t *output_backend;
 

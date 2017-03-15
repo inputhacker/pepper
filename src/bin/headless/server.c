@@ -32,6 +32,7 @@ pepper_event_listener_t *input_device_add_listener = NULL;
 pepper_event_listener_t *input_device_remove_listener = NULL;
 pepper_event_listener_t *input_event_listener = NULL;
 pepper_event_listener_t *keyboard_add_listener = NULL;
+pepper_event_listener_t *keyboard_remove_listener = NULL;
 pepper_event_listener_t *keyboard_event_listener = NULL;
 
 /* input/output backend handle and structure function pointer(s) */
@@ -48,15 +49,20 @@ _handle_keyboard_add_event(pepper_event_listener_t    *listener,
 						  void                       *data)
 {
 	pepper_keyboard_t *keyboard = (pepper_keyboard_t *)info;
+	pepper_headless_t *headless = (pepper_headless_t *)data;
+	pepper_keyrouter_wl_t *keyrouter = NULL;
 
 	PEPPER_TRACE("[%s] keyboard added\n", __FUNCTION__);
+
+	if (headless) keyrouter = headless->keyrouter;
 
 	pepper_keyboard_set_keymap_info(keyboard, WL_KEYBOARD_KEYMAP_FORMAT_NO_KEYMAP, -1, 0);
 	keyboard_event_listener = pepper_object_add_event_listener((pepper_object_t *)keyboard,
 									PEPPER_EVENT_KEYBOARD_KEY, 0,
 									pepper_keyrouter_wl_event_handler,
-									pepper_keyboard_get_seat(keyboard));
+									(void *)keyrouter);
 }
+
 
 static void
 seat_add_callback(pepper_event_listener_t    *listener,
@@ -187,6 +193,15 @@ headless_input_init(pepper_headless_t *headless)
 			PEPPER_EVENT_COMPOSITOR_INPUT_DEVICE_REMOVE,
 			0, input_device_remove_callback, headless);
 
+
+	/* pepper keyrouter initialization */
+	headless->keyrouter = pepper_keyrouter_wl_init(compositor);
+	if (!headless->keyrouter)
+	{
+		PEPPER_ERROR("Failed on initializing pepper keyrouter...\n");
+		return -1;
+	}
+
 	headless->seat = pepper_compositor_add_seat(compositor, "seat0");
 	PEPPER_CHECK(headless->seat, return -1, "Failed to pepper_compositor_add_seat()...");
 
@@ -202,15 +217,6 @@ headless_input_init(pepper_headless_t *headless)
 
 	headless->input_device = pepper_input_device_create(compositor, caps, NULL, NULL);
 	PEPPER_CHECK(headless->input_device, return -1, "Failed on pepper_input_device_create()...");
-
-	/* pepper keyrouter initialization */
-	pepper_bool_t res = pepper_keyrouter_wl_init(compositor);
-
-	if (res == PEPPER_FALSE)
-	{
-		PEPPER_ERROR("Failed on initializing pepper keyrouter...\n");
-		return -1;
-	}
 
 	/* headless input module (backend) init */
 	input_backend_handle = load_io_module("headless-input-backend.so",
@@ -268,7 +274,7 @@ headless_input_shutdown(pepper_headless_t *headless)
 	pepper_input_device_destroy(headless->input_device);
 	pepper_seat_destroy(headless->seat);
 
-	pepper_keyrouter_wl_deinit();
+	pepper_keyrouter_wl_deinit(headless->keyrouter);
 
 	return 0;
 }
