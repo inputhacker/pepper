@@ -153,8 +153,6 @@ _evdev_keyboard_device_open(pepper_evdev_t *evdev, const char *path)
 	device_info = (evdev_device_info_t *)calloc(1, sizeof(evdev_device_info_t));
 	PEPPER_CHECK(device_info, goto error, "[%s] Failed to allocate memory for device info...\n", __FUNCTION__);
 
-	pepper_list_init(&device_info->link);
-
 	event_mask = WL_EVENT_ERROR | WL_EVENT_HANGUP | WL_EVENT_READABLE;
 	device_info->evdev = evdev;
 	device_info->device = device;
