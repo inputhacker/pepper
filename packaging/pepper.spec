@@ -59,6 +59,21 @@ Requires: pepper-keyrouter = %{version}-%{release}
 %description keyrouter-devel
 This package includes keyrouter development module files.
 
+###### evdev
+%package evdev
+Summary: evdev module for pepper package
+
+%description evdev
+This package includes evdev module files.
+
+###### evdev-devel
+%package evdev-devel
+Summary: Evdev development module for pepper package
+Requires: pepper-evdev = %{version}-%{release}
+
+%description evdev-devel
+This package includes evdev development module files.
+
 ###### libinput
 %package libinput
 Summary: Libinput module for pepper package
@@ -212,6 +227,9 @@ make %{?_smp_mflags}
 %post keyrouter -p /sbin/ldconfig
 %postun keyrouter -p /sbin/ldconfig
 
+%post evdev -p /sbin/ldconfig
+%postun evdev -p /sbin/ldconfig
+
 %post libinput -p /sbin/ldconfig
 %postun libinput -p /sbin/ldconfig
 
@@ -261,6 +279,18 @@ make %{?_smp_mflags}
 %{_includedir}/pepper/pepper-keyrouter.h
 %{_includedir}/pepper/pepper-keyrouter-wayland.h
 %{_libdir}/pkgconfig/pepper-keyrouter.pc
+
+%files evdev
+%manifest %{name}.manifest
+%defattr(-,root,root,-)
+%{_libdir}/libpepper-evdev.so.*
+
+%files evdev-devel
+%manifest %{name}.manifest
+%defattr(-,root,root,-)
+%{_includedir}/pepper/pepper-evdev.h
+%{_libdir}/pkgconfig/pepper-evdev.pc
+%{_libdir}/libpepper-evdev.so
 
 %files libinput
 %manifest %{name}.manifest

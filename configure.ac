@@ -113,6 +113,19 @@ AC_SUBST(PEPPER_HEADLESS_CFLAGS)
 AC_SUBST(PEPPER_HEADLESS_LIBS)
 AC_SUBST(PEPPER_HEADLESS_REQUIRES)
 
+# pepper-evdev
+PEPPER_EVDEV_REQUIRES="pepper"
+
+PEPPER_EVDEV_DIR="-I\$(top_srcdir)/src/lib/evdev"
+PEPPER_EVDEV_LIB="\$(top_srcdir)/src/lib/evdev/libpepper-evdev.la"
+
+PEPPER_EVDEV_CFLAGS="$PEPPER_DIR $PEPPER_EVDEV_DIR $PEPPER_CFLAGS $PEPPER_EVDEV_CFLAGS"
+PEPPER_EVDEV_LIBS="$PEPPER_LIB $PEPPER_EVDEV_LIBS"
+
+AC_SUBST(PEPPER_EVDEV_CFLAGS)
+AC_SUBST(PEPPER_EVDEV_LIBS)
+AC_SUBST(PEPPER_EVDEV_REQUIRES)
+
 # pepper-render
 PEPPER_RENDER_REQUIRES="pixman-1 egl glesv2"
 PKG_CHECK_MODULES(PEPPER_RENDER, [$PEPPER_RENDER_REQUIRES])
@@ -328,6 +341,7 @@ Makefile
 src/Makefile
 src/lib/pepper/Makefile
 src/lib/keyrouter/Makefile
+src/lib/evdev/Makefile
 src/lib/libinput/Makefile
 src/lib/desktop-shell/Makefile
 src/lib/render/Makefile
@@ -343,6 +357,7 @@ pkgconfig/pepper-render.pc
 pkgconfig/pepper-drm.pc
 pkgconfig/pepper-fbdev.pc
 pkgconfig/pepper-keyrouter.pc
+pkgconfig/pepper-evdev.pc
 pkgconfig/pepper-libinput.pc
 pkgconfig/pepper-wayland.pc
 pkgconfig/pepper-desktop-shell.pc
