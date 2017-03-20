@@ -30,6 +30,7 @@
 
 typedef struct pepper_keyrouter_wl pepper_keyrouter_wl_t;
 
+PEPPER_API void pepper_keyrouter_wl_set_seat(pepper_keyrouter_wl_t *keyrouter_wl, pepper_seat_t *seat);
 PEPPER_API pepper_keyrouter_wl_t *pepper_keyrouter_wl_init(pepper_compositor_t *compositor);
 PEPPER_API void pepper_keyrouter_wl_deinit(pepper_keyrouter_wl_t *keyrouter_wl);
 PEPPER_API void pepper_keyrouter_wl_event_handler(pepper_event_listener_t *listener, pepper_object_t *object, uint32_t id, void *info, void *data);
