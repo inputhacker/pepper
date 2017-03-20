@@ -34,6 +34,7 @@ struct pepper_keyrouter {
 	struct wl_global *global;
 	struct wl_display *display;
 	pepper_compositor_t *compositor;
+	pepper_seat_t *seat;
 
 	pepper_list_t resources;
 
@@ -55,6 +56,63 @@ struct ungrab_list_data {
 	int key;
 	int err;
 };
+
+PEPPER_API void
+pepper_keyrouter_set_seat(pepper_keyrouter_t *pepper_keyrouter, pepper_seat_t *seat)
+{
+	PEPPER_CHECK(pepper_keyrouter, return, "Invalid pepper_keyrouter_t\n");
+	pepper_keyrouter->seat = seat;
+}
+
+static void
+_pepper_keyrouter_key_send(pepper_keyrouter_t *pepper_keyrouter,
+                              pepper_seat_t *seat, struct wl_client *client,
+                              unsigned int key, unsigned int state,
+                              unsigned int time)
+{
+	struct wl_resource *resource;
+	pepper_keyboard_t *keyboard_info;
+
+	keyboard_info = pepper_seat_get_keyboard(seat);
+
+	wl_resource_for_each(resource, pepper_keyboard_get_resource_list(keyboard_info)) {
+		if (wl_resource_get_client(resource) == client)
+		{
+			wl_keyboard_send_key(resource, wl_display_get_serial(pepper_keyrouter->display), time, key, state);
+			PEPPER_TRACE("[%s] key : %d, state : %d, time : %d\n", __FUNCTION__, key, state, time);
+		}
+	}
+}
+
+PEPPER_API void
+pepper_keyrouter_key_process(pepper_keyrouter_t *pepper_keyrouter,
+                                unsigned int key, unsigned int state, unsigned int time)
+{
+	pepper_list_t delivery_list;
+	pepper_list_t *seat_list;
+	keyrouter_key_info_t *info;
+	int count = 0;
+	pepper_seat_t *seat;
+
+	pepper_list_init(&delivery_list);
+	count = keyrouter_key_process(pepper_keyrouter->keyrouter, key, state, &delivery_list);
+
+	if (count > 0) {
+		pepper_list_for_each(info, &delivery_list, link) {
+			if (pepper_keyrouter->seat && pepper_object_get_type((pepper_object_t *)pepper_keyrouter->seat) == PEPPER_OBJECT_SEAT) {
+				_pepper_keyrouter_key_send(pepper_keyrouter, pepper_keyrouter->seat, (struct wl_client *)info->data, key, state, time);
+			}
+			else {
+				seat_list = (pepper_list_t *)pepper_compositor_get_seat_list(pepper_keyrouter->compositor);
+				if (!pepper_list_empty(seat_list)) {
+					pepper_list_for_each(seat, seat_list, link) {
+						_pepper_keyrouter_key_send(pepper_keyrouter, seat, (struct wl_client *)info->data, key, state, time);
+					}
+				}
+			}
+		}
+	}
+}
 
 static void
 _pepper_keyrouter_remove_client_from_list(pepper_keyrouter_t *pepper_keyrouter, struct wl_client *client)

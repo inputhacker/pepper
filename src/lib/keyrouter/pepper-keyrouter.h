@@ -27,3 +27,6 @@ typedef struct pepper_keyrouter pepper_keyrouter_t;
 
 PEPPER_API pepper_keyrouter_t *pepper_keyrouter_create(pepper_compositor_t *compositor);
 PEPPER_API void pepper_keyrouter_destroy(pepper_keyrouter_t *pepper_keyrouter);
+
+PEPPER_API void pepper_keyrouter_set_seat(pepper_keyrouter_t *pepper_keyrouter, pepper_seat_t *seat);
+PEPPER_API void pepper_keyrouter_key_process(pepper_keyrouter_t *pepper_keyrouter, unsigned int key, unsigned int state, unsigned int time);
