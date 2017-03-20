@@ -1,4 +1,5 @@
 SUBDIRS = lib/pepper        \
+          lib/keyrouter      \
           lib/evdev         \
           lib/libinput      \
           lib/desktop-shell \

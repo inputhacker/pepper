@@ -54,6 +54,20 @@ if test x$enable_socket_fd = xyes; then
     AC_DEFINE([ENABLE_SOCKET_FD], [1], [Use wl_display_add_socket_fd])
 fi
 
+# pepper-keyrouter
+PEPPER_KEYROUTER_REQUIRES="tizen-extension-server"
+PKG_CHECK_MODULES(PEPPER_KEYROUTER, [$PEPPER_KEYROUTER_REQUIRES])
+
+PEPPER_KEYROUTER_DIR="-I\$(top_srcdir)/src/lib/keyrouter"
+PEPPER_KEYROUTER_LIB="\$(top_srcdir)/src/lib/keyrouter/libpepper-keyrouter.la"
+
+PEPPER_KEYROUTER_CFLAGS="$PEPPER_DIR $PEPPER_KEYROUTER_CFLAGS $PEPPER_CFLAGS $PEPPER_KEYROUTER_DIR"
+PEPPER_KEYROUTER_LIBS="$PEPPER_LIB $PEPPER_KEYROUTER_LIBS"
+
+AC_SUBST(PEPPER_KEYROUTER_CFLAGS)
+AC_SUBST(PEPPER_KEYROUTER_LIBS)
+AC_SUBST(PEPPER_KEYROUTER_REQUIRES)
+
 # pepper-libinput
 PEPPER_LIBINPUT_REQUIRES="libinput"
 PKG_CHECK_MODULES(PEPPER_LIBINPUT, [$PEPPER_LIBINPUT_REQUIRES])
@@ -281,6 +295,7 @@ AC_CONFIG_FILES([
 Makefile
 src/Makefile
 src/lib/pepper/Makefile
+src/lib/keyrouter/Makefile
 src/lib/evdev/Makefile
 src/lib/libinput/Makefile
 src/lib/desktop-shell/Makefile
@@ -294,6 +309,7 @@ pkgconfig/pepper.pc
 pkgconfig/pepper-render.pc
 pkgconfig/pepper-drm.pc
 pkgconfig/pepper-fbdev.pc
+pkgconfig/pepper-keyrouter.pc
 pkgconfig/pepper-evdev.pc
 pkgconfig/pepper-libinput.pc
 pkgconfig/pepper-wayland.pc

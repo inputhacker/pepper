@@ -27,6 +27,7 @@ BuildRequires:	doxygen
 BuildRequires:	pkgconfig(wayland-tbm-client)
 BuildRequires:  pkgconfig(wayland-tbm-server)
 BuildRequires:  pkgconfig(libtbm)
+BuildRequires:  pkgconfig(tizen-extension-server)
 %if "%{ENABLE_TDM}" == "1"
 BuildRequires:  pkgconfig(libtdm)
 %endif
@@ -41,6 +42,21 @@ Requires: %{name} = %{version}-%{release}
 
 %description devel
 This package includes developer files common to all packages.
+
+###### keyrouter
+%package keyrouter
+Summary: Keyrouter module for pepper package
+
+%description keyrouter
+This package includes keyrouter module files.
+
+###### keyrouter-devel
+%package keyrouter-devel
+Summary: Keyrouter development module for pepper package
+Requires: pepper-keyrouter = %{version}-%{release}
+
+%description keyrouter-devel
+This package includes keyrouter development module files.
 
 ###### evdev
 %package evdev
@@ -192,6 +208,9 @@ make %{?_smp_mflags}
 %post -n %{name} -p /sbin/ldconfig
 %postun -n %{name} -p /sbin/ldconfig
 
+%post keyrouter -p /sbin/ldconfig
+%postun keyrouter -p /sbin/ldconfig
+
 %post evdev -p /sbin/ldconfig
 %postun evdev -p /sbin/ldconfig
 
@@ -229,6 +248,19 @@ make %{?_smp_mflags}
 %{_includedir}/pepper/pepper-input-backend.h
 %{_libdir}/pkgconfig/pepper.pc
 %{_libdir}/libpepper.so
+
+%files keyrouter
+%manifest %{name}.manifest
+%defattr(-,root,root,-)
+%{_libdir}/libpepper-keyrouter.so.*
+
+%files keyrouter-devel
+%manifest %{name}.manifest
+%defattr(-,root,root,-)
+%{_includedir}/pepper/keyrouter.h
+%{_includedir}/pepper/pepper-keyrouter.h
+%{_libdir}/pkgconfig/pepper-keyrouter.pc
+%{_libdir}/libpepper-keyrouter.so
 
 %files evdev
 %manifest %{name}.manifest
