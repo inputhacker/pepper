@@ -30,3 +30,4 @@ PEPPER_API void pepper_keyrouter_destroy(pepper_keyrouter_t *pepper_keyrouter);
 
 PEPPER_API void pepper_keyrouter_set_seat(pepper_keyrouter_t *pepper_keyrouter, pepper_seat_t *seat);
 PEPPER_API void pepper_keyrouter_key_process(pepper_keyrouter_t *pepper_keyrouter, unsigned int key, unsigned int state, unsigned int time);
+PEPPER_API void pepper_keyrouter_event_handler(pepper_event_listener_t *listener, pepper_object_t *object, uint32_t id, void *info, void *data);

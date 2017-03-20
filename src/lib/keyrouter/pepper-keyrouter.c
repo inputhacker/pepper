@@ -375,6 +375,24 @@ _pepper_keyrouter_cb_bind(struct wl_client *client, void *data, uint32_t version
 	pepper_list_insert(&pepper_keyrouter->resources, &rdata->link);
 }
 
+PEPPER_API void
+pepper_keyrouter_event_handler(pepper_event_listener_t *listener,
+                               pepper_object_t *object,
+                               uint32_t id, void *info, void *data)
+{
+	pepper_input_event_t *event;
+	pepper_keyrouter_t *pepper_keyrouter;
+
+	PEPPER_CHECK((id == PEPPER_EVENT_KEYBOARD_KEY),
+	             return, "%d event is not handled by keyrouter\n", id);
+	PEPPER_CHECK(info, return, "Invalid event\n");
+	PEPPER_CHECK(data, return, "Invalid data. Please insert pepper_keyrouter\n");
+
+	event = (pepper_input_event_t *)info;
+	pepper_keyrouter = (pepper_keyrouter_t *)data;
+	pepper_keyrouter_key_process(pepper_keyrouter, event->key, event->state, event->time);
+}
+
 PEPPER_API pepper_keyrouter_t *
 pepper_keyrouter_create(pepper_compositor_t *compositor)
 {
