@@ -1,9 +1,4 @@
 /*
-* Copyright © 2008-2012 Kristian Høgsberg
-* Copyright © 2010-2012 Intel Corporation
-* Copyright © 2011 Benjamin Franzke
-* Copyright © 2012 Collabora, Ltd.
-* Copyright © 2015 S-Core Corporation
 * Copyright © 2015-2017 Samsung Electronics co., Ltd. All Rights Reserved.
 *
 * Permission is hereby granted, free of charge, to any person obtaining a
@@ -26,295 +21,459 @@
 * DEALINGS IN THE SOFTWARE.
 */
 
-#include "pepper-keyrouter-internal.h"
+#include "pepper-keyrouter.h"
+#include "pepper-internal.h"
 
-static pepper_list_t *
-_pepper_keyrouter_grabbed_list_get(pepper_keyrouter_t *keyrouter,
-                                   keyrouter_grab_type_t type,
-                                   int keycode)
+#define MIN(a,b) ((a)<(b)?(a):(b))
+
+typedef struct resources_data resources_data_t;
+typedef struct grab_list_data grab_list_data_t;
+typedef struct ungrab_list_data ungrab_list_data_t;
+
+struct pepper_keyrouter
 {
-	PEPPER_CHECK(keyrouter, return NULL, "Invalid keyrouter\n");
+	struct wl_global *global;
+	struct wl_display *display;
+	pepper_compositor_t *compositor;
+	pepper_seat_t *seat;
 
-	switch(type)	{
-		case KEYROUTER_GRAB_TYPE_EXCLUSIVE:
-			return &keyrouter->hard_keys[keycode].grab.excl;
-		case KEYROUTER_GRAB_TYPE_OR_EXCLUSIVE:
-			return &keyrouter->hard_keys[keycode].grab.or_excl;
-		case KEYROUTER_GRAB_TYPE_TOP_POSITION:
-			return &keyrouter->hard_keys[keycode].grab.top;
-		case KEYROUTER_GRAB_TYPE_SHARED:
-			return &keyrouter->hard_keys[keycode].grab.shared;
-		default:
-			return NULL;
-	}
+	pepper_list_t resources;
+	pepper_list_t clients;
+
+	keyrouter_t *keyrouter;
+};
+
+struct resources_data
+{
+	struct wl_resource *resource;
+	pepper_list_t link;
+};
+
+struct clients_data
+{
+	struct wl_client *client;
+	pepper_list_t link;
+};
+
+struct grab_list_data
+{
+	int key;
+	int mode;
+	int err;
+};
+
+struct ungrab_list_data
+{
+	int key;
+	int err;
+};
+
+PEPPER_API void
+pepper_keyrouter_set_seat(pepper_keyrouter_t *pepper_keyrouter, pepper_seat_t *seat)
+{
+	PEPPER_CHECK(pepper_keyrouter, return, "Invalid pepper_keyrouter_t\n");
+	pepper_keyrouter->seat = seat;
 }
 
-static pepper_bool_t
-_pepper_keyrouter_list_duplicated_data_check(pepper_list_t *list, void *data)
+static void
+_pepper_keyrouter_key_send(pepper_keyrouter_t *pepper_keyrouter,
+                              pepper_seat_t *seat, struct wl_client *client,
+                              unsigned int key, unsigned int state,
+                              unsigned int time)
 {
-	keyrouter_key_info_t *info;
-	PEPPER_CHECK(list, return PEPPER_FALSE, "Invalid list\n");
-	if (pepper_list_empty(list)) return PEPPER_FALSE;
+	struct wl_resource *resource;
+	pepper_keyboard_t *keyboard_info;
 
-	pepper_list_for_each(info, list, link) {
-		if (info->data == data) return PEPPER_TRUE;
+	keyboard_info = pepper_seat_get_keyboard(seat);
+
+	wl_resource_for_each(resource, pepper_keyboard_get_resource_list(keyboard_info)) {
+		if (wl_resource_get_client(resource) == client)
+		{
+			wl_keyboard_send_key(resource, wl_display_get_serial(pepper_keyrouter->display), time, key, state);
+			PEPPER_TRACE("[%s] key : %d, state : %d, time : %d\n", __FUNCTION__, key, state, time);
+		}
 	}
-
-	return PEPPER_FALSE;
-}
-
-static pepper_bool_t
-_pepper_keyrouter_grabbed_check(pepper_keyrouter_t *keyrouter,
-                                keyrouter_grab_type_t type,
-                                int keycode,
-                                void *data)
-{
-	pepper_list_t *list = NULL;
-	pepper_bool_t res = PEPPER_FALSE;
-
-	list = _pepper_keyrouter_grabbed_list_get(keyrouter, type, keycode);
-	PEPPER_CHECK(list, return PEPPER_FALSE, "keycode(%d) had no list for type(%d)\n", keycode, type);
-
-	switch(type)	{
-		case KEYROUTER_GRAB_TYPE_EXCLUSIVE:
-			if (!pepper_list_empty(list))
-				return PEPPER_TRUE;
-			break;
-		case KEYROUTER_GRAB_TYPE_OR_EXCLUSIVE:
-			res = _pepper_keyrouter_list_duplicated_data_check(list, data);
-			break;
-		case KEYROUTER_GRAB_TYPE_TOP_POSITION:
-			res = _pepper_keyrouter_list_duplicated_data_check(list, data);
-			break;
-		case KEYROUTER_GRAB_TYPE_SHARED:
-			res = _pepper_keyrouter_list_duplicated_data_check(list, data);
-			break;
-		default:
-			res = KEYROUTER_ERROR_INVALID_MODE;
-			break;
-	}
-	return res;
 }
 
 PEPPER_API void
-pepper_keyrouter_print_list(pepper_keyrouter_t *keyrouter)
+pepper_keyrouter_key_process(pepper_keyrouter_t *pepper_keyrouter,
+                                unsigned int key, unsigned int state, unsigned int time)
 {
-	int i;
+	pepper_list_t delivery_list;
+	pepper_list_t *seat_list;
 	keyrouter_key_info_t *info;
+	int count = 0;
+	pepper_seat_t *seat;
 
-	for (i = 0; i < PEPPER_KEYROUTER_MAX_KEYS; i++) {
-		if (!keyrouter->hard_keys[i].keycode) continue;
+	pepper_list_init(&delivery_list);
+	count = keyrouter_key_process(pepper_keyrouter->keyrouter, key, state, &delivery_list);
 
-		fprintf(stderr, "[%d] ==============================\n", i);
-		if (!pepper_list_empty(&keyrouter->hard_keys[i].grab.excl)) {
-			fprintf(stderr, "\t[exclusive]\n");
-			pepper_list_for_each(info, &keyrouter->hard_keys[i].grab.excl, link) {
-				fprintf(stderr, "\t\t -> data: %p\n", info->data);
+	if (count > 0) {
+		pepper_list_for_each(info, &delivery_list, link) {
+			if (pepper_keyrouter->seat && pepper_object_get_type((pepper_object_t *)pepper_keyrouter->seat) == PEPPER_OBJECT_SEAT) {
+				_pepper_keyrouter_key_send(pepper_keyrouter, pepper_keyrouter->seat, (struct wl_client *)info->data, key, state, time);
 			}
-		}
-
-		if (!pepper_list_empty(&keyrouter->hard_keys[i].grab.or_excl)) {
-			fprintf(stderr, "\t[or_exclusive]\n");
-			pepper_list_for_each(info, &keyrouter->hard_keys[i].grab.or_excl, link) {
-				fprintf(stderr, "\t\t -> data: %p\n", info->data);
-			}
-		}
-
-		if (!pepper_list_empty(&keyrouter->hard_keys[i].grab.top)) {
-			fprintf(stderr, "\t[top position]\n");
-			pepper_list_for_each(info, &keyrouter->hard_keys[i].grab.top, link) {
-				fprintf(stderr, "\t\t -> data: %p\n", info->data);
-			}
-		}
-
-		if (!pepper_list_empty(&keyrouter->hard_keys[i].grab.shared)) {
-			fprintf(stderr, "\t[shared]\n");
-			pepper_list_for_each(info, &keyrouter->hard_keys[i].grab.shared, link) {
-				fprintf(stderr, "\t\t -> data: %p\n", info->data);
+			else {
+				seat_list = (pepper_list_t *)pepper_compositor_get_seat_list(pepper_keyrouter->compositor);
+				if (!pepper_list_empty(seat_list)) {
+					pepper_list_for_each(seat, seat_list, link) {
+						_pepper_keyrouter_key_send(pepper_keyrouter, seat, (struct wl_client *)info->data, key, state, time);
+					}
+				}
 			}
 		}
 	}
 }
 
-PEPPER_API int
-pepper_keyrouter_key_process(pepper_keyrouter_t *keyrouter,
-                             int keycode, int pressed, pepper_list_t *delivery_list)
+static void
+_pepper_keyrouter_remove_client_from_list(pepper_keyrouter_t *pepper_keyrouter, struct wl_client *client)
 {
-	keyrouter_key_info_t *info, *delivery;
+	int i;
+	for (i = 0; i < KEYROUTER_MAX_KEYS; i++) {
+		keyrouter_ungrab_key(pepper_keyrouter->keyrouter,
+	                           TIZEN_KEYROUTER_MODE_EXCLUSIVE,
+	                           i, (void *)client);
+		keyrouter_ungrab_key(pepper_keyrouter->keyrouter,
+	                           TIZEN_KEYROUTER_MODE_OVERRIDABLE_EXCLUSIVE,
+	                           i, (void *)client);
+		keyrouter_ungrab_key(pepper_keyrouter->keyrouter,
+	                           TIZEN_KEYROUTER_MODE_TOPMOST,
+	                           i, (void *)client);
+		keyrouter_ungrab_key(pepper_keyrouter->keyrouter,
+	                           TIZEN_KEYROUTER_MODE_SHARED,
+	                           i, (void *)client);
+	}
+}
+
+static void
+_pepper_keyrouter_cb_keygrab_set(struct wl_client *client,
+                                         struct wl_resource *resource,
+                                         struct wl_resource *surface,
+                                         uint32_t key,
+                                         uint32_t mode)
+{
+	int res = TIZEN_KEYROUTER_ERROR_NONE;
+	pepper_keyrouter_t *pepper_keyrouter = NULL;
+
+	pepper_keyrouter = (pepper_keyrouter_t *)wl_resource_get_user_data(resource);
+	PEPPER_CHECK(pepper_keyrouter, goto notify, "Invalid pepper_keyrouter_t\n");
+
+	res = keyrouter_grab_key(pepper_keyrouter->keyrouter, mode, key, (void *)client);
+
+notify:
+	tizen_keyrouter_send_keygrab_notify(resource, surface, key, mode, res);
+}
+
+static void
+_pepper_keyrouter_cb_keygrab_unset(struct wl_client *client,
+                                           struct wl_resource *resource,
+                                           struct wl_resource *surface,
+                                           uint32_t key)
+{
+	pepper_keyrouter_t *pepper_keyrouter = NULL;
+
+	pepper_keyrouter = (pepper_keyrouter_t *)wl_resource_get_user_data(resource);
+	PEPPER_CHECK(pepper_keyrouter, goto notify, "Invalid pepper_keyrouter_t\n");
+
+	keyrouter_ungrab_key(pepper_keyrouter->keyrouter,
+	                           TIZEN_KEYROUTER_MODE_EXCLUSIVE,
+	                           key, (void *)client);
+	keyrouter_ungrab_key(pepper_keyrouter->keyrouter,
+	                           TIZEN_KEYROUTER_MODE_OVERRIDABLE_EXCLUSIVE,
+	                           key, (void *)client);
+	keyrouter_ungrab_key(pepper_keyrouter->keyrouter,
+	                           TIZEN_KEYROUTER_MODE_TOPMOST,
+	                           key, (void *)client);
+	keyrouter_ungrab_key(pepper_keyrouter->keyrouter,
+	                           TIZEN_KEYROUTER_MODE_SHARED,
+	                           key, (void *)client);
+
+notify:
+	tizen_keyrouter_send_keygrab_notify(resource, surface, key, TIZEN_KEYROUTER_MODE_NONE, TIZEN_KEYROUTER_ERROR_NONE);
+}
+
+static void
+_pepper_keyrouter_cb_get_keygrab_status(struct wl_client *client,
+                                                struct wl_resource *resource,
+                                                struct wl_resource *surface,
+                                                uint32_t key)
+{
+	tizen_keyrouter_send_keygrab_notify(resource, surface, key, TIZEN_KEYROUTER_MODE_NONE, TIZEN_KEYROUTER_ERROR_NO_PERMISSION);
+}
+
+static int
+_pepper_keyrouter_array_length(const struct wl_array *array)
+{
+	int *data = NULL;
 	int count = 0;
 
-	PEPPER_CHECK(keyrouter, return KEYROUTER_ERROR_INVALID_MODE, "Invalid keyrouter\n");
-	PEPPER_CHECK(0 < keycode || keycode < PEPPER_KEYROUTER_MAX_KEYS,
-	             return KEYROUTER_ERROR_INVALID_MODE, "Invalid keycode(%d)\n", keycode);
-	PEPPER_CHECK(delivery_list, return KEYROUTER_ERROR_INVALID_MODE, "Invalid delivery list\n");
-
-	if (!pepper_list_empty(&keyrouter->hard_keys[keycode].grab.excl)) {
-		pepper_list_for_each(info, &keyrouter->hard_keys[keycode].grab.excl, link) {
-			delivery = (keyrouter_key_info_t *)calloc(1, sizeof(keyrouter_key_info_t));
-			delivery->data = info->data;
-			pepper_list_insert(delivery_list, &delivery->link);
-			return 1;
-		}
-	}
-	else if (!pepper_list_empty(&keyrouter->hard_keys[keycode].grab.or_excl)) {
-		pepper_list_for_each(info, &keyrouter->hard_keys[keycode].grab.or_excl, link) {
-			delivery = (keyrouter_key_info_t *)calloc(1, sizeof(keyrouter_key_info_t));
-			delivery->data = info->data;
-			pepper_list_insert(delivery_list, &delivery->link);
-			return 1;
-		}
-	}
-	else if (!pepper_list_empty(&keyrouter->hard_keys[keycode].grab.top)) {
-		/* Not supported yet */
-		return 0;
-	}
-	else if (!pepper_list_empty(&keyrouter->hard_keys[keycode].grab.shared)) {
-		pepper_list_for_each(info, &keyrouter->hard_keys[keycode].grab.shared, link) {
-			delivery = (keyrouter_key_info_t *)calloc(1, sizeof(keyrouter_key_info_t));
-			delivery->data = info->data;
-			pepper_list_insert(delivery_list, &delivery->link);
-			count++;
-		}
+	wl_array_for_each(data, array) {
+		count++;
 	}
 
 	return count;
 }
 
-
-PEPPER_API keyrouter_error_t
-pepper_keyrouter_grab_key(pepper_keyrouter_t *keyrouter,
-                          keyrouter_grab_type_t type,
-                          int keycode,
-                          void *data)
+static void
+_pepper_keyrouter_cb_keygrab_set_list(struct wl_client *client,
+                                              struct wl_resource *resource,
+                                              struct wl_resource *surface,
+                                              struct wl_array *grab_list)
 {
-	keyrouter_key_info_t *info = NULL;
-	pepper_list_t *list = NULL;
+	struct wl_array *return_list = NULL;
+	grab_list_data_t *grab_data = NULL;
+	int res = TIZEN_KEYROUTER_ERROR_NONE;
+	pepper_keyrouter_t *pepper_keyrouter = NULL;
 
-	PEPPER_CHECK(keyrouter, return KEYROUTER_ERROR_INVALID_MODE, "Invalid keyrouter\n");
-	PEPPER_CHECK(0 < keycode || keycode < PEPPER_KEYROUTER_MAX_KEYS,
-	             return KEYROUTER_ERROR_INVALID_MODE, "Invalid keycode(%d)\n", keycode);
+	pepper_keyrouter = (pepper_keyrouter_t *)wl_resource_get_user_data(resource);
 
-	if (_pepper_keyrouter_grabbed_check(keyrouter, type, keycode, data))
-		return KEYROUTER_ERROR_GRABBED_ALREADY;
+	PEPPER_CHECK(pepper_keyrouter, goto notify, "Invalid pepper_keyrouter_t\n");
+	PEPPER_CHECK(grab_list, goto notify, "Please send valid grab_list\n");
+	PEPPER_CHECK(((_pepper_keyrouter_array_length(grab_list) %3) == 0), goto notify,
+	             "Invalid keycode and grab mode pair. Check arguments in a list\n");
 
-	info = (keyrouter_key_info_t *)calloc(1, sizeof(keyrouter_key_info_t));
-	info->data = data;
-	pepper_list_init(&info->link);
+	wl_array_for_each(grab_data, grab_list) {
+		res = keyrouter_grab_key(pepper_keyrouter->keyrouter, grab_data->mode, grab_data->key, (void *)client);
+		grab_data->err = res;
+	}
 
-	list = _pepper_keyrouter_grabbed_list_get(keyrouter, type, keycode);
-
-	if (!keyrouter->hard_keys[keycode].keycode)
-		keyrouter->hard_keys[keycode].keycode = keycode;
-	pepper_list_insert(list, &info->link);
-
-	return KEYROUTER_ERROR_NONE;
+	return_list = grab_list;
+notify:
+	tizen_keyrouter_send_keygrab_notify_list(resource, surface, return_list);
 }
 
 static void
-_pepper_keyrouter_list_remove_data(pepper_list_t *list,
-                                void *data)
+_pepper_keyrouter_cb_keygrab_unset_list(struct wl_client *client,
+                                                struct wl_resource *resource,
+                                                struct wl_resource *surface,
+                                                struct wl_array *ungrab_list)
 {
-	keyrouter_key_info_t *info, *tmp;
+	struct wl_array *return_list = NULL;
+	ungrab_list_data_t *ungrab_data = NULL;
+	pepper_keyrouter_t *pepper_keyrouter = NULL;
+
+	pepper_keyrouter = (pepper_keyrouter_t *)wl_resource_get_user_data(resource);
+
+	PEPPER_CHECK(pepper_keyrouter, goto notify, "Invalid pepper_keyrouter_t\n");
+	PEPPER_CHECK(((_pepper_keyrouter_array_length(ungrab_list) %3) == 0), goto notify,
+	             "Invalid keycode and grab mode pair. Check arguments in a list\n");
+
+	wl_array_for_each(ungrab_data, ungrab_list) {
+		keyrouter_ungrab_key(pepper_keyrouter->keyrouter,
+		                            TIZEN_KEYROUTER_MODE_EXCLUSIVE,
+		                            ungrab_data->key, (void *)client);
+		keyrouter_ungrab_key(pepper_keyrouter->keyrouter,
+		                            TIZEN_KEYROUTER_MODE_OVERRIDABLE_EXCLUSIVE,
+		                            ungrab_data->key, (void *)client);
+		keyrouter_ungrab_key(pepper_keyrouter->keyrouter,
+		                            TIZEN_KEYROUTER_MODE_TOPMOST,
+		                            ungrab_data->key, (void *)client);
+		keyrouter_ungrab_key(pepper_keyrouter->keyrouter,
+		                            TIZEN_KEYROUTER_MODE_SHARED,
+		                            ungrab_data->key, (void *)client);
+
+		ungrab_data->err = TIZEN_KEYROUTER_ERROR_NONE;;
+	}
+
+	return_list = ungrab_list;
+notify:
+	tizen_keyrouter_send_keygrab_notify_list(resource, surface, return_list);
+}
+
+static void
+_pepper_keyrouter_cb_get_keygrab_list(struct wl_client *client,
+                                              struct wl_resource *resource,
+                                              struct wl_resource *surface)
+{
+	tizen_keyrouter_send_getgrab_notify_list(resource, surface, NULL);
+}
+
+static void
+_pepper_keyrouter_cb_set_register_none_key(struct wl_client *client,
+                                                   struct wl_resource *resource,
+                                                   struct wl_resource *surface,
+                                                   uint32_t data)
+{
+	tizen_keyrouter_send_set_register_none_key_notify(resource, NULL, 0);
+}
+
+static void
+_pepper_keyrouter_cb_get_keyregister_status(struct wl_client *client,
+                                                    struct wl_resource *resource,
+                                                    uint32_t key)
+{
+	tizen_keyrouter_send_keyregister_notify(resource, (int)PEPPER_FALSE);
+}
+
+static void
+_pepper_keyrouter_cb_set_input_config(struct wl_client *client,
+                                              struct wl_resource *resource,
+                                              struct wl_resource *surface,
+                                              uint32_t config_mode,
+                                              uint32_t value)
+{
+	tizen_keyrouter_send_set_input_config_notify(resource, (int)PEPPER_FALSE);
+}
+
+static const struct tizen_keyrouter_interface _pepper_keyrouter_implementation = {
+   _pepper_keyrouter_cb_keygrab_set,
+   _pepper_keyrouter_cb_keygrab_unset,
+   _pepper_keyrouter_cb_get_keygrab_status,
+   _pepper_keyrouter_cb_keygrab_set_list,
+   _pepper_keyrouter_cb_keygrab_unset_list,
+   _pepper_keyrouter_cb_get_keygrab_list,
+   _pepper_keyrouter_cb_set_register_none_key,
+   _pepper_keyrouter_cb_get_keyregister_status,
+   _pepper_keyrouter_cb_set_input_config
+};
+
+/* tizen_keyrouter global object destroy function */
+static void
+_pepper_keyrouter_cb_destory(struct wl_resource *resource)
+{
+	resources_data_t *data, *tmp;
+	pepper_list_t *list;
+	struct wl_client *client;
+	pepper_keyrouter_t *pepper_keyrouter;
+
+	PEPPER_CHECK(resource, return, "Invalid keyrouter resource\n");
+	client = wl_resource_get_client(resource);
+	PEPPER_CHECK(client, return, "Invalid client\n");
+	pepper_keyrouter = wl_resource_get_user_data(resource);
+	PEPPER_CHECK(pepper_keyrouter, return, "Invalid pepper_keyrouter_t\n");
+
+	_pepper_keyrouter_remove_client_from_list(pepper_keyrouter, client);
+
+	list = &pepper_keyrouter->resources;
 
 	if (pepper_list_empty(list))
 		return;
 
-	pepper_list_for_each_safe(info ,tmp, list, link) {
-		if (info->data == data) {
-			pepper_list_remove(&info->link);
-			free(info);
+	pepper_list_for_each_safe(data, tmp, list, link) {
+		if (data->resource== resource) {
+			pepper_list_remove(&data->link);
+			free(data);
 		}
 	}
 }
 
-PEPPER_API void
-pepper_keyrouter_ungrab_key(pepper_keyrouter_t *keyrouter,
-                            keyrouter_grab_type_t type, int keycode, void *data)
+/* tizen_keyrouter global object bind function */
+static void
+_pepper_keyrouter_cb_bind(struct wl_client *client, void *data, uint32_t version, uint32_t id)
 {
-	pepper_list_t *list;
+	struct wl_resource *resource;
+	resources_data_t *rdata;
+	pepper_keyrouter_t *pepper_keyrouter;
 
-	PEPPER_CHECK(keyrouter, return, "Invalid keyrouter\n");
-	PEPPER_CHECK(0 < keycode || keycode < PEPPER_KEYROUTER_MAX_KEYS,
-	             return, "Invalid keycode(%d)\n", keycode);
+	pepper_keyrouter = (pepper_keyrouter_t *)data;
+	PEPPER_CHECK(client, return, "Invalid client\n");
+	PEPPER_CHECK(pepper_keyrouter, return, "Invalid pepper_keyrouter_t\n");
 
-	if (!keyrouter->hard_keys[keycode].keycode) return;
+	resource = wl_resource_create(client, &tizen_keyrouter_interface, MIN(version, 1), id);
+	if (!resource) {
+		PEPPER_ERROR("Failed to create resource ! (version :%d, id:%d)", version, id);
+		wl_client_post_no_memory(client);
+		return;
+	}
 
-	list = _pepper_keyrouter_grabbed_list_get(keyrouter, type, keycode);
-	PEPPER_CHECK(list, return, "keycode(%d) had no list for type(%d)\n", keycode, type);
+	wl_resource_set_implementation(resource, &_pepper_keyrouter_implementation,
+	                               pepper_keyrouter, _pepper_keyrouter_cb_destory);
 
-	_pepper_keyrouter_list_remove_data(list, data);
+	rdata = (resources_data_t *)calloc(1, sizeof(resources_data_t));
+	rdata->resource = resource;
+	pepper_list_init(&rdata->link);
+
+	pepper_list_insert(&pepper_keyrouter->resources, &rdata->link);
+}
+
+PEPPER_API void
+pepper_keyrouter_event_handler(pepper_event_listener_t *listener,
+                               pepper_object_t *object,
+                               uint32_t id, void *info, void *data)
+{
+	pepper_input_event_t *event;
+	pepper_keyrouter_t *pepper_keyrouter;
+
+	PEPPER_CHECK((id == PEPPER_EVENT_KEYBOARD_KEY),
+	             return, "%d event is not handled by keyrouter\n", id);
+	PEPPER_CHECK(info, return, "Invalid event\n");
+	PEPPER_CHECK(data, return, "Invalid data. Please insert pepper_keyrouter\n");
+
+	event = (pepper_input_event_t *)info;
+	pepper_keyrouter = (pepper_keyrouter_t *)data;
+	pepper_keyrouter_key_process(pepper_keyrouter, event->key, event->state, event->time);
+}
+
+PEPPER_API void
+pepper_keyrouter_grab_print(pepper_keyrouter_t *pepper_keyrouter)
+{
+	PEPPER_CHECK(pepper_keyrouter, return, "Wayland Keyrouter is not initialized\n");
+	PEPPER_CHECK(pepper_keyrouter->keyrouter, return, "Keyrouter is not initialized\n");
+
+	keyrouter_print_list(pepper_keyrouter->keyrouter);
 }
 
 PEPPER_API pepper_keyrouter_t *
-pepper_keyrouter_create(void)
+pepper_keyrouter_create(pepper_compositor_t *compositor)
 {
-	pepper_keyrouter_t *keyrouter = NULL;
-	int i;
+	struct wl_display *display = NULL;
+	struct wl_global *global = NULL;
+	pepper_keyrouter_t *pepper_keyrouter;
 
-	keyrouter = (pepper_keyrouter_t *)calloc(1, sizeof(pepper_keyrouter_t));
-	PEPPER_CHECK(keyrouter, return NULL, "keyrouter allocation failed.\n");
+	PEPPER_CHECK(compositor, return PEPPER_FALSE, "Invalid compositor\n");
 
-	/* FIXME: Who defined max keycode? */
-	keyrouter->hard_keys = (keyrouter_grabbed_t *)calloc(PEPPER_KEYROUTER_MAX_KEYS, sizeof(keyrouter_grabbed_t));
-	PEPPER_CHECK(keyrouter->hard_keys, goto alloc_failed, "keyrouter allocation failed.\n");
+	display = pepper_compositor_get_display(compositor);
+	PEPPER_CHECK(display, return PEPPER_FALSE, "Failed to get wl_display from compositor\n");
 
-	for (i = 0; i < PEPPER_KEYROUTER_MAX_KEYS; i++) {
-		/* Enable all of keys to grab */
-		//keyrouter->hard_keys[i].keycode = i;
-		pepper_list_init(&keyrouter->hard_keys[i].grab.excl);
-		pepper_list_init(&keyrouter->hard_keys[i].grab.or_excl);
-		pepper_list_init(&keyrouter->hard_keys[i].grab.top);
-		pepper_list_init(&keyrouter->hard_keys[i].grab.shared);
-		pepper_list_init(&keyrouter->hard_keys[i].grab.pressed);
+	pepper_keyrouter = (pepper_keyrouter_t *)calloc(1, sizeof(pepper_keyrouter_t));
+	PEPPER_CHECK(pepper_keyrouter, return PEPPER_FALSE, "Failed to allocate memory for keyrouter\n");
+	pepper_keyrouter->display = display;
+	pepper_keyrouter->compositor = compositor;
+
+	pepper_list_init(&pepper_keyrouter->resources);
+	pepper_list_init(&pepper_keyrouter->clients);
+
+	global = wl_global_create(display, &tizen_keyrouter_interface, 1, pepper_keyrouter, _pepper_keyrouter_cb_bind);
+	PEPPER_CHECK(global, goto failed, "Failed to create wl_global for tizen_keyrouter\n");
+
+	pepper_keyrouter->keyrouter = keyrouter_create();
+	PEPPER_CHECK(pepper_keyrouter->keyrouter, goto failed, "Failed to create keyrouter\n");
+
+	return pepper_keyrouter;
+
+failed:
+	if (pepper_keyrouter) {
+		if (pepper_keyrouter->keyrouter) {
+			keyrouter_destroy(pepper_keyrouter->keyrouter);
+			pepper_keyrouter->keyrouter = NULL;
+		}
+		free(pepper_keyrouter);
 	}
 
-	return keyrouter;
-
-alloc_failed:
-	if (keyrouter) {
-		free(keyrouter);
-		keyrouter = NULL;
-	}
-	if (keyrouter->hard_keys) {
-		free(keyrouter->hard_keys);
-		keyrouter->hard_keys = NULL;
-	}
 	return NULL;
 }
 
-static void
-_pepper_keyrouter_list_free(pepper_list_t *list)
-{
-	keyrouter_key_info_t *info, *tmp;
-
-	if (pepper_list_empty(list)) return;
-
-	pepper_list_for_each_safe(info, tmp, list, link) {
-		pepper_list_remove(&info->link);
-		free(info);
-		info = NULL;
-	}
-	list = NULL;
-}
-
 PEPPER_API void
-pepper_keyrouter_destroy(pepper_keyrouter_t *keyrouter)
+pepper_keyrouter_destroy(pepper_keyrouter_t *pepper_keyrouter)
 {
-	int i;
+	resources_data_t *rdata, *rtmp;
 
-	PEPPER_CHECK(keyrouter, return, "Invalid keyrouter resource.\n");
-	PEPPER_CHECK(keyrouter->hard_keys, return, "Invalid keyrouter resource.\n");
+	PEPPER_CHECK(pepper_keyrouter, return, "Pepper keyrouter is not initialized\n");
 
-	for (i = 0; i < PEPPER_KEYROUTER_MAX_KEYS; i++) {
-		_pepper_keyrouter_list_free(&keyrouter->hard_keys[i].grab.excl);
-		_pepper_keyrouter_list_free(&keyrouter->hard_keys[i].grab.or_excl);
-		_pepper_keyrouter_list_free(&keyrouter->hard_keys[i].grab.top);
-		_pepper_keyrouter_list_free(&keyrouter->hard_keys[i].grab.shared);
-		_pepper_keyrouter_list_free(&keyrouter->hard_keys[i].grab.pressed);
+	pepper_list_for_each_safe(rdata, rtmp, &pepper_keyrouter->resources, link) {
+		wl_resource_destroy(rdata->resource);
+		pepper_list_remove(&rdata->link);
+		free(rdata);
 	}
 
-	free(keyrouter->hard_keys);
-	keyrouter->hard_keys = NULL;
-	free(keyrouter);
-	keyrouter = NULL;
+	if (pepper_keyrouter->keyrouter) {
+		keyrouter_destroy(pepper_keyrouter->keyrouter);
+		pepper_keyrouter->keyrouter = NULL;
+	}
+
+	if (pepper_keyrouter->global)
+		wl_global_destroy(pepper_keyrouter->global);
+
+	free(pepper_keyrouter);
+	pepper_keyrouter = NULL;
 }

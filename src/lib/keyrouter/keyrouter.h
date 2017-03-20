@@ -1,9 +1,4 @@
 /*
-* Copyright © 2008-2012 Kristian Høgsberg
-* Copyright © 2010-2012 Intel Corporation
-* Copyright © 2011 Benjamin Franzke
-* Copyright © 2012 Collabora, Ltd.
-* Copyright © 2015 S-Core Corporation
 * Copyright © 2015-2017 Samsung Electronics co., Ltd. All Rights Reserved.
 *
 * Permission is hereby granted, free of charge, to any person obtaining a
@@ -26,14 +21,37 @@
 * DEALINGS IN THE SOFTWARE.
 */
 
-#include "pepper-keyrouter.h"
+#ifndef KEYROUTER_H
+#define KEYROUTER_H
 
-typedef struct pepper_keyrouter_wl pepper_keyrouter_wl_t;
+#include <pepper.h>
+#include <tizen-extension-server-protocol.h>
 
-PEPPER_API void pepper_keyrouter_wl_set_seat(pepper_keyrouter_wl_t *keyrouter_wl, pepper_seat_t *seat);
-PEPPER_API pepper_keyrouter_wl_t *pepper_keyrouter_wl_init(pepper_compositor_t *compositor);
-PEPPER_API void pepper_keyrouter_wl_deinit(pepper_keyrouter_wl_t *keyrouter_wl);
-PEPPER_API void pepper_keyrouter_wl_event_handler(pepper_event_listener_t *listener, pepper_object_t *object, uint32_t id, void *info, void *data);
-PEPPER_API void pepper_keyrouter_wl_key_process(pepper_keyrouter_wl_t *keyrouter_wl, unsigned int key, unsigned int state, unsigned int time);
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-PEPPER_API void pepper_keyrouter_wl_grab_print(pepper_keyrouter_wl_t *keyrouter_wl);
+#define KEYROUTER_MAX_KEYS 512
+
+typedef struct keyrouter keyrouter_t;
+typedef struct keyrouter_key_info keyrouter_key_info_t;
+
+struct keyrouter_key_info
+{
+	void *data;
+	pepper_list_t link;
+};
+
+PEPPER_API keyrouter_t *keyrouter_create(void);
+PEPPER_API void keyrouter_destroy(keyrouter_t *keyrouter);
+PEPPER_API int keyrouter_grab_key(keyrouter_t *keyrouter, int type, int keycode, void *data);
+PEPPER_API void keyrouter_ungrab_key(keyrouter_t *keyrouter, int type, int keycode, void *data);
+PEPPER_API int keyrouter_key_process(keyrouter_t *keyrouter, int keycode, int pressed, pepper_list_t *delivery_list);
+
+PEPPER_API void keyrouter_print_list(keyrouter_t *keyrouter);
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* KEYROUTER_H */
+

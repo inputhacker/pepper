@@ -1,9 +1,4 @@
 /*
-* Copyright © 2008-2012 Kristian Høgsberg
-* Copyright © 2010-2012 Intel Corporation
-* Copyright © 2011 Benjamin Franzke
-* Copyright © 2012 Collabora, Ltd.
-* Copyright © 2015 S-Core Corporation
 * Copyright © 2015-2017 Samsung Electronics co., Ltd. All Rights Reserved.
 *
 * Permission is hereby granted, free of charge, to any person obtaining a
@@ -26,56 +21,15 @@
 * DEALINGS IN THE SOFTWARE.
 */
 
-#ifndef PEPPER_KEYROUTER_H
-#define PEPPER_KEYROUTER_H
-
-#include <pepper.h>
-#include <tizen-extension-server-protocol.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#define PEPPER_KEYROUTER_MAX_KEYS 512
+#include "keyrouter.h"
 
 typedef struct pepper_keyrouter pepper_keyrouter_t;
-typedef struct keyrouter_key_info keyrouter_key_info_t;
 
-typedef enum keyrouter_grab_type {
-	KEYROUTER_GRAB_TYPE_NONE,
-	KEYROUTER_GRAB_TYPE_SHARED,
-	KEYROUTER_GRAB_TYPE_TOP_POSITION,
-	KEYROUTER_GRAB_TYPE_OR_EXCLUSIVE,
-	KEYROUTER_GRAB_TYPE_EXCLUSIVE,
-	KEYROUTER_GRAB_TYPE_REGISTERD
-} keyrouter_grab_type_t;
+PEPPER_API pepper_keyrouter_t *pepper_keyrouter_create(pepper_compositor_t *compositor);
+PEPPER_API void pepper_keyrouter_destroy(pepper_keyrouter_t *pepper_keyrouter);
+PEPPER_API void pepper_keyrouter_event_handler(pepper_event_listener_t *listener, pepper_object_t *object, uint32_t id, void *info, void *data);
+PEPPER_API void pepper_keyrouter_key_process(pepper_keyrouter_t *pepper_keyrouter, unsigned int key, unsigned int state, unsigned int time);
 
-typedef enum keyrouter_error {
-	KEYROUTER_ERROR_NONE,
-	KEYROUTER_ERROR_INVALID_SURFACE,
-	KEYROUTER_ERROR_INVALID_KEY,
-	KEYROUTER_ERROR_INVALID_MODE,
-	KEYROUTER_ERROR_GRABBED_ALREADY,
-	KEYROUTER_ERROR_NO_PERMISSION,
-	KEYROUTER_ERROR_NO_SYSTEM_RESOURCES
-} keyrouter_error_t;
+PEPPER_API void pepper_keyrouter_set_seat(pepper_keyrouter_t *pepper_keyrouter, pepper_seat_t *seat);
 
-struct keyrouter_key_info
-{
-	void *data;
-	pepper_list_t link;
-};
-
-PEPPER_API pepper_keyrouter_t *pepper_keyrouter_create(void);
-PEPPER_API void pepper_keyrouter_destroy(pepper_keyrouter_t *keyrouter);
-PEPPER_API keyrouter_error_t pepper_keyrouter_grab_key(pepper_keyrouter_t *keyrouter, keyrouter_grab_type_t type, int keycode, void *data);
-PEPPER_API void pepper_keyrouter_ungrab_key(pepper_keyrouter_t *keyrouter, keyrouter_grab_type_t type, int keycode, void *data);
-PEPPER_API int pepper_keyrouter_key_process(pepper_keyrouter_t *keyrouter, int keycode, int pressed, pepper_list_t *delivery_list);
-
-PEPPER_API void pepper_keyrouter_print_list(pepper_keyrouter_t *keyrouter);
-#ifdef __cplusplus
-}
-#endif
-
-#endif /* PEPPER_KEYROUTER_H */
-
+PEPPER_API void pepper_keyrouter_grab_print(pepper_keyrouter_t *pepper_keyrouter);

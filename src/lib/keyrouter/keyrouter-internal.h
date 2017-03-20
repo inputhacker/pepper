@@ -1,9 +1,4 @@
 /*
-* Copyright © 2008-2012 Kristian Høgsberg
-* Copyright © 2010-2012 Intel Corporation
-* Copyright © 2011 Benjamin Franzke
-* Copyright © 2012 Collabora, Ltd.
-* Copyright © 2015 S-Core Corporation
 * Copyright © 2015-2017 Samsung Electronics co., Ltd. All Rights Reserved.
 *
 * Permission is hereby granted, free of charge, to any person obtaining a
@@ -32,11 +27,11 @@
 #include <unistd.h>
 #include <config.h>
 
-#include "pepper-keyrouter.h"
+#include "keyrouter.h"
 
 typedef struct keyrouter_grabbed keyrouter_grabbed_t;
 
-struct pepper_keyrouter {
+struct keyrouter {
 	pepper_compositor_t        *compositor;
 	keyrouter_grabbed_t *hard_keys;
 };

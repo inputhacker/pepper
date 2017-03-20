@@ -1,5 +1,5 @@
 /*
-* Copyright © 2017 Samsung Electronics co., Ltd. All Rights Reserved.
+* Copyright © 2015-2017 Samsung Electronics co., Ltd. All Rights Reserved.
 *
 * Permission is hereby granted, free of charge, to any person obtaining a
 * copy of this software and associated documentation files (the "Software"),
@@ -24,7 +24,7 @@
 #include "server.h"
 #include <dlfcn.h>
 #include <pepper-input-backend.h>
-#include <pepper-keyrouter-wayland.h>
+#include <pepper-keyrouter.h>
 
 /* pepper object event listeners */
 pepper_event_listener_t *seat_add_listener = NULL;
@@ -50,7 +50,7 @@ _handle_keyboard_add_event(pepper_event_listener_t    *listener,
 {
 	pepper_keyboard_t *keyboard = (pepper_keyboard_t *)info;
 	pepper_headless_t *headless = (pepper_headless_t *)data;
-	pepper_keyrouter_wl_t *keyrouter = NULL;
+	pepper_keyrouter_t *keyrouter = NULL;
 
 	PEPPER_TRACE("[%s] keyboard added\n", __FUNCTION__);
 
@@ -59,7 +59,7 @@ _handle_keyboard_add_event(pepper_event_listener_t    *listener,
 	pepper_keyboard_set_keymap_info(keyboard, WL_KEYBOARD_KEYMAP_FORMAT_NO_KEYMAP, -1, 0);
 	keyboard_event_listener = pepper_object_add_event_listener((pepper_object_t *)keyboard,
 									PEPPER_EVENT_KEYBOARD_KEY, 0,
-									pepper_keyrouter_wl_event_handler,
+									pepper_keyrouter_event_handler,
 									(void *)keyrouter);
 }
 
@@ -195,7 +195,7 @@ headless_input_init(pepper_headless_t *headless)
 
 
 	/* pepper keyrouter initialization */
-	headless->keyrouter = pepper_keyrouter_wl_init(compositor);
+	headless->keyrouter = pepper_keyrouter_create(compositor);
 	if (!headless->keyrouter)
 	{
 		PEPPER_ERROR("Failed on initializing pepper keyrouter...\n");
@@ -274,7 +274,7 @@ headless_input_shutdown(pepper_headless_t *headless)
 	pepper_input_device_destroy(headless->input_device);
 	pepper_seat_destroy(headless->seat);
 
-	pepper_keyrouter_wl_deinit(headless->keyrouter);
+	pepper_keyrouter_destroy(headless->keyrouter);
 
 	return 0;
 }
