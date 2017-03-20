@@ -23,6 +23,138 @@
 
 #include "keyrouter-internal.h"
 
+static pepper_list_t *
+_keyrouter_grabbed_list_get(keyrouter_t *keyrouter,
+                                   int type,
+                                   int keycode)
+{
+	PEPPER_CHECK(keyrouter, return NULL, "Invalid keyrouter\n");
+
+	switch(type)	{
+		case TIZEN_KEYROUTER_MODE_EXCLUSIVE:
+			return &keyrouter->hard_keys[keycode].grab.excl;
+		case TIZEN_KEYROUTER_MODE_OVERRIDABLE_EXCLUSIVE:
+			return &keyrouter->hard_keys[keycode].grab.or_excl;
+		case TIZEN_KEYROUTER_MODE_TOPMOST:
+			return &keyrouter->hard_keys[keycode].grab.top;
+		case TIZEN_KEYROUTER_MODE_SHARED:
+			return &keyrouter->hard_keys[keycode].grab.shared;
+		default:
+			return NULL;
+	}
+}
+
+static pepper_bool_t
+_keyrouter_list_duplicated_data_check(pepper_list_t *list, void *data)
+{
+	keyrouter_key_info_t *info;
+	PEPPER_CHECK(list, return PEPPER_FALSE, "Invalid list\n");
+	if (pepper_list_empty(list)) return PEPPER_FALSE;
+
+	pepper_list_for_each(info, list, link) {
+		if (info->data == data) return PEPPER_TRUE;
+	}
+
+	return PEPPER_FALSE;
+}
+
+static pepper_bool_t
+_keyrouter_grabbed_check(keyrouter_t *keyrouter,
+                                int type,
+                                int keycode,
+                                void *data)
+{
+	pepper_list_t *list = NULL;
+	pepper_bool_t res = PEPPER_FALSE;
+
+	list = _keyrouter_grabbed_list_get(keyrouter, type, keycode);
+	PEPPER_CHECK(list, return PEPPER_FALSE, "keycode(%d) had no list for type(%d)\n", keycode, type);
+
+	switch(type)	{
+		case TIZEN_KEYROUTER_MODE_EXCLUSIVE:
+			if (!pepper_list_empty(list))
+				return PEPPER_TRUE;
+			break;
+		case TIZEN_KEYROUTER_MODE_OVERRIDABLE_EXCLUSIVE:
+			res = _keyrouter_list_duplicated_data_check(list, data);
+			break;
+		case TIZEN_KEYROUTER_MODE_TOPMOST:
+			res = _keyrouter_list_duplicated_data_check(list, data);
+			break;
+		case TIZEN_KEYROUTER_MODE_SHARED:
+			res = _keyrouter_list_duplicated_data_check(list, data);
+			break;
+		default:
+			res = TIZEN_KEYROUTER_ERROR_INVALID_MODE;
+			break;
+	}
+	return res;
+}
+
+PEPPER_API int
+keyrouter_grab_key(keyrouter_t *keyrouter,
+                          int type,
+                          int keycode,
+                          void *data)
+{
+	keyrouter_key_info_t *info = NULL;
+	pepper_list_t *list = NULL;
+
+	PEPPER_CHECK(keyrouter, return TIZEN_KEYROUTER_ERROR_INVALID_MODE, "Invalid keyrouter\n");
+	PEPPER_CHECK(0 < keycode || keycode < KEYROUTER_MAX_KEYS,
+	             return TIZEN_KEYROUTER_ERROR_INVALID_KEY, "Invalid keycode(%d)\n", keycode);
+
+	if (_keyrouter_grabbed_check(keyrouter, type, keycode, data))
+		return TIZEN_KEYROUTER_ERROR_GRABBED_ALREADY;
+
+	info = (keyrouter_key_info_t *)calloc(1, sizeof(keyrouter_key_info_t));
+	info->data = data;
+	pepper_list_init(&info->link);
+
+	list = _keyrouter_grabbed_list_get(keyrouter, type, keycode);
+
+	if (!keyrouter->hard_keys[keycode].keycode)
+		keyrouter->hard_keys[keycode].keycode = keycode;
+	pepper_list_insert(list, &info->link);
+
+	return TIZEN_KEYROUTER_ERROR_NONE;
+}
+
+static void
+_keyrouter_list_remove_data(pepper_list_t *list,
+                                void *data)
+{
+	keyrouter_key_info_t *info, *tmp;
+
+	if (pepper_list_empty(list))
+		return;
+
+	pepper_list_for_each_safe(info ,tmp, list, link) {
+		if (info->data == data) {
+			pepper_list_remove(&info->link);
+			free(info);
+		}
+	}
+}
+
+PEPPER_API void
+keyrouter_ungrab_key(keyrouter_t *keyrouter,
+                            int type, int keycode, void *data)
+{
+	pepper_list_t *list;
+
+	PEPPER_CHECK(keyrouter, return, "Invalid keyrouter\n");
+	PEPPER_CHECK(0 < keycode || keycode < KEYROUTER_MAX_KEYS,
+	             return, "Invalid keycode(%d)\n", keycode);
+
+	if (!keyrouter->hard_keys[keycode].keycode) return;
+
+	list = _keyrouter_grabbed_list_get(keyrouter, type, keycode);
+	PEPPER_CHECK(list, return, "keycode(%d) had no list for type(%d)\n", keycode, type);
+
+	_keyrouter_list_remove_data(list, data);
+}
+
 PEPPER_API keyrouter_t *
 keyrouter_create(void)
 {

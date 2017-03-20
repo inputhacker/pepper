@@ -43,6 +43,8 @@ struct keyrouter_key_info {
 
 PEPPER_API keyrouter_t *keyrouter_create(void);
 PEPPER_API void keyrouter_destroy(keyrouter_t *keyrouter);
+PEPPER_API int keyrouter_grab_key(keyrouter_t *keyrouter, int type, int keycode, void *data);
+PEPPER_API void keyrouter_ungrab_key(keyrouter_t *keyrouter, int type, int keycode, void *data);
 
 #ifdef __cplusplus
 }
