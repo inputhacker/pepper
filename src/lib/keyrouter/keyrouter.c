@@ -92,6 +92,53 @@ _keyrouter_grabbed_check(keyrouter_t *keyrouter,
 }
 
 PEPPER_API int
+keyrouter_key_process(keyrouter_t *keyrouter,
+                             int keycode, int pressed, pepper_list_t *delivery_list)
+{
+	keyrouter_key_info_t *info, *delivery;
+	int count = 0;
+
+	PEPPER_CHECK(keyrouter, return 0, "Invalid keyrouter\n");
+	PEPPER_CHECK(0 < keycode || keycode < KEYROUTER_MAX_KEYS,
+	             return 0, "Invalid keycode(%d)\n", keycode);
+	PEPPER_CHECK(delivery_list, return 0, "Invalid delivery list\n");
+
+	if (!pepper_list_empty(&keyrouter->hard_keys[keycode].grab.excl)) {
+		pepper_list_for_each(info, &keyrouter->hard_keys[keycode].grab.excl, link) {
+			delivery = (keyrouter_key_info_t *)calloc(1, sizeof(keyrouter_key_info_t));
+			PEPPER_CHECK(delivery, return 0, "Failed to allocate memory\n");
+			delivery->data = info->data;
+			pepper_list_insert(delivery_list, &delivery->link);
+			return 1;
+		}
+	}
+	else if (!pepper_list_empty(&keyrouter->hard_keys[keycode].grab.or_excl)) {
+		pepper_list_for_each(info, &keyrouter->hard_keys[keycode].grab.or_excl, link) {
+			delivery = (keyrouter_key_info_t *)calloc(1, sizeof(keyrouter_key_info_t));
+			PEPPER_CHECK(delivery, return 0, "Failed to allocate memory\n");
+			delivery->data = info->data;
+			pepper_list_insert(delivery_list, &delivery->link);
+			return 1;
+		}
+	}
+	else if (!pepper_list_empty(&keyrouter->hard_keys[keycode].grab.top)) {
+		/* Not supported yet */
+		return 0;
+	}
+	else if (!pepper_list_empty(&keyrouter->hard_keys[keycode].grab.shared)) {
+		pepper_list_for_each(info, &keyrouter->hard_keys[keycode].grab.shared, link) {
+			delivery = (keyrouter_key_info_t *)calloc(1, sizeof(keyrouter_key_info_t));
+			PEPPER_CHECK(delivery, return 0, "Failed to allocate memory\n");
+			delivery->data = info->data;
+			pepper_list_insert(delivery_list, &delivery->link);
+			count++;
+		}
+	}
+
+	return count;
+}
+
+PEPPER_API int
 keyrouter_grab_key(keyrouter_t *keyrouter,
                           int type,
                           int keycode,
