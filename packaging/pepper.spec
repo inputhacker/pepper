@@ -235,6 +235,7 @@ make %{?_smp_mflags}
 %files -n %{name}
 %manifest %{name}.manifest
 %defattr(-,root,root,-)
+%license COPYING
 %{_libdir}/libpepper.so.*
 
 %files devel
@@ -252,6 +253,7 @@ make %{?_smp_mflags}
 %files keyrouter
 %manifest %{name}.manifest
 %defattr(-,root,root,-)
+%license COPYING
 %{_libdir}/libpepper-keyrouter.so.*
 
 %files keyrouter-devel
@@ -265,6 +267,7 @@ make %{?_smp_mflags}
 %files evdev
 %manifest %{name}.manifest
 %defattr(-,root,root,-)
+%license COPYING
 %{_libdir}/libpepper-evdev.so.*
 
 %files evdev-devel
@@ -277,6 +280,7 @@ make %{?_smp_mflags}
 %files libinput
 %manifest %{name}.manifest
 %defattr(-,root,root,-)
+%license COPYING
 %{_libdir}/libpepper-libinput.so.*
 
 %files libinput-devel
@@ -289,6 +293,7 @@ make %{?_smp_mflags}
 %files desktop-shell
 %manifest %{name}.manifest
 %defattr(-,root,root,-)
+%license COPYING
 %{_libdir}/libpepper-desktop-shell.so.*
 %{_bindir}/shell-client
 
@@ -304,6 +309,7 @@ make %{?_smp_mflags}
 %files render
 %manifest %{name}.manifest
 %defattr(-,root,root,-)
+%license COPYING
 %{_libdir}/libpepper-render.so.*
 
 %files render-devel
@@ -317,6 +323,7 @@ make %{?_smp_mflags}
 %files drm
 %manifest %{name}.manifest
 %defattr(-,root,root,-)
+%license COPYING
 %{_libdir}/libpepper-drm.so.*
 
 %files drm-devel
@@ -330,6 +337,7 @@ make %{?_smp_mflags}
 %files tdm
 %manifest %{name}.manifest
 %defattr(-,root,root,-)
+%license COPYING
 %{_libdir}/libpepper-tdm.so.*
 
 %files tdm-devel
@@ -343,6 +351,7 @@ make %{?_smp_mflags}
 %files fbdev
 %manifest %{name}.manifest
 %defattr(-,root,root,-)
+%license COPYING
 %{_libdir}/libpepper-fbdev.so.*
 
 %files fbdev-devel
@@ -355,6 +364,7 @@ make %{?_smp_mflags}
 %files wayland
 %manifest %{name}.manifest
 %defattr(-,root,root,-)
+%license COPYING
 %{_libdir}/libpepper-wayland.so.*
 
 %files wayland-devel
@@ -367,4 +377,5 @@ make %{?_smp_mflags}
 %files doctor
 %manifest %{name}.manifest
 %defattr(-,root,root,-)
+%license COPYING
 %{_bindir}/doctor
