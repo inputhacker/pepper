@@ -131,6 +131,10 @@ pepper_seat_destroy(pepper_seat_t *seat)
 {
 	struct wl_resource *resource, *tmp;
 
+	if (seat->global && seat->compositor)
+		pepper_object_emit_event(&seat->compositor->base,
+								 PEPPER_EVENT_COMPOSITOR_SEAT_REMOVE, seat);
+
 	if (seat->name)
 		free(seat->name);
 
