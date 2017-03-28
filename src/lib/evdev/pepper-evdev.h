@@ -30,7 +30,7 @@
 extern "C" {
 #endif
 
-PEPPER_API int
+PEPPER_API uint32_t
 pepper_evdev_device_probe(pepper_evdev_t *evdev, uint32_t caps);
 
 PEPPER_API pepper_evdev_t *

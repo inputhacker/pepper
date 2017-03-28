@@ -186,10 +186,10 @@ error:
 	return 0;
 }
 
-PEPPER_API int
+PEPPER_API uint32_t
 pepper_evdev_device_probe(pepper_evdev_t *evdev, uint32_t caps)
 {
-	int probed = 0;
+	uint32_t probed = 0;
 
 	/* FIXME : probe input device under /dev/input directory */
 
