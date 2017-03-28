@@ -79,6 +79,9 @@ main(int argc, char **argv)
 	struct wl_event_loop   *loop = NULL;
 	struct wl_event_source *sigint = NULL;
 
+	int                     tty;
+	const char             *tty_str;
+
 	{   /* for gdb attach */
 		char cc;
 		int  ret;
@@ -90,7 +93,14 @@ main(int argc, char **argv)
 
 	init_signals();
 
-	if (!pepper_virtual_terminal_setup(0/*FIXME*/))
+	tty_str = getenv("PEPPER_FBDEV_TTY");
+
+	if (!tty_str)
+		tty = 0;
+	else
+		tty = atoi(tty_str);
+
+	if (!pepper_virtual_terminal_setup(tty))
 		goto cleanup;
 
 	compositor = pepper_compositor_create("wayland-0");
