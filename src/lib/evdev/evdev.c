@@ -110,6 +110,7 @@ _evdev_keyboard_event_fd_read(int fd, uint32_t mask, void *data)
 {
 	uint32_t i;
 	int nread;
+	char buf[128];
 	struct input_event ev[EVENT_MAX];
 	evdev_device_info_t *device_info = (evdev_device_info_t *)data;
 
@@ -123,7 +124,7 @@ _evdev_keyboard_event_fd_read(int fd, uint32_t mask, void *data)
 
 	nread = read(fd, &ev, sizeof(ev));
 	PEPPER_CHECK(nread>=0, return 0, "[%s] Failed on reading given fd. (error : %s, fd:%d)\n",
-					__FUNCTION__, strerror(errno), fd);
+					__FUNCTION__, strerror_r(errno, buf, 128), fd);
 
 	for (i = 0 ; i < (nread / sizeof(ev[0])); i++)
 	{
