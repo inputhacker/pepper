@@ -25,10 +25,7 @@
 #define PEPPER_EVDEV_INTERNAL_H
 
 #include <pepper.h>
-
-typedef struct pepper_evdev pepper_evdev_t;
-typedef struct evdev_device_info evdev_device_info_t;
-typedef struct evdev_key_event evdev_key_event_t;
+#include <pepper-evdev.h>
 
 struct pepper_evdev
 {

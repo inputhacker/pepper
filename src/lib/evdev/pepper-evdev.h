@@ -30,6 +30,10 @@
 extern "C" {
 #endif
 
+typedef struct pepper_evdev pepper_evdev_t;
+typedef struct evdev_device_info evdev_device_info_t;
+typedef struct evdev_key_event evdev_key_event_t;
+
 PEPPER_API uint32_t
 pepper_evdev_device_probe(pepper_evdev_t *evdev, uint32_t caps);
 

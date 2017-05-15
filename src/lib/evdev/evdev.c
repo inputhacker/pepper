@@ -30,7 +30,6 @@
 #include <stdint.h>
 
 #include <evdev-internal.h>
-#include <pepper-evdev.h>
 #include <pepper-input-backend.h>
 
 #ifdef EVENT_MAX
