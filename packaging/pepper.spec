@@ -28,6 +28,7 @@ BuildRequires:	pkgconfig(wayland-tbm-client)
 BuildRequires:  pkgconfig(wayland-tbm-server)
 BuildRequires:  pkgconfig(libtbm)
 BuildRequires:  pkgconfig(tizen-extension-server)
+BuildRequires:  pkgconfig(tizen-extension-client)
 %if "%{ENABLE_TDM}" == "1"
 BuildRequires:  pkgconfig(libtdm)
 %endif

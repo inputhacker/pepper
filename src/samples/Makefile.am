@@ -44,3 +44,14 @@ x11_backend_LDADD  = $(SAMPLES_LIBS)
 x11_backend_SOURCES = x11-backend.c
 endif
 
+noinst_PROGRAMS += headless-server headless-client
+
+headless_server_CFLAGS = $(HEADLESS_SERVER_CFLAGS)
+headless_server_LDADD  = $(HEADLESS_SERVER_LIBS)
+
+headless_server_SOURCES = headless-server.c
+
+headless_client_CFLAGS = $(HEADLESS_CLIENT_CFLAGS)
+headless_client_LDADD = $(HEADLESS_CLIENT_LIBS)
+
+headless_client_SOURCES = headless-client.c
