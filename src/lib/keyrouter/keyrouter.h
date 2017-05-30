@@ -25,7 +25,6 @@
 #define KEYROUTER_H
 
 #include <pepper.h>
-#include <tizen-extension-server-protocol.h>
 
 #ifdef __cplusplus
 extern "C" {

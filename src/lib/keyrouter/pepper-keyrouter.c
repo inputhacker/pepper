@@ -23,6 +23,7 @@
 
 #include "pepper-keyrouter.h"
 #include "pepper-internal.h"
+#include <tizen-extension-server-protocol.h>
 
 #define MIN(a,b) ((a)<(b)?(a):(b))
 

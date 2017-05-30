@@ -22,6 +22,7 @@
 */
 
 #include "keyrouter-internal.h"
+#include <tizen-extension-server-protocol.h>
 
 static pepper_list_t *
 _keyrouter_grabbed_list_get(keyrouter_t *keyrouter,
