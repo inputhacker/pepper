@@ -186,6 +186,12 @@ Summary: Doctor server for pepper package
 %description doctor
 This package includes doctor server files.
 
+###### samples
+%package samples
+Summary: samples for pepper package
+
+%description samples
+This package includes samples files.
 ###### executing
 
 %prep
@@ -380,3 +386,9 @@ make %{?_smp_mflags}
 %defattr(-,root,root,-)
 %license COPYING
 %{_bindir}/doctor
+
+%files samples
+%manifest %{name}.manifest
+%defattr(-,root,root,-)
+%{_bindir}/*-backend
+%{_bindir}/headless*
