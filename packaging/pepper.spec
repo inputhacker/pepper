@@ -189,6 +189,12 @@ This package includes doctor server files.
 ###### samples
 %package samples
 Summary: samples for pepper package
+Requires: pepper-drm pepper-desktop-shell
+Requires: pepper-fbdev
+Requires: pepper-tdm
+Requires: pepper-wayland pepper-x11
+Requires: pepper-libinput
+Requires: pepper-keyrouter pepper-evdev
 
 %description samples
 This package includes samples files.
