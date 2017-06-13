@@ -33,6 +33,7 @@
 #include <sys/stat.h>
 #include <sys/un.h>
 #include <errno.h>
+#include <stdio.h>
 
 #include "pepper-internal.h"
 
