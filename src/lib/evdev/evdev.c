@@ -113,7 +113,7 @@ _evdev_keyboard_event_fd_read(int fd, uint32_t mask, void *data)
 	struct input_event ev[EVENT_MAX];
 	evdev_device_info_t *device_info = (evdev_device_info_t *)data;
 
-	PEPPER_CHECK(mask & (WL_EVENT_HANGUP | WL_EVENT_ERROR),
+	PEPPER_CHECK(!(mask & (WL_EVENT_HANGUP | WL_EVENT_ERROR)),
 					return 0,
 					"[%s] With the given fd, there is an error or it's been hung-up.\n",
 					__FUNCTION__);
