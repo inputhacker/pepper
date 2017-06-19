@@ -41,8 +41,10 @@ extern "C" {
 
 #if defined(__GNUC__) && __GNUC__ >= 4
 #   define PEPPER_API __attribute__ ((visibility("default")))
+#   define PEPPER_DEPRECATED __attribute__ ((deprecated))
 #else
 #   define PEPPER_API
+#   define PEPPER_DEPRECATED
 #endif
 
 #define PEPPER_MAX(a, b)    ((a) > (b) ? (a) : (b))

@@ -36,7 +36,6 @@
 
 #include <time.h>
 #include <linux/input.h>
-#include <xkbcommon/xkbcommon.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -769,6 +768,15 @@ enum pepper_built_in_events {
 	 *  - info : #pepper_input_event_t
 	 */
 	PEPPER_EVENT_TOUCH_CANCEL,
+
+	/**
+	 * Keymap update event.
+	 *
+	 * #pepper_keyboard_t
+	 *  - when : #pepper_keyboard_t emits keymap update event before updating keymap
+	 *  - info : #pepper_keyboard_t
+	 */
+	PEPPER_EVENT_KEYBOARD_KEYMAP_UPDATE,
 };
 
 enum pepper_pointer_axis {
@@ -1147,9 +1155,9 @@ pepper_keyboard_get_grab(pepper_keyboard_t *keyboard);
 PEPPER_API void *
 pepper_keyboard_get_grab_data(pepper_keyboard_t *keyboard);
 
-PEPPER_API void
+PEPPER_DEPRECATED void
 pepper_keyboard_set_keymap(pepper_keyboard_t *keyboard,
-						   struct xkb_keymap *keymap);
+						   void *keymap);
 
 PEPPER_API void
 pepper_keyboard_set_keymap_info(pepper_keyboard_t *keyboard,
@@ -1161,6 +1169,18 @@ PEPPER_API void
 pepper_keyboard_set_modifiers(pepper_keyboard_t *keyboard,
 							   uint32_t depressed, uint32_t latched,
 							   uint32_t locked, uint32_t group);
+
+PEPPER_API void *
+pepper_keyboard_get_xkb_info(pepper_keyboard_t *keyboard);
+
+PEPPER_API void *
+pepper_keyboard_get_pending_xkb_info(pepper_keyboard_t *keyboard);
+
+PEPPER_API void
+pepper_keyboard_set_xkb_info(pepper_keyboard_t *keyboard, void *xkb_info);
+
+PEPPER_API void
+pepper_keyboard_set_pending_xkb_info(pepper_keyboard_t *keyboard, void *xkb_info);
 
 /* Touch. */
 struct pepper_touch_grab {

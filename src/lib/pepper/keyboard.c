@@ -31,9 +31,9 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <fcntl.h>
+#include <stdio.h>
 
 #include "pepper-internal.h"
-#include "pepper-utils-xkb.h"
 
 static void
 keyboard_release(struct wl_client *client, struct wl_resource *resource)
@@ -74,9 +74,6 @@ update_keymap(pepper_keyboard_t *keyboard)
 	if (keyboard->keymap_fd >= 0)
 		close(keyboard->keymap_fd);
 
-	if (keyboard->xkb_info)
-		pepper_xkb_destroy((struct pepper_xkb_info *)keyboard->xkb_info);
-
 	keyboard->keymap_format = keyboard->pending.keymap_format;
 	keyboard->keymap_fd = keyboard->pending.keymap_fd;
 	keyboard->keymap_len = keyboard->pending.keymap_len;
@@ -100,11 +97,6 @@ update_keymap(pepper_keyboard_t *keyboard)
 	}
 
 	keyboard->need_update_keymap = 0;
-
-	if (keyboard->pending.xkb_info) {
-		keyboard->xkb_info = keyboard->pending.xkb_info;
-		keyboard->pending.xkb_info = NULL;
-	}
 }
 
 void
@@ -136,12 +128,10 @@ pepper_keyboard_handle_event(pepper_keyboard_t *keyboard, uint32_t id,
 							event->state);
 
 	if (keyboard->need_update_keymap && keyboard->keys.size == 0) {
+		pepper_object_emit_event(&keyboard->base,
+							PEPPER_EVENT_KEYBOARD_KEYMAP_UPDATE, keyboard);
 		update_keymap(keyboard);
 		update_modifiers(keyboard);
-	} else {
-		if (keyboard->xkb_info) {
-			pepper_xkb_update_keyboard_modifier(keyboard->xkb_info, keyboard, event);
-		}
 	}
 
 	pepper_object_emit_event(&keyboard->base, PEPPER_EVENT_KEYBOARD_KEY,
@@ -193,10 +183,6 @@ pepper_keyboard_destroy(pepper_keyboard_t *keyboard)
 		close(keyboard->keymap_fd);
 	if (keyboard->pending.keymap_fd >= 0)
 		close(keyboard->pending.keymap_fd);
-	if (keyboard->xkb_info)
-		pepper_xkb_destroy((struct pepper_xkb_info *)keyboard->xkb_info);
-	if (keyboard->pending.xkb_info)
-		pepper_xkb_destroy((struct pepper_xkb_info *)keyboard->pending.xkb_info);
 
 	wl_array_release(&keyboard->keys);
 	free(keyboard);
@@ -531,16 +517,9 @@ pepper_keyboard_get_grab_data(pepper_keyboard_t *keyboard)
  *
  * This function might send wl_pointer.keymap and wl_pointer.modifers events internally
  */
-PEPPER_API void
+PEPPER_DEPRECATED void
 pepper_keyboard_set_keymap(pepper_keyboard_t *keyboard,
-						   struct xkb_keymap *keymap)
-{
-	if (keyboard->pending.xkb_info)
-		pepper_xkb_destroy(keyboard->pending.xkb_info);
-
-	keyboard->pending.xkb_info = pepper_xkb_create(keymap);
-	pepper_xkb_set_keyboard(keyboard->pending.xkb_info, keyboard);
-}
+						   void *keymap);
 
 /**
  * Set xkb keymap information for the given keyboard
@@ -565,6 +544,8 @@ pepper_keyboard_set_keymap_info(pepper_keyboard_t *keyboard,
 	keyboard->pending.keymap_format = keymap_format;
 
 	if (keyboard->keys.size == 0) {
+		pepper_object_emit_event(&keyboard->base,
+							PEPPER_EVENT_KEYBOARD_KEYMAP_UPDATE, keyboard);
 		update_keymap(keyboard);
 	} else {
 		keyboard->need_update_keymap = 1;
@@ -594,4 +575,52 @@ pepper_keyboard_set_modifiers(pepper_keyboard_t *keyboard,
 
 	if (!keyboard->need_update_keymap)
 		update_modifiers(keyboard);
+}
+
+/**
+ * Get current xkb_info for the given keyboard
+ *
+ * @param keyboard  keyboard object
+ */
+PEPPER_API void *
+pepper_keyboard_get_xkb_info(pepper_keyboard_t *keyboard)
+{
+	return keyboard->xkb_info;
+}
+
+/**
+ * Get pending xkb_info for the given keyboard
+ *
+ * @param keyboard  keyboard object
+ */
+PEPPER_API void *
+pepper_keyboard_get_pending_xkb_info(pepper_keyboard_t *keyboard)
+{
+	return keyboard->pending.xkb_info;
+}
+
+/**
+ * Set xkb_info for the given keyboard
+ *
+ * @param keyboard  keyboard object
+ * @param xkb_info    xkb_info
+ */
+PEPPER_API void
+pepper_keyboard_set_xkb_info(pepper_keyboard_t *keyboard,
+								void *xkb_info)
+{
+	keyboard->xkb_info = xkb_info;
+}
+
+/**
+ * Set pending xkb_info for the given keyboard
+ *
+ * @param keyboard  keyboard object
+ * @param xkb_info    xkb_info
+ */
+PEPPER_API void
+pepper_keyboard_set_pending_xkb_info(pepper_keyboard_t *keyboard,
+								void *xkb_info)
+{
+	keyboard->pending.xkb_info = xkb_info;
 }

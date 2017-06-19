@@ -29,7 +29,7 @@ fi
 AC_SUBST(GCC_CFLAGS)
 
 # pepper
-PEPPER_REQUIRES="wayland-server xkbcommon"
+PEPPER_REQUIRES="wayland-server"
 PKG_CHECK_MODULES(PEPPER, [$PEPPER_REQUIRES])
 PKG_CHECK_MODULES([TBM], [libtbm wayland-tbm-server], [have_tbm=yes], [have_tbm=no])
 if test x$have_tbm = xyes; then
@@ -82,6 +82,20 @@ PEPPER_LIBINPUT_LIBS="$PEPPER_LIB $PEPPER_LIBINPUT_LIBS"
 AC_SUBST(PEPPER_LIBINPUT_CFLAGS)
 AC_SUBST(PEPPER_LIBINPUT_LIBS)
 AC_SUBST(PEPPER_LIBINPUT_REQUIRES)
+
+# pepper-xkb
+PEPPER_XKB_REQUIRES="xkbcommon"
+PKG_CHECK_MODULES(PEPPER_XKB, [$PEPPER_XKB_REQUIRES])
+
+PEPPER_XKB_DIR="-I\$(top_srcdir)/src/lib/xkb"
+PEPPER_XKB_LIB="\$(top_srcdir)/src/lib/xkb/libpepper-xkb.la"
+
+PEPPER_XKB_CFLAGS="$PEPPER_DIR $PEPPER_XKB_DIR $PEPPER_CFLAGS $PEPPER_XKB_CFLAGS"
+PEPPER_XKB_LIBS="$PEPPER_LIB $PEPPER_XKB_LIBS"
+
+AC_SUBST(PEPPER_XKB_CFLAGS)
+AC_SUBST(PEPPER_XKB_LIBS)
+AC_SUBST(PEPPER_XKB_REQUIRES)
 
 # pepper-desktop-shell
 PEPPER_DESKTOP_SHELL_REQUIRES="pepper"
@@ -316,6 +330,7 @@ src/Makefile
 src/lib/pepper/Makefile
 src/lib/keyrouter/Makefile
 src/lib/evdev/Makefile
+src/lib/xkb/Makefile
 src/lib/libinput/Makefile
 src/lib/desktop-shell/Makefile
 src/lib/render/Makefile
@@ -330,6 +345,7 @@ pkgconfig/pepper-drm.pc
 pkgconfig/pepper-fbdev.pc
 pkgconfig/pepper-keyrouter.pc
 pkgconfig/pepper-evdev.pc
+pkgconfig/pepper-xkb.pc
 pkgconfig/pepper-libinput.pc
 pkgconfig/pepper-wayland.pc
 pkgconfig/pepper-desktop-shell.pc

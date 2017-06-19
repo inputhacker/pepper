@@ -2,6 +2,7 @@ SUBDIRS = lib/pepper        \
           lib/keyrouter      \
           lib/evdev         \
           lib/libinput      \
+          lib/xkb           \
           lib/desktop-shell \
           lib/render        \
           lib/drm           \

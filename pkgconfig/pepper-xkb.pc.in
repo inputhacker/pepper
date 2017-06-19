@@ -1,0 +1,14 @@
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+libdir=@libdir@
+includedir=@includedir@
+libexecdir=@libexecdir@
+pkglibexecdir=${libexecdir}/@PACKAGE@
+
+Name: Pepper Evdev Backend Library
+Description: Pepper xkb backend library header and library files
+Version: @PEPPER_XKB_VERSION@
+
+Requires.private: @PEPPER_XKB_REQUIRES@
+Cflags: -I${includedir}/pepper
+Libs: -L${libdir} -lpepper-xkb

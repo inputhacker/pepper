@@ -74,6 +74,21 @@ Requires: pepper-evdev = %{version}-%{release}
 %description evdev-devel
 This package includes evdev development module files.
 
+###### xkb
+%package xkb
+Summary: xkb module for pepper package
+
+%description xkb
+This package includes xkb module files.
+
+###### xkb-devel
+%package xkb-devel
+Summary: XKB development module for pepper package
+Requires: pepper-xkb = %{version}-%{release}
+
+%description xkb-devel
+This package includes xkb development module files.
+
 ###### libinput
 %package libinput
 Summary: Libinput module for pepper package
@@ -198,6 +213,7 @@ Requires: pepper-keyrouter pepper-evdev
 
 %description samples
 This package includes samples files.
+
 ###### executing
 
 %prep
@@ -257,7 +273,6 @@ make %{?_smp_mflags}
 %{_includedir}/pepper/pepper.h
 %{_includedir}/pepper/pepper-utils.h
 %{_includedir}/pepper/pepper-utils-pixman.h
-%{_includedir}/pepper/pepper-utils-xkb.h
 %{_includedir}/pepper/pepper-output-backend.h
 %{_includedir}/pepper/pepper-input-backend.h
 %{_libdir}/pkgconfig/pepper.pc
@@ -289,6 +304,19 @@ make %{?_smp_mflags}
 %{_includedir}/pepper/pepper-evdev.h
 %{_libdir}/pkgconfig/pepper-evdev.pc
 %{_libdir}/libpepper-evdev.so
+
+%files xkb
+%manifest %{name}.manifest
+%defattr(-,root,root,-)
+%license COPYING
+%{_libdir}/libpepper-xkb.so.*
+
+%files xkb-devel
+%manifest %{name}.manifest
+%defattr(-,root,root,-)
+%{_includedir}/pepper/pepper-xkb.h
+%{_libdir}/pkgconfig/pepper-xkb.pc
+%{_libdir}/libpepper-xkb.so
 
 %files libinput
 %manifest %{name}.manifest
