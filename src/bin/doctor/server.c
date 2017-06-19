@@ -28,26 +28,66 @@
 
 #include <pepper.h>
 
+#include <libudev.h>
+#include <pepper-libinput.h>
+#include <pepper-desktop-shell.h>
+
 int
 main(int argc, char **argv)
 {
+	struct udev *udev = NULL;
+	pepper_libinput_t *input = NULL;
+
 	struct wl_display   *display;
 	pepper_compositor_t *compositor;
+	const char* socket_name = NULL;
 
-	compositor = pepper_compositor_create("wayland-0");
+	if (!getenv("XDG_RUNTIME_DIR"))
+		setenv("XDG_RUNTIME_DIR", "/run", 1);
+
+	socket_name = getenv("WAYLAND_DISPLAY");
+
+	if (!socket_name)
+		socket_name = "wayland-0";
+
+	compositor = pepper_compositor_create(socket_name);
+
 	if (!compositor)
 		return -1;
 
 	display = pepper_compositor_get_display(compositor);
-	if (!display) {
+
+	if (!display)
+	{
 		pepper_compositor_destroy(compositor);
 		return -1;
+	}
+
+	udev = udev_new();
+	PEPPER_CHECK(udev, goto shutdown_on_failure, "Failed to get udev !\n");
+
+	input = pepper_libinput_create(compositor, udev);
+	PEPPER_CHECK(input, goto shutdown_on_failure, "Failed to create pepepr libinput !\n");
+
+	if (!pepper_desktop_shell_init(compositor))
+	{
+		PEPPER_ERROR("Failed to initialize pepper desktop shell !\n");
+		goto shutdown_on_failure;
 	}
 
 	/* Enter main loop. */
 	wl_display_run(display);
 
-	pepper_compositor_destroy(compositor);
+shutdown_on_failure:
+
+	if (input)
+		pepper_libinput_destroy(input);
+
+	if (udev)
+		udev_unref(udev);
+
+	if (compositor)
+		pepper_compositor_destroy(compositor);
 
 	return 0;
 }
