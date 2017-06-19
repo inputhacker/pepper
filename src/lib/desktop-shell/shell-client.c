@@ -168,9 +168,9 @@ main(int argc, char **argv)
 		return -1;
 	}
 
-	display.display = wl_display_connect(argv[0]);
+	display.display = wl_display_connect(argv[1]);
 	if (!display.display) {
-		fprintf(stderr, "wl_display_connect(%s) failed\n", argv[0]);
+		fprintf(stderr, "wl_display_connect(%s) failed\n", argv[1]);
 		return -1;
 	}
 
