@@ -211,6 +211,7 @@ Requires: pepper-tdm
 Requires: pepper-wayland pepper-x11
 Requires: pepper-libinput
 Requires: pepper-keyrouter pepper-evdev
+Requires: pepper-xkb
 
 %description samples
 This package includes samples files.
@@ -427,3 +428,4 @@ make %{?_smp_mflags}
 %defattr(-,root,root,-)
 %{_bindir}/*-backend
 %{_bindir}/headless*
+%{_bindir}/sample-*
