@@ -29,6 +29,7 @@
 #include <config.h>
 #include "pepper-desktop-shell.h"
 #include <wayland-server.h>
+#include <pepper-xkb.h>
 
 /* Ping timeout value in ms. */
 #define DESKTOP_SHELL_PING_TIMEOUT  200
@@ -73,6 +74,8 @@ struct desktop_shell {
 	/* seat add/remove */
 	pepper_event_listener_t     *seat_add_listener;
 	pepper_event_listener_t     *seat_remove_listener;
+
+	pepper_xkb_t *xkb;
 };
 
 struct shell_client {

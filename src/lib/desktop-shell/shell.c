@@ -243,7 +243,9 @@ keyboard_add_callback(pepper_event_listener_t *listener,
 					  void *info, void *data)
 {
 	pepper_keyboard_t *keyboard = info;
+	shell_seat_t *shseat = (shell_seat_t *)data;
 	pepper_keyboard_set_grab(keyboard, &default_keyboard_grab, NULL);
+	pepper_xkb_keyboard_set_keymap(shseat->shell->xkb, keyboard, NULL);
 }
 
 static void
@@ -399,6 +401,12 @@ init_input(desktop_shell_t *shell)
 	shell_add_input_device(shell, l->item);
 }
 
+static void
+init_xkb(desktop_shell_t *shell)
+{
+	shell->xkb = pepper_xkb_create();
+}
+
 static pepper_bool_t
 launch_shell_client(desktop_shell_t *shell)
 {
@@ -447,6 +455,7 @@ pepper_desktop_shell_init(pepper_compositor_t *compositor)
 	if (!launch_shell_client(shell))
 		PEPPER_ERROR("shell client launch failed, compositor runs without shell client.\n");
 
+	init_xkb(shell);
 	init_listeners(shell);
 	init_input(shell);
 

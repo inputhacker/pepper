@@ -115,6 +115,7 @@ This package includes desktop-shell module files.
 %package desktop-shell-devel
 Summary: Desktop-shell development module for pepper package
 Requires: pepper-desktop-shell = %{version}-%{release}
+Requires: pepper-xkb = %{version}-%{release}
 
 %description desktop-shell-devel
 This package includes desktop-shell development module files.
