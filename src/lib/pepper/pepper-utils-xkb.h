@@ -48,6 +48,8 @@ pepper_xkb_create(struct xkb_keymap *keymap)
 		return NULL;
 
 	info = calloc(1, sizeof(struct pepper_xkb_info));
+	if (!info) return NULL;
+
 	info->state = xkb_state_new(keymap);
 
 	return info;
