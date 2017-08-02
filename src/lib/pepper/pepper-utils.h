@@ -539,7 +539,7 @@ pepper_mat4_init_rotate(pepper_mat4_t *matrix, double x, double y, double z,
 	double yinvc;
 	double zinvc;
 
-	if (angle == 0.0f || (z == 0.0f && y == 0.0f && z == 0.0f)) {
+	if (angle == 0.0f || (x == 0.0f && y == 0.0f && z == 0.0f)) {
 		pepper_mat4_init_identity(matrix);
 		return;
 	}
