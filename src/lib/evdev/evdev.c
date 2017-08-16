@@ -21,6 +21,8 @@
 * DEALINGS IN THE SOFTWARE.
 */
 
+#define _GNU_SOURCE
+
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -28,6 +30,10 @@
 #include <string.h>
 #include <errno.h>
 #include <stdint.h>
+#include <dirent.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <linux/input.h>
 
 #include <evdev-internal.h>
 #include <pepper-input-backend.h>
@@ -36,6 +42,14 @@
 #undef EVENT_MAX
 #endif
 #define EVENT_MAX 32
+
+#ifndef LONG_BITS
+#define LONG_BITS (sizeof(long) * 8)
+#endif
+
+#ifndef NLONGS
+#define NLONGS(x) (((x) + LONG_BITS - 1) / LONG_BITS)
+#endif
 
 static void
 _evdev_keyboard_event_post(pepper_input_device_t *device, uint32_t keycode, int state, uint32_t time)
@@ -134,20 +148,65 @@ _evdev_keyboard_event_fd_read(int fd, uint32_t mask, void *data)
 }
 
 static int
+_evdev_is_key_device(int fd, const char *path)
+{
+	int rc;
+	unsigned long key_bits[NLONGS(KEY_CNT)];
+
+	if (fd < 0 || !path)
+		return 0;
+
+	/* Check if the given device is a key device */
+	rc = ioctl(fd, EVIOCGBIT(EV_KEY, sizeof(key_bits)), key_bits);
+	if (rc < 0)
+		return 0;
+
+	return 1;
+}
+
+static int
+_evdev_is_mouse_device(int fd, const char *path)
+{
+	int rc;
+	char device_name[256];
+	unsigned long rel_bits[NLONGS(REL_CNT)];
+
+	if (fd < 0 || !path)
+		return 0;
+
+	/* Check if the given device is a mouse device */
+	rc = ioctl(fd, EVIOCGBIT(EV_REL, sizeof(rel_bits)), rel_bits);
+	if (rc < 0)
+		return 0;
+
+	rc = ioctl(fd, EVIOCGNAME(sizeof(device_name)-1), device_name);
+	if (rc < 0 || !strcasestr(device_name, "mouse"))
+		return 0;
+
+	return 1;
+}
+
+static int
 _evdev_keyboard_device_open(pepper_evdev_t *evdev, const char *path)
 {
 	int fd;
+	char device_path[32];
 	uint32_t event_mask;
 	evdev_device_info_t *device_info = NULL;
 	pepper_input_device_t *device = NULL;
 
 	PEPPER_CHECK(path, return 0, "[%s] Given path is NULL.\n", __FUNCTION__);
 
-	fd = open(path, O_RDONLY | O_NONBLOCK | O_CLOEXEC);
-	PEPPER_CHECK(fd>=0, return 0, "[%s] Failed to open Given path of device.\n", __FUNCTION__);
+	snprintf(device_path, sizeof(device_path), "/dev/input/%s", path);
 
-	device = pepper_input_device_create(evdev->compositor, WL_SEAT_CAPABILITY_KEYBOARD,
-			NULL, NULL);
+	fd = open(device_path, O_RDONLY | O_NONBLOCK | O_CLOEXEC);
+	PEPPER_CHECK(fd >= 0, return 0, "[%s] Failed to open given path of device.\n", __FUNCTION__);
+
+	/* Skip mouse device as it usually has a key capability */
+	if (!_evdev_is_key_device(fd, path) || _evdev_is_mouse_device(fd, path))
+		goto error;
+
+	device = pepper_input_device_create(evdev->compositor, WL_SEAT_CAPABILITY_KEYBOARD, NULL, NULL);
 	PEPPER_CHECK(device, goto error, "[%s] Failed to create pepper input device.\n", __FUNCTION__);
 
 	device_info = (evdev_device_info_t *)calloc(1, sizeof(evdev_device_info_t));
@@ -191,13 +250,25 @@ pepper_evdev_device_probe(pepper_evdev_t *evdev, uint32_t caps)
 {
 	uint32_t probed = 0;
 
-	/* FIXME : probe input device under /dev/input directory */
+	DIR *dir_info = NULL;
+	struct dirent *dir_entry = NULL;
 
-	/* Open specific device node for example */
-	if (caps & WL_SEAT_CAPABILITY_KEYBOARD)
+	/* Probe event device nodes under /dev/input */
+	dir_info = opendir("/dev/input/");
+
+	if (dir_info)
 	{
-		probed += _evdev_keyboard_device_open(evdev, "/dev/input/event0");
-		probed += _evdev_keyboard_device_open(evdev, "/dev/input/event1");
+		while ((dir_entry = readdir(dir_info)))
+		{
+			if (!strncmp(dir_entry->d_name, "event", 5))
+			{
+				if (caps & WL_SEAT_CAPABILITY_KEYBOARD)
+					probed += _evdev_keyboard_device_open(evdev, dir_entry->d_name);
+			}
+		}
+
+		closedir(dir_info);
+		dir_info = NULL;
 	}
 
 	return probed;
