@@ -105,7 +105,8 @@ keyrouter_key_process(keyrouter_t *keyrouter,
 	PEPPER_CHECK(delivery_list, return 0, "Invalid delivery list\n");
 
 	if (!pepper_list_empty(&keyrouter->hard_keys[keycode].grab.excl)) {
-		pepper_list_for_each(info, &keyrouter->hard_keys[keycode].grab.excl, link) {
+		info = pepper_container_of(keyrouter->hard_keys[keycode].grab.excl.next, info, link);
+		if (info) {
 			delivery = (keyrouter_key_info_t *)calloc(1, sizeof(keyrouter_key_info_t));
 			PEPPER_CHECK(delivery, return 0, "Failed to allocate memory\n");
 			delivery->data = info->data;
@@ -114,7 +115,8 @@ keyrouter_key_process(keyrouter_t *keyrouter,
 		}
 	}
 	else if (!pepper_list_empty(&keyrouter->hard_keys[keycode].grab.or_excl)) {
-		pepper_list_for_each(info, &keyrouter->hard_keys[keycode].grab.or_excl, link) {
+		info = pepper_container_of(keyrouter->hard_keys[keycode].grab.or_excl.next, info, link);
+		if (info) {
 			delivery = (keyrouter_key_info_t *)calloc(1, sizeof(keyrouter_key_info_t));
 			PEPPER_CHECK(delivery, return 0, "Failed to allocate memory\n");
 			delivery->data = info->data;
@@ -156,6 +158,8 @@ keyrouter_grab_key(keyrouter_t *keyrouter,
 		return TIZEN_KEYROUTER_ERROR_GRABBED_ALREADY;
 
 	info = (keyrouter_key_info_t *)calloc(1, sizeof(keyrouter_key_info_t));
+	PEPPER_CHECK(info, return TIZEN_KEYROUTER_ERROR_NO_SYSTEM_RESOURCES, "Failed to allocate memory");
+
 	info->data = data;
 	pepper_list_init(&info->link);
 

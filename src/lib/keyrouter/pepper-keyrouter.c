@@ -366,14 +366,23 @@ _pepper_keyrouter_cb_bind(struct wl_client *client, void *data, uint32_t version
 		return;
 	}
 
-	wl_resource_set_implementation(resource, &_pepper_keyrouter_implementation,
-	                               pepper_keyrouter, _pepper_keyrouter_cb_destory);
-
 	rdata = (resources_data_t *)calloc(1, sizeof(resources_data_t));
+	if (!rdata)
+	{
+		PEPPER_ERROR("Failed to allocate memory !\n");
+
+		wl_resource_destroy(resource);
+		wl_client_post_no_memory(client);
+		return;
+	}
+
 	rdata->resource = resource;
 	pepper_list_init(&rdata->link);
-
 	pepper_list_insert(&pepper_keyrouter->resources, &rdata->link);
+
+
+	wl_resource_set_implementation(resource, &_pepper_keyrouter_implementation,
+	                               pepper_keyrouter, _pepper_keyrouter_cb_destory);
 }
 
 PEPPER_API void
