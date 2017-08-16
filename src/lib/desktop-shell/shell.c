@@ -57,6 +57,7 @@ handle_shell_client_destroy(struct wl_listener *listener, void *data)
 	shell_client_t *shell_client = pepper_container_of(listener, shell_client,
 								   client_destroy_listener);
 
+	wl_list_remove(&listener->link);
 	remove_ping_timer(shell_client);
 	pepper_list_remove(&shell_client->link);
 	free(shell_client);
