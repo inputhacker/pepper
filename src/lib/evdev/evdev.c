@@ -251,20 +251,24 @@ pepper_evdev_device_probe(pepper_evdev_t *evdev, uint32_t caps)
 	uint32_t probed = 0;
 
 	DIR *dir_info = NULL;
-	struct dirent *dir_entry = NULL;
+	struct dirent *dir_entry = NULL, dir_prev;
+	int ret = 0;
 
 	/* Probe event device nodes under /dev/input */
 	dir_info = opendir("/dev/input/");
 
 	if (dir_info)
 	{
-		while ((dir_entry = readdir(dir_info)))
+		ret = readdir_r(dir_info, &dir_prev, &dir_entry);
+		while ((ret == 0) && (dir_entry != NULL))
 		{
 			if (!strncmp(dir_entry->d_name, "event", 5))
 			{
 				if (caps & WL_SEAT_CAPABILITY_KEYBOARD)
 					probed += _evdev_keyboard_device_open(evdev, dir_entry->d_name);
 			}
+			dir_prev = *dir_entry;
+			ret = readdir_r(dir_info, &dir_prev, &dir_entry);
 		}
 
 		closedir(dir_info);
