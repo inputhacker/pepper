@@ -119,7 +119,7 @@ shell_add_input_device(desktop_shell_t *shell, pepper_input_device_t *device)
 	}
 
 	seat = pepper_compositor_add_seat(shell->compositor, target_seat_name);
-	pepper_seat_add_input_device(seat, device);
+	if (seat) pepper_seat_add_input_device(seat, device);
 }
 
 static void
