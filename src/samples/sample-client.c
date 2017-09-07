@@ -594,34 +594,41 @@ global_registry_add(void * data, struct wl_registry * registry, uint32_t id, con
 		client->shell = wl_registry_bind(client->registry, id, &xdg_shell_interface, 1);
 
 		if (client->shell)
+		{
 			TRACE("[PID:%d] Succeed to bind xdg_shell interface !\n", client->pid);
 
-		xdg_shell_use_unstable_version(client->shell, 5);
-		xdg_shell_add_listener(client->shell, &xdg_shell_listener, client->display);
+			xdg_shell_use_unstable_version(client->shell, 5);
+			xdg_shell_add_listener(client->shell, &xdg_shell_listener, client->display);
+		}
 	}
 	else if (0 == strncmp(interface, "wl_shm", 6))
 	{
 		client->shm = wl_registry_bind(client->registry, id, &wl_shm_interface, 1);
-		wl_shm_add_listener(client->shm, &shm_listener, NULL);
 
 		if (client->shm)
+		{
 			TRACE("[PID:%d] Succeed to bind wl_shm_interface !\n", client->pid);
+
+			wl_shm_add_listener(client->shm, &shm_listener, NULL);
+		}
 	}
 	else if (0 == strncmp(interface, "wl_seat", 7))
 	{
 		client->seat = wl_registry_bind(client->registry, id, &wl_seat_interface, 1);
 
 		if (client->seat)
+		{
 			TRACE("[PID:%d] Succeed to bind wl_seat_interface !\n", client->pid);
 
-		client->pointer = wl_seat_get_pointer(client->seat);
-		wl_pointer_add_listener(client->pointer, &pointer_listener, client);
+			client->pointer = wl_seat_get_pointer(client->seat);
+			wl_pointer_add_listener(client->pointer, &pointer_listener, client);
 
-		client->keyboard = wl_seat_get_keyboard(client->seat);
-		wl_keyboard_add_listener(client->keyboard, &keyboard_listener, client);
+			client->keyboard = wl_seat_get_keyboard(client->seat);
+			wl_keyboard_add_listener(client->keyboard, &keyboard_listener, client);
 
-		client->touch = wl_seat_get_touch(client->seat);
-		wl_touch_add_listener(client->touch, &touch_listener, client);
+			client->touch = wl_seat_get_touch(client->seat);
+			wl_touch_add_listener(client->touch, &touch_listener, client);
+		}
 	}
 	else
 	{
