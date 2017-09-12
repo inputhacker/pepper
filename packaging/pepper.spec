@@ -198,6 +198,7 @@ This package includes wayland backend development module files.
 ###### doctor server
 %package doctor
 Summary: Doctor server for pepper package
+Requires: pepper pepper-keyrouter pepper-evdev
 
 %description doctor
 This package includes doctor server files.
@@ -421,11 +422,10 @@ make %{?_smp_mflags}
 %manifest %{name}.manifest
 %defattr(-,root,root,-)
 %license COPYING
-%{_bindir}/doctor
+%{_bindir}/doctor*
 
 %files samples
 %manifest %{name}.manifest
 %defattr(-,root,root,-)
 %{_bindir}/*-backend
-%{_bindir}/headless*
 %{_bindir}/sample-*

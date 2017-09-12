@@ -327,25 +327,41 @@ grab_keys(headless_info_t *headless)
 
 	wl_array_init(&keygrab_array);
 
-	//grab informa key(100), mode(OR_EXCLUSIVE) and error
+	//grab information : key(169), mode(OR_EXCLUSIVE) and error
 	uint_ptr = wl_array_add(&keygrab_array, sizeof(unsigned int));
-	*uint_ptr = 169;//menu key in mobile
-	uint_ptr = wl_array_add(&keygrab_array, sizeof(unsigned int));
-	*uint_ptr = TIZEN_KEYROUTER_MODE_OVERRIDABLE_EXCLUSIVE;
-	uint_ptr = wl_array_add(&keygrab_array, sizeof(unsigned int));
-	*uint_ptr = 0;
-
-	//grab informa key(200), mode(OR_EXCLUSIVE) and error
-	uint_ptr = wl_array_add(&keygrab_array, sizeof(unsigned int));
-	*uint_ptr = 139;//home key in mobile
+	*uint_ptr = 169;//menu key
 	uint_ptr = wl_array_add(&keygrab_array, sizeof(unsigned int));
 	*uint_ptr = TIZEN_KEYROUTER_MODE_OVERRIDABLE_EXCLUSIVE;
 	uint_ptr = wl_array_add(&keygrab_array, sizeof(unsigned int));
 	*uint_ptr = 0;
 
-	//grab informa key(300), mode(OR_EXCLUSIVE) and error
+	//grab information : key(139), mode(OR_EXCLUSIVE) and error
 	uint_ptr = wl_array_add(&keygrab_array, sizeof(unsigned int));
-	*uint_ptr = 158;//back key in mobile
+	*uint_ptr = 139;//home key
+	uint_ptr = wl_array_add(&keygrab_array, sizeof(unsigned int));
+	*uint_ptr = TIZEN_KEYROUTER_MODE_OVERRIDABLE_EXCLUSIVE;
+	uint_ptr = wl_array_add(&keygrab_array, sizeof(unsigned int));
+	*uint_ptr = 0;
+
+	//grab information : key(158), mode(OR_EXCLUSIVE) and error
+	uint_ptr = wl_array_add(&keygrab_array, sizeof(unsigned int));
+	*uint_ptr = 158;//back key
+	uint_ptr = wl_array_add(&keygrab_array, sizeof(unsigned int));
+	*uint_ptr = TIZEN_KEYROUTER_MODE_OVERRIDABLE_EXCLUSIVE;
+	uint_ptr = wl_array_add(&keygrab_array, sizeof(unsigned int));
+	*uint_ptr = 0;
+
+	//grab information : key(28), mode(OR_EXCLUSIVE) and error
+	uint_ptr = wl_array_add(&keygrab_array, sizeof(unsigned int));
+	*uint_ptr = 28;//enter key on a keyboard
+	uint_ptr = wl_array_add(&keygrab_array, sizeof(unsigned int));
+	*uint_ptr = TIZEN_KEYROUTER_MODE_OVERRIDABLE_EXCLUSIVE;
+	uint_ptr = wl_array_add(&keygrab_array, sizeof(unsigned int));
+	*uint_ptr = 0;
+
+	//grab information : key(57), mode(OR_EXCLUSIVE) and error
+	uint_ptr = wl_array_add(&keygrab_array, sizeof(unsigned int));
+	*uint_ptr = 57;//space bar on a keyboard
 	uint_ptr = wl_array_add(&keygrab_array, sizeof(unsigned int));
 	*uint_ptr = TIZEN_KEYROUTER_MODE_OVERRIDABLE_EXCLUSIVE;
 	uint_ptr = wl_array_add(&keygrab_array, sizeof(unsigned int));
