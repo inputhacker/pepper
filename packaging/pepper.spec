@@ -199,6 +199,7 @@ This package includes wayland backend development module files.
 %package doctor
 Summary: Doctor server for pepper package
 Requires: pepper pepper-keyrouter pepper-evdev
+Requires: libtbm
 
 %description doctor
 This package includes doctor server files.

@@ -3,6 +3,7 @@
 #include <pepper-evdev.h>
 #include <pepper-keyrouter.h>
 #include <stdlib.h>
+#include <tbm_bufmgr.h>
 
 /* basic pepper objects */
 pepper_seat_t *seat = NULL;
@@ -10,6 +11,9 @@ pepper_evdev_t *evdev = NULL;
 pepper_keyrouter_t *keyrouter = NULL;
 pepper_compositor_t *compositor = NULL;
 pepper_input_device_t *input_device = NULL;
+
+/* tbm buffer manager */
+tbm_bufmgr bufmgr;
 
 /* event listeners */
 pepper_event_listener_t *listener_seat_add = NULL;
@@ -210,6 +214,7 @@ int main(int argc, char *argv[])
 	uint32_t caps = 0;
 	uint32_t probed = 0;
 	int ret = EXIT_SUCCESS;
+	int res = 0;
 
 	const char* socket_name = NULL;
 	const char* seat_name = NULL;
@@ -225,6 +230,12 @@ int main(int argc, char *argv[])
 	/* create pepper compositor */
 	compositor = pepper_compositor_create(socket_name);
 	PEPPER_CHECK(compositor, return EXIT_FAILURE, "Failed to create compositor !\n");
+
+	/* init tbm buffer manager */
+	bufmgr = tbm_bufmgr_init(-1);
+	PEPPER_CHECK(bufmgr, goto shutdown_on_failure, "Failed to init tbm buffer manager !\n");
+	res = tbm_bufmgr_bind_native_display(bufmgr, (void *)pepper_compositor_get_display(compositor));
+	PEPPER_CHECK(res, goto shutdown_on_failure, "Failed to bind native display with tbm buffer manager !\n");
 
 	/* register event listeners */
 	listener_seat_add = pepper_object_add_event_listener((pepper_object_t *)compositor,
@@ -342,6 +353,13 @@ shutdown:
 	{
 		pepper_evdev_destroy(evdev);
 		evdev = NULL;
+	}
+
+	/* deinitialize tbm buffer manager */
+	if (bufmgr)
+	{
+		tbm_bufmgr_deinit(bufmgr);
+		bufmgr = NULL;
 	}
 
 	/* destroy compositor */
