@@ -509,6 +509,7 @@ drm_output_set_cursor(drm_output_t *output)
 		resource = pepper_buffer_get_resource(buffer);
 
 		shm_buffer = wl_shm_buffer_get(resource);
+		PEPPER_CHECK(shm_buffer, return, "shm_buffer is NULL.\n");
 		stride = wl_shm_buffer_get_stride(shm_buffer);
 		data = wl_shm_buffer_get_data(shm_buffer);
 
@@ -564,6 +565,7 @@ drm_output_repaint(void *o, const pepper_list_t *plane_list)
 		if (!output->front) {
 			ret = drmModeSetCrtc(output->drm->fd, output->crtc_id, output->back->id, 0, 0,
 								 &output->conn->id, 1, output->mode);
+			PEPPER_CHECK(ret == 0, , "drmModeSetCrtc failed.\n");
 		}
 
 		ret = drmModePageFlip(output->drm->fd, output->crtc_id, output->back->id,

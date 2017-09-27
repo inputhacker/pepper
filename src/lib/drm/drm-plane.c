@@ -38,7 +38,7 @@ drm_init_planes(pepper_drm_t *drm)
 
 	for (i = 0; i < (int)res->count_planes; i++) {
 		drm_plane_t *plane = calloc(1, sizeof(drm_plane_t));
-		PEPPER_CHECK(plane, continue, "calloc() failed.\n");
+		PEPPER_CHECK(plane, break, "calloc() failed.\n");
 
 		plane->plane = drmModeGetPlane(drm->fd, res->planes[i]);
 		if (!plane->plane) {

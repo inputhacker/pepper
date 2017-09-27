@@ -301,7 +301,10 @@ __tdm_output_plane_init(pepper_tdm_output_t *output)
 		if (plane->caps & TDM_LAYER_CAPABILITY_PRIMARY) {
 			output->primary_plane = plane;
 		}
-		tdm_layer_set_info(plane->layer, &info);
+
+		err = tdm_layer_set_info(plane->layer, &info);
+		PEPPER_CHECK(err == TDM_ERROR_NONE, goto error,
+					 "tdm_layer_set_info failed err:%d\n", err);
 	}
 
 	if (!output->primary_plane) {
