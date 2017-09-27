@@ -90,7 +90,8 @@ error:
 
 		memset(&destroy_arg, 0x00, sizeof(destroy_arg));
 		destroy_arg.handle = buffer->handle;
-		drmIoctl(drm->fd, DRM_IOCTL_MODE_DESTROY_DUMB, &destroy_arg);
+		if (drmIoctl(drm->fd, DRM_IOCTL_MODE_DESTROY_DUMB, &destroy_arg))
+			PEPPER_ERROR("drmIoctl() failed.\n");
 	}
 
 	if (buffer->image)
@@ -213,7 +214,8 @@ drm_buffer_destroy(drm_buffer_t *buffer)
 
 		memset(&destroy_arg, 0x00, sizeof(destroy_arg));
 		destroy_arg.handle = buffer->handle;
-		drmIoctl(buffer->drm->fd, DRM_IOCTL_MODE_DESTROY_DUMB, &destroy_arg);
+		if (drmIoctl(buffer->drm->fd, DRM_IOCTL_MODE_DESTROY_DUMB, &destroy_arg))
+			PEPPER_ERROR("drmIoctl failed.\n");
 	} else if (buffer->type == DRM_BUFFER_TYPE_GBM) {
 		gbm_bo_set_user_data(buffer->bo, NULL, NULL);
 		gbm_surface_release_buffer(buffer->surface, buffer->bo);

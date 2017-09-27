@@ -78,7 +78,7 @@ drm_init_connectors(pepper_drm_t *drm)
 
 	for (i = 0; i < drm->resources->count_connectors; i++) {
 		drm_connector_t *conn = calloc(1, sizeof(drm_connector_t));
-		PEPPER_CHECK(conn, continue, "calloc() failed.\n");
+		PEPPER_CHECK(conn, return, "calloc() failed.\n");
 
 		conn->drm = drm;
 		conn->id = drm->resources->connectors[i];

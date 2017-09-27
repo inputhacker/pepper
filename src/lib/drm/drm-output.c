@@ -847,6 +847,12 @@ drm_output_create(drm_connector_t *conn)
 	output->drm = drm;
 	output->conn = conn;
 	output->crtc_index = find_crtc_for_connector(conn);
+	if (output->crtc_index == -1) {
+		PEPPER_ERROR("find_crtc_for_connector() failed.\n");
+		free(output);
+		return NULL;
+	}
+
 	output->crtc_id = drm->resources->crtcs[output->crtc_index];
 	output->saved_crtc = drmModeGetCrtc(drm->fd, output->crtc_id);
 	output->mode = &conn->connector->modes[0];
@@ -953,11 +959,12 @@ drm_output_destroy(void *o)
 		fini_gl_renderer(output);
 
 	if (output->saved_crtc) {
-		drmModeSetCrtc(output->conn->drm->fd,
+		if (drmModeSetCrtc(output->conn->drm->fd,
 					   output->saved_crtc->crtc_id,
 					   output->saved_crtc->buffer_id,
 					   output->saved_crtc->x, output->saved_crtc->y,
-					   &output->conn->connector->connector_id, 1, &output->saved_crtc->mode);
+					   &output->conn->connector->connector_id, 1, &output->saved_crtc->mode))
+			PEPPER_ERROR("drmModeSetCrtc was failed.\n");
 		drmModeFreeCrtc(output->saved_crtc);
 	}
 

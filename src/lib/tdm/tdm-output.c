@@ -558,7 +558,7 @@ pepper_tdm_output_init(pepper_tdm_t *tdm)
 
 	while (num_output--) {
 		output = (pepper_tdm_output_t *)calloc(1, sizeof(pepper_tdm_output_t));
-		PEPPER_CHECK(output, continue, "Failed to allocate memory for pepper_tdm_output_t\n");
+		PEPPER_CHECK(output, goto error, "Failed to allocate memory for pepper_tdm_output_t\n");
 		output->tdm = tdm;
 		output->output = (tdm_output *)tdm_display_get_output(tdm->disp, num_output,
 						 &err);
