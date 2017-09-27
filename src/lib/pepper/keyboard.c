@@ -221,6 +221,8 @@ pepper_keyboard_bind_resource(struct wl_client *client,
 	if ((keyboard->keymap_format == WL_KEYBOARD_KEYMAP_FORMAT_NO_KEYMAP)
 		|| (keyboard->keymap_fd < 0) || (keyboard->keymap_len == 0)) {
 		int fd = open("/dev/null", O_RDONLY);
+		if (fd < 0)
+			return;
 		wl_keyboard_send_keymap(res, WL_KEYBOARD_KEYMAP_FORMAT_NO_KEYMAP,
 								fd, 0);
 		close(fd);

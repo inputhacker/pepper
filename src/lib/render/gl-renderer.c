@@ -1861,6 +1861,9 @@ error:
 	if (surface != EGL_NO_SURFACE)
 		eglDestroySurface(gr->display, surface);
 
+	if (configs)
+		free(configs);
+
 	free(target);
 	return NULL;
 }

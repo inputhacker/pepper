@@ -60,17 +60,6 @@ get_connector_name(char *str, drmModeConnector *conn)
 	snprintf(str, 32, "%s%d", type_name, conn->connector_type_id);
 }
 
-static inline void
-add_connector(pepper_drm_t *drm, drmModeConnector *connector)
-{
-	drm_connector_t *conn;
-
-	conn = calloc(1, sizeof(drm_connector_t));
-	PEPPER_CHECK(conn, return, "calloc() failed.\n");
-
-	conn->connector = connector;
-}
-
 void
 drm_init_connectors(pepper_drm_t *drm)
 {
