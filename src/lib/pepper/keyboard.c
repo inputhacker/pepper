@@ -87,7 +87,7 @@ update_keymap(pepper_keyboard_t *keyboard)
 									WL_KEYBOARD_KEYMAP_FORMAT_NO_KEYMAP, fd,
 									0);
 
-		close(fd);
+		if (fd >= 0) close(fd);
 	} else {
 		wl_resource_for_each(resource, &keyboard->resource_list)
 			wl_keyboard_send_keymap(resource, keyboard->keymap_format,
