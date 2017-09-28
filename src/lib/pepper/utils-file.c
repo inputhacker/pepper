@@ -32,6 +32,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <linux/limits.h>
 
 static int
 set_cloexec_or_close(int fd)
@@ -79,7 +80,7 @@ PEPPER_API int
 pepper_create_anonymous_file(off_t size)
 {
 	static const char template[] = "/pepper-shared-XXXXXX";
-	const char *path;
+	char *path = NULL;
 	char *name;
 	int fd;
 	int ret;
@@ -93,12 +94,27 @@ pepper_create_anonymous_file(off_t size)
 		return -1;
 	}
 
+	path = strndup(path, PATH_MAX);
+	if (!path)
+	{
+		errno = ENOMEM;
+		return -1;
+	}
+
 	name = malloc(strlen(path) + sizeof(template));
 	if (!name)
+	{
+		free(path);
+		path = NULL;
+
 		return -1;
+	}
 
 	strncpy(name, path, strlen(path) + 1);
 	strncat(name, template, sizeof(template));
+
+	free(path);
+	path = NULL;
 
 	fd = create_tmpfile_cloexec(name);
 
