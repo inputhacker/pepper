@@ -34,6 +34,7 @@
 #include <sys/un.h>
 #include <errno.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "pepper-internal.h"
 
@@ -99,7 +100,7 @@ compositor_bind_socket(pepper_compositor_t *compositor, int socket_fd,
 	struct stat buf;
 	int name_length;
 	socklen_t size, name_size;
-	const char *runtime_dir;
+	char *runtime_dir = NULL;
 	long flags;
 
 	if (socket_fd < 0 || fstat(socket_fd, &buf) < 0 || !S_ISSOCK(buf.st_mode))
@@ -118,13 +119,20 @@ compositor_bind_socket(pepper_compositor_t *compositor, int socket_fd,
 		return PEPPER_FALSE;
 	}
 
+	/* The length of runtime_dir must be smaller than the size of sun_path at least. */
+	runtime_dir = strndup(runtime_dir, sizeof(compositor->addr.sun_path));
+	if (!runtime_dir) {
+		PEPPER_ERROR("Failed to duplicate string from XDG_RUNTIME_DIR !\n");
+		return PEPPER_FALSE;
+	}
+
 	compositor->addr.sun_family = AF_LOCAL;
 
 	name_length = snprintf(compositor->addr.sun_path,
 						 sizeof compositor->addr.sun_path,
 						 "%s/%s", runtime_dir, name);
 
-	if (name_length < 0 || name_length == INT32_MAX)
+	if (name_length < 0 || name_length >= INT32_MAX)
 		goto err_addr;
 
 	name_size = name_length + 1;
@@ -133,6 +141,9 @@ compositor_bind_socket(pepper_compositor_t *compositor, int socket_fd,
 					 " exceeds 108 bytes\n", runtime_dir, name);
 		goto err_addr;
 	}
+
+	free(runtime_dir);
+	runtime_dir = NULL;
 
 	if (stat(compositor->addr.sun_path, &buf) < 0) {
 		if (errno != ENOENT) {
@@ -161,6 +172,10 @@ compositor_bind_socket(pepper_compositor_t *compositor, int socket_fd,
 
 err_addr:
 	*compositor->addr.sun_path = 0;
+
+	if (runtime_dir)
+		free(runtime_dir);
+
 	return PEPPER_FALSE;
 }
 
