@@ -1,5 +1,5 @@
 Name:		pepper
-Version:	1.0.20
+Version:	1.0.21
 Release:	0
 Summary:	Library for developing wayland compositor
 License:	MIT
