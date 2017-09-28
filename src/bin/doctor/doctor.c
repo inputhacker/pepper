@@ -59,8 +59,6 @@ _handle_pointer_event(pepper_event_listener_t *listener, pepper_object_t *object
 			/* TODO: */
 			PEPPER_TRACE("[%s] PEPPER_EVENT_POINTER_AXIS\n", __FUNCTION__);
 			break;
-		default:
-			break;
 	}
 }
 
@@ -100,8 +98,6 @@ _handle_touch_event(pepper_event_listener_t *listener, pepper_object_t *object, 
 		case PEPPER_EVENT_TOUCH_CANCEL:
 			/* TODO: */
 			PEPPER_TRACE("[%s] PEPPER_EVENT_TOUCH_CANCEL\n", __FUNCTION__);
-			break;
-		default:
 			break;
 	}
 }
