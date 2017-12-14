@@ -361,8 +361,11 @@ pepper_tdm_output_get_subpixel_order(void *o)
 {
 	pepper_tdm_output_t *output = (pepper_tdm_output_t *)o;
 	unsigned int subpixel;
+	tdm_error ret;
 
-	tdm_output_get_subpixel(output->output, &subpixel);
+	ret = tdm_output_get_subpixel(output->output, &subpixel);
+	PEPPER_CHECK(ret == TDM_ERROR_NONE, return WL_OUTPUT_SUBPIXEL_UNKNOWN, "faile get subpixel\n");
+
 	switch (subpixel) {
 	default:
 		subpixel = WL_OUTPUT_SUBPIXEL_UNKNOWN;
