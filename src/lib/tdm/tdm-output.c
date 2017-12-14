@@ -317,8 +317,8 @@ __tdm_output_plane_init(pepper_tdm_output_t *output)
 error:
 	if (plane->base)
 		pepper_plane_destroy(plane->base);
-	else
-		free(plane);
+
+	free(plane);
 
 	return PEPPER_FALSE;
 }
