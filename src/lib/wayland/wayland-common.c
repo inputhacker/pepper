@@ -156,8 +156,12 @@ error:
 	if (conn->gl_renderer)
 		pepper_renderer_destroy(conn->gl_renderer);
 
-	string_free(conn->socket_name);
-	wl_display_disconnect(conn->display);
+	if (conn->socket_name)
+		string_free(conn->socket_name);
+
+	if (conn->display)
+		wl_display_disconnect(conn->display);
+
 	free(conn);
 
 	return NULL;

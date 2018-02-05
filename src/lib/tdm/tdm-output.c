@@ -634,10 +634,12 @@ pepper_tdm_output_init(pepper_tdm_t *tdm)
 	return PEPPER_TRUE;
 
 error:
-	if (output->base)
-		pepper_output_destroy(output->base);
-	else
-		free(output);
+	if (output) {
+		if (output->base)
+			pepper_output_destroy(output->base);
+		else
+			free(output);
+	}
 
 	return PEPPER_FALSE;
 }
