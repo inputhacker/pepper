@@ -559,7 +559,8 @@ pepper_tdm_output_init(pepper_tdm_t *tdm)
 
 	const char     *render_env = getenv("PEPPER_RENDERER");
 
-	tdm_display_get_output_count(tdm->disp, &num_output);
+	err = tdm_display_get_output_count(tdm->disp, &num_output);
+	PEPPER_CHECK(err == TDM_ERROR_NONE, return PEPPER_FALSE, "Failed to get number of outputs\n");
 	PEPPER_CHECK(num_output > 0, return PEPPER_FALSE, "Number of output is 0\n");
 
 	while (num_output--) {
