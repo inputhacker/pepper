@@ -140,31 +140,34 @@ __tdm_renderer_pixman_fini(pepper_tdm_output_t *output)
 static void
 __tdm_renderer_pixman_init(pepper_tdm_output_t *output)
 {
-	pepper_tdm_t   *tdm = output->tdm;
-	const tdm_output_mode *mode;
+   pepper_tdm_t   *tdm = output->tdm;
+   const tdm_output_mode *mode;
+   tdm_error err = TDM_ERROR_NONE;
 
-	if (!tdm->pixman_renderer) {
-		tdm->pixman_renderer = pepper_pixman_renderer_create(tdm->compositor);
-		PEPPER_CHECK(tdm->pixman_renderer, return,
-					 "pepper_pixman_renderer_create() failed.\n");
-	}
+   if (!tdm->pixman_renderer) {
+        tdm->pixman_renderer = pepper_pixman_renderer_create(tdm->compositor);
+        PEPPER_CHECK(tdm->pixman_renderer, return,
+                     "pepper_pixman_renderer_create() failed.\n");
+   }
 
-	output->renderer = tdm->pixman_renderer;
+   output->renderer = tdm->pixman_renderer;
 
-	tdm_output_get_mode(output->output, &mode);
-	output->tbm_surface_queue = tbm_surface_queue_create(3,
-								mode->hdisplay, mode->vdisplay,
-								TBM_FORMAT_XBGR8888, TBM_BO_SCANOUT);
-	PEPPER_CHECK(output->tbm_surface_queue, goto error,
-				 "tbm_surface_queue_create() failed.\n");
+   err = tdm_output_get_mode(output->output, &mode);
+   PEPPER_CHECK(err == TDM_ERROR_NONE, goto error,
+                "tdm_output_get_mode() failed.\n");
+   output->tbm_surface_queue = tbm_surface_queue_create(3,
+                                                        mode->hdisplay, mode->vdisplay,
+                                                        TBM_FORMAT_XBGR8888, TBM_BO_SCANOUT);
+   PEPPER_CHECK(output->tbm_surface_queue, goto error,
+                "tbm_surface_queue_create() failed.\n");
 
-	pepper_region_init(&output->previous_damage);
-	output->render_type = TDM_RENDER_TYPE_PIXMAN;
+   pepper_region_init(&output->previous_damage);
+   output->render_type = TDM_RENDER_TYPE_PIXMAN;
 
-	return;
+   return;
 
 error:
-	__tdm_renderer_pixman_fini(output);
+   __tdm_renderer_pixman_fini(output);
 }
 
 static void
@@ -207,40 +210,44 @@ __tdm_renderer_gl_fini(pepper_tdm_output_t *output)
 static void
 __tdm_renderer_gl_init(pepper_tdm_output_t *output)
 {
-	pepper_tdm_t    *tdm = output->tdm;
-	const tdm_output_mode *mode;
-	uint32_t        native_visual_id = TBM_FORMAT_XRGB8888;
+   pepper_tdm_t    *tdm = output->tdm;
+   const tdm_output_mode *mode;
+   uint32_t        native_visual_id = TBM_FORMAT_XRGB8888;
+   tdm_error err = TDM_ERROR_NONE;
 
-	if (!tdm->gl_renderer) {
-		tdm->gl_renderer = pepper_gl_renderer_create(tdm->compositor, tdm->bufmgr,
-						   "tbm");
-		PEPPER_CHECK(tdm->gl_renderer, return, "pepper_gl_renderer_create() failed.\n");
-	}
+   if (!tdm->gl_renderer) {
+        tdm->gl_renderer = pepper_gl_renderer_create(tdm->compositor, tdm->bufmgr,
+                                                     "tbm");
+        PEPPER_CHECK(tdm->gl_renderer, return, "pepper_gl_renderer_create() failed.\n");
+   }
 
-	output->renderer = tdm->gl_renderer;
+   output->renderer = tdm->gl_renderer;
 
-	tdm_output_get_mode(output->output, &mode);
-	output->tbm_surface_queue = tbm_surface_queue_create(3,
-								mode->hdisplay, mode->vdisplay,
-								TBM_FORMAT_XRGB8888,
-								TBM_BO_SCANOUT);
-	PEPPER_CHECK(output->tbm_surface_queue, goto error,
-				 "tbm_surface_queue_create() failed.\n");
+   err = tdm_output_get_mode(output->output, &mode);
+   PEPPER_CHECK(err == TDM_ERROR_NONE, goto error,
+                "tdm_output_get_mode() failed.\n");
 
-	output->render_target = pepper_gl_renderer_create_target(tdm->gl_renderer,
-							output->tbm_surface_queue,
-							PEPPER_FORMAT_XRGB8888,
-							&native_visual_id,
-							mode->hdisplay, mode->vdisplay);
-	PEPPER_CHECK(output->render_target, goto error,
-				 "pepper_gl_renderer_create_target() failed.\n");
-	output->render_type = TDM_RENDER_TYPE_GL;
+   output->tbm_surface_queue = tbm_surface_queue_create(3,
+                                                        mode->hdisplay, mode->vdisplay,
+                                                        TBM_FORMAT_XRGB8888,
+                                                        TBM_BO_SCANOUT);
+   PEPPER_CHECK(output->tbm_surface_queue, goto error,
+                "tbm_surface_queue_create() failed.\n");
 
-	pepper_renderer_set_target(output->renderer, output->render_target);
-	return;
+   output->render_target = pepper_gl_renderer_create_target(tdm->gl_renderer,
+                                                            output->tbm_surface_queue,
+                                                            PEPPER_FORMAT_XRGB8888,
+                                                            &native_visual_id,
+                                                            mode->hdisplay, mode->vdisplay);
+   PEPPER_CHECK(output->render_target, goto error,
+                "pepper_gl_renderer_create_target() failed.\n");
+   output->render_type = TDM_RENDER_TYPE_GL;
+
+   pepper_renderer_set_target(output->renderer, output->render_target);
+   return;
 
 error:
-	__tdm_renderer_gl_fini(output);
+   __tdm_renderer_gl_fini(output);
 }
 
 static void
@@ -400,25 +407,29 @@ pepper_tdm_output_get_mode_count(void *o)
 static void
 pepper_tdm_output_get_mode(void *o, int index, pepper_output_mode_t *mode)
 {
-	pepper_tdm_output_t *output = (pepper_tdm_output_t *)o;
-	int num_mode;
-	const tdm_output_mode *modes;
-	const tdm_output_mode *cur_mode;
+   pepper_tdm_output_t *output = (pepper_tdm_output_t *)o;
+   int num_mode;
+   const tdm_output_mode *modes;
+   const tdm_output_mode *cur_mode;
+   tdm_error error = TDM_ERROR_NONE;
 
-	tdm_output_get_available_modes(output->output, &modes, &num_mode);
-	PEPPER_CHECK(index < num_mode, return, "mode index is invalid\n");
+   tdm_output_get_available_modes(output->output, &modes, &num_mode);
+   PEPPER_CHECK(index < num_mode, return, "mode index is invalid\n");
 
-	mode->flags = 0;
-	mode->w = modes[index].hdisplay;
-	mode->h = modes[index].vdisplay;
-	mode->refresh = modes[index].vrefresh;
+   mode->flags = 0;
+   mode->w = modes[index].hdisplay;
+   mode->h = modes[index].vdisplay;
+   mode->refresh = modes[index].vrefresh;
 
-	if (modes[index].type & TDM_OUTPUT_MODE_TYPE_PREFERRED)
-		mode->flags |= WL_OUTPUT_MODE_PREFERRED;
+   if (modes[index].type & TDM_OUTPUT_MODE_TYPE_PREFERRED)
+     mode->flags |= WL_OUTPUT_MODE_PREFERRED;
 
-	tdm_output_get_mode(output->output, &cur_mode);
-	if (cur_mode == &modes[index])
-		mode->flags |= WL_OUTPUT_MODE_CURRENT;
+   error = tdm_output_get_mode(output->output, &cur_mode);
+   if (error == TDM_ERROR_NONE)
+     {
+        if (cur_mode == &modes[index])
+          mode->flags |= WL_OUTPUT_MODE_CURRENT;
+     }
 }
 
 static pepper_bool_t
