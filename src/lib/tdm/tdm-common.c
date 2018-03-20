@@ -59,6 +59,8 @@ pepper_tdm_create(pepper_compositor_t *compositor)
 	ret = tdm_display_get_fd(tdm->disp, &tdm->fd);
 	PEPPER_CHECK(ret == TDM_ERROR_NONE, goto error,
 				 "tdm_display_get_fd() failed %d\n", ret);
+	PEPPER_CHECK(tdm->fd >= 0, goto error,
+				 "tdm_display_get_fd() failed fd:%d\n", tdm->fd);
 
 	tdm->bufmgr = tbm_bufmgr_init(tdm->fd);
 	PEPPER_CHECK(tdm->bufmgr, goto error, "tbm_bufmgr_init() failed \n");
