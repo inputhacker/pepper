@@ -941,53 +941,55 @@ error:
 void
 drm_output_destroy(void *o)
 {
-	int           i;
-	drm_output_t *output = o;
-	drm_plane_t  *plane;
+   int           i;
+   drm_output_t *output = o;
+   drm_plane_t  *plane;
 
-	if (output->page_flip_pending || (output->vblank_pending_count > 0)) {
-		output->destroy_pending = PEPPER_TRUE;
-		return;
-	}
+   if (output->page_flip_pending || (output->vblank_pending_count > 0)) {
+        output->destroy_pending = PEPPER_TRUE;
+        return;
+   }
 
-	for (i = 0; i < 2; i++) {
-		if (output->cursor_bo[i])
-			gbm_bo_destroy(output->cursor_bo[i]);
-	}
+   for (i = 0; i < 2; i++) {
+        if (output->cursor_bo[i])
+          gbm_bo_destroy(output->cursor_bo[i]);
+   }
 
-	if (output->render_type == DRM_RENDER_TYPE_PIXMAN)
-		fini_pixman_renderer(output);
-	else if (output->render_type == DRM_RENDER_TYPE_GL)
-		fini_gl_renderer(output);
+   if (output->render_type == DRM_RENDER_TYPE_PIXMAN)
+     fini_pixman_renderer(output);
+   else if (output->render_type == DRM_RENDER_TYPE_GL)
+     fini_gl_renderer(output);
 
-	if (output->saved_crtc) {
-		if (drmModeSetCrtc(output->conn->drm->fd,
-					   output->saved_crtc->crtc_id,
-					   output->saved_crtc->buffer_id,
-					   output->saved_crtc->x, output->saved_crtc->y,
-					   &output->conn->connector->connector_id, 1, &output->saved_crtc->mode))
-			PEPPER_ERROR("drmModeSetCrtc was failed.\n");
-		drmModeFreeCrtc(output->saved_crtc);
-	}
+   if (output->saved_crtc) {
+        if (drmModeSetCrtc(output->conn->drm->fd,
+                           output->saved_crtc->crtc_id,
+                           output->saved_crtc->buffer_id,
+                           output->saved_crtc->x, output->saved_crtc->y,
+                           &output->conn->connector->connector_id, 1, &output->saved_crtc->mode))
+          PEPPER_ERROR("drmModeSetCrtc was failed.\n");
+        drmModeFreeCrtc(output->saved_crtc);
+   }
 
-	if (output->fb_plane)
-		pepper_plane_destroy(output->fb_plane);
+   if (output->fb_plane)
+     pepper_plane_destroy(output->fb_plane);
 
-	if (output->primary_plane)
-		pepper_plane_destroy(output->primary_plane);
+   if (output->primary_plane)
+     pepper_plane_destroy(output->primary_plane);
 
-	/* Release all planes. */
-	pepper_list_for_each(plane, &output->drm->plane_list, link) {
-		if (plane->output == output) {
-			plane->output = NULL;
-			pepper_plane_destroy(plane->base);
-			drmModeSetPlane(output->drm->fd, plane->id, output->crtc_id,
-							0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-		}
-	}
+   /* Release all planes. */
+   pepper_list_for_each(plane, &output->drm->plane_list, link) {
+        int ret;
+        if (plane->output == output) {
+             plane->output = NULL;
+             pepper_plane_destroy(plane->base);
+             ret = drmModeSetPlane(output->drm->fd, plane->id, output->crtc_id,
+                                   0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+             PEPPER_CHECK(ret == 0, continue, "drmModeSetPlane() failed.\n");
+        }
+   }
 
-	/* destroy renderer. */
-	free(output);
+   /* destroy renderer. */
+   free(output);
 }
 
 void
