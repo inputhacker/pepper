@@ -32,6 +32,7 @@
 #include <pepper-evdev.h>
 #include <pepper-keyrouter.h>
 #include <pepper-input-backend.h>
+#include <pepper-devicemgr.h>
 
 /* basic pepper objects */
 pepper_xkb_t *xkb = NULL;
@@ -39,6 +40,7 @@ pepper_seat_t *seat = NULL;
 pepper_evdev_t *evdev = NULL;
 pepper_keyrouter_t *keyrouter = NULL;
 pepper_input_device_t *input_device = NULL;
+pepper_devicemgr_t *devicemgr = NULL;
 
 /* event listeners */
 pepper_event_listener_t *listener_seat_add = NULL;
@@ -134,6 +136,32 @@ _handle_input_device_remove(pepper_event_listener_t *listener, pepper_object_t *
 		pepper_seat_remove_input_device(seat, device);
 }
 
+static void
+_pepper_devicemgr_keymap_add(pepper_list_t *list, const char *name, int keycode)
+{
+	pepper_devicemgr_keymap_data_t *data;
+
+	data = (pepper_devicemgr_keymap_data_t *)calloc(1, sizeof(pepper_devicemgr_keymap_data_t));
+	PEPPER_CHECK(data, return, "Failed to alloc memory\n");
+
+	strncpy(data->name, name, UINPUT_MAX_NAME_SIZE);
+	data->keycode = keycode;
+
+	pepper_list_init(&data->link);
+	pepper_list_insert(list, &data->link);
+}
+
+static void
+_pepper_devicemgr_keymap_set(pepper_devicemgr_t *pepper_devicemgr, pepper_list_t *list)
+{
+	pepper_list_init(list);
+	_pepper_devicemgr_keymap_add(list, "XF86Back", 166);
+	_pepper_devicemgr_keymap_add(list, "XF86Home", 147);
+	_pepper_devicemgr_keymap_add(list, "XF86Menu", 177);
+
+	pepper_devicemgr_keymap_set(pepper_devicemgr, list);
+}
+
 int
 main(int argc, char **argv)
 {
@@ -142,6 +170,7 @@ main(int argc, char **argv)
 	struct wl_display   *display;
 	pepper_compositor_t *compositor;
 	const char* socket_name = NULL;
+	pepper_list_t keymap_list;
 
 	if (!getenv("XDG_RUNTIME_DIR"))
 		setenv("XDG_RUNTIME_DIR", "/run", 1);
@@ -201,6 +230,12 @@ main(int argc, char **argv)
 	seat = pepper_compositor_add_seat(compositor, "seat0");
 	PEPPER_CHECK(seat, goto shutdown_on_failure, "Failed to add seat !\n");
 
+	/* create pepper devicemgr */
+	devicemgr = pepper_devicemgr_create(compositor, seat);
+	PEPPER_CHECK(devicemgr, goto shutdown_on_failure, "Failed to create devicemgr !\n");
+
+	_pepper_devicemgr_keymap_set(devicemgr, &keymap_list);
+
 	/* set keyboard capability by default */
 	caps = WL_SEAT_CAPABILITY_KEYBOARD;
 
@@ -233,6 +268,8 @@ shutdown_on_failure:
 
 	if (keyrouter)
 		pepper_keyrouter_destroy(keyrouter);
+	if (devicemgr)
+		pepper_devicemgr_destroy(devicemgr);
 	if (evdev)
 		pepper_evdev_destroy(evdev);
 	if (input_device)

@@ -59,6 +59,21 @@ Requires: pepper-keyrouter = %{version}-%{release}
 %description keyrouter-devel
 This package includes keyrouter development module files.
 
+###### devicemgr
+%package devicemgr
+Summary: Keyrouter module for pepper package
+
+%description devicemgr
+This package includes devicemgr module files.
+
+###### devicemgr-devel
+%package devicemgr-devel
+Summary: Devicemgr development module for pepper package
+Requires: pepper-devicemgr = %{version}-%{release}
+
+%description devicemgr-devel
+This package includes devicemgr development module files.
+
 ###### evdev
 %package evdev
 Summary: evdev module for pepper package
@@ -198,7 +213,7 @@ This package includes wayland backend development module files.
 ###### doctor server
 %package doctor
 Summary: Doctor server for pepper package
-Requires: pepper pepper-keyrouter pepper-evdev
+Requires: pepper pepper-keyrouter pepper-devicemgr pepper-evdev
 Requires: libtbm
 
 %description doctor
@@ -212,7 +227,7 @@ Requires: pepper-fbdev
 Requires: pepper-tdm
 Requires: pepper-wayland pepper-x11
 Requires: pepper-libinput
-Requires: pepper-keyrouter pepper-evdev
+Requires: pepper-keyrouter pepper-evdev pepper-devicemgr
 Requires: pepper-xkb
 
 %description samples
@@ -262,6 +277,9 @@ install -m 0644 data/doctor/units/display_env.sh %{buildroot}%{_sysconfdir}/prof
 
 %post keyrouter -p /sbin/ldconfig
 %postun keyrouter -p /sbin/ldconfig
+
+%post devicemgr -p /sbin/ldconfig
+%postun devicemgr -p /sbin/ldconfig
 
 %post evdev -p /sbin/ldconfig
 %postun evdev -p /sbin/ldconfig
@@ -332,6 +350,20 @@ rm -f %{_unitdir_user}/basic.target.wants/display-user.service
 %{_includedir}/pepper/pepper-keyrouter.h
 %{_libdir}/pkgconfig/pepper-keyrouter.pc
 %{_libdir}/libpepper-keyrouter.so
+
+%files devicemgr
+%manifest %{name}.manifest
+%defattr(-,root,root,-)
+%license COPYING
+%{_libdir}/libpepper-devicemgr.so.*
+
+%files devicemgr-devel
+%manifest %{name}.manifest
+%defattr(-,root,root,-)
+%{_includedir}/pepper/devicemgr.h
+%{_includedir}/pepper/pepper-devicemgr.h
+%{_libdir}/pkgconfig/pepper-devicemgr.pc
+%{_libdir}/libpepper-devicemgr.so
 
 %files evdev
 %manifest %{name}.manifest
