@@ -4,6 +4,7 @@
 #include <pepper-keyrouter.h>
 #include <stdlib.h>
 #include <tbm_bufmgr.h>
+#include <pepper-devicemgr.h>
 
 /* basic pepper objects */
 pepper_seat_t *seat = NULL;
@@ -11,6 +12,7 @@ pepper_evdev_t *evdev = NULL;
 pepper_keyrouter_t *keyrouter = NULL;
 pepper_compositor_t *compositor = NULL;
 pepper_input_device_t *input_device = NULL;
+pepper_devicemgr_t *devicemgr = NULL;
 
 /* tbm buffer manager */
 tbm_bufmgr bufmgr;
@@ -205,6 +207,32 @@ _handle_input_device_remove(pepper_event_listener_t *listener, pepper_object_t *
 		pepper_seat_remove_input_device(seat, device);
 }
 
+static void
+_pepper_devicemgr_keymap_add(pepper_list_t *list, const char *name, int keycode)
+{
+	pepper_devicemgr_keymap_data_t *data;
+
+	data = (pepper_devicemgr_keymap_data_t *)calloc(1, sizeof(pepper_devicemgr_keymap_data_t));
+	PEPPER_CHECK(data, return, "Failed to alloc memory\n");
+
+	strncpy(data->name, name, UINPUT_MAX_NAME_SIZE);
+	data->keycode = keycode;
+
+	pepper_list_init(&data->link);
+	pepper_list_insert(list, &data->link);
+}
+
+static void
+_pepper_devicemgr_keymap_set(pepper_devicemgr_t *pepper_devicemgr, pepper_list_t *list)
+{
+	pepper_list_init(list);
+	_pepper_devicemgr_keymap_add(list, "XF86Back", 166);
+	_pepper_devicemgr_keymap_add(list, "XF86Home", 147);
+	_pepper_devicemgr_keymap_add(list, "XF86Menu", 177);
+
+	pepper_devicemgr_keymap_set(pepper_devicemgr, list);
+}
+
 int main(int argc, char *argv[])
 {
 	uint32_t caps = 0;
@@ -214,6 +242,8 @@ int main(int argc, char *argv[])
 
 	const char* socket_name = NULL;
 	const char* seat_name = NULL;
+
+	pepper_list_t keymap_list;
 
 	socket_name = getenv("WAYLAND_DISPLAY");
 
@@ -261,6 +291,11 @@ int main(int argc, char *argv[])
 
 	seat = pepper_compositor_add_seat(compositor, seat_name);
 	PEPPER_CHECK(seat, goto shutdown_on_failure, "Failed to add seat !\n");
+
+	/* create pepper devicemgr */
+	devicemgr = pepper_devicemgr_create(compositor, seat);
+	PEPPER_CHECK(devicemgr, goto shutdown_on_failure, "Failed to create devicemgr !\n");
+	_pepper_devicemgr_keymap_set(devicemgr, &keymap_list);
 
 	/* get capabilities for a default pepper input device*/
 	if (getenv("WAYLAND_INPUT_KEYBOARD"))
@@ -325,6 +360,13 @@ shutdown:
 	{
 		pepper_input_device_destroy(input_device);
 		input_device = NULL;
+	}
+
+	/* destroy devicemgr */
+	if (devicemgr)
+	{
+		pepper_devicemgr_destroy(devicemgr);
+		devicemgr = NULL;
 	}
 
 	/* destroy seat */

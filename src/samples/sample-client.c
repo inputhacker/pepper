@@ -41,6 +41,7 @@ struct sample_client
 	struct wl_compositor *compositor;
 	struct wl_registry *registry;
 	struct tizen_keyrouter *keyrouter;
+	struct tizen_input_device_manager *devicemgr;
 	struct wl_seat *seat;
 	struct wl_keyboard *keyboard;
 	struct wl_pointer *pointer;
@@ -471,8 +472,30 @@ keyboard_key(void *data, struct wl_keyboard *keyboard, uint32_t serial, uint32_t
 	(void) time;
 	(void) key;
 	(void) state;
+	sample_client_t *client = data;
+	static int pressed = 1;
 
 	TRACE("... serial=%d, time=%d, key=%d, state=%d\n", serial, time, key, state);
+	if (state == 0)
+	{
+		if (key == 123)
+		{
+			tizen_input_device_manager_init_generator(client->devicemgr, TIZEN_INPUT_DEVICE_MANAGER_CLAS_KEYBOARD);
+		}
+		else if (key == 122)
+		{
+			tizen_input_device_manager_deinit_generator(client->devicemgr, TIZEN_INPUT_DEVICE_MANAGER_CLAS_KEYBOARD);
+		}
+		else if (key == 177)
+		{
+			tizen_input_device_manager_generate_key(client->devicemgr, "XF86Back", pressed);
+			pressed = !pressed;
+		}
+		else if (key == 147)
+		{
+			tizen_input_device_manager_destroy(client->devicemgr);
+		}
+	}
 }
 
 static void
@@ -589,6 +612,11 @@ global_registry_add(void * data, struct wl_registry * registry, uint32_t id, con
 		client->keyrouter = wl_registry_bind(client->registry, id, &tizen_keyrouter_interface, 1);
 		if (client->keyrouter) TRACE("[PID:%d] Succeed to bind tizen_keyrouter_interface !\n", client->pid);
 	}
+	else if (0 == strncmp(interface, "tizen_input_device_manager", 12))
+	{
+		client->devicemgr = wl_registry_bind(client->registry, id, &tizen_input_device_manager_interface, 2);
+		if (client->devicemgr) TRACE("[PID:%d] Succeed to bind tizen_input_device_manager_interface !\n", client->pid);
+	}
 	else if (0 == strncmp(interface, "xdg_shell", 9))
 	{
 		client->shell = wl_registry_bind(client->registry, id, &xdg_shell_interface, 1);
@@ -661,10 +689,48 @@ keygrab_notify_list(void *data, struct tizen_keyrouter *tizen_keyrouter, struct 
 	TRACE("... list\n");
 }
 
-
 static struct tizen_keyrouter_listener keyrouter_listener = {
 	keygrab_notify,
 	keygrab_notify_list
+};
+
+static void
+_cb_device_add(void *data, struct tizen_input_device_manager *tizen_input_device_manager, uint32_t serial, const char *identifier, struct tizen_input_device *device, struct wl_seat *seat)
+{
+   ;
+}
+
+static void
+_cb_device_remove(void *data, struct tizen_input_device_manager *tizen_input_device_manager,
+               uint32_t serial ,
+               const char *identifier ,
+               struct tizen_input_device *device ,
+               struct wl_seat *seat )
+{
+   ;
+}
+
+static void
+_cb_error(void *data,
+          struct tizen_input_device_manager *tizen_input_device_manager,
+          uint32_t errorcode)
+{
+	TRACE("... error=%d\n", errorcode);
+}
+
+static void
+_cb_block_expired(void *data,
+                  struct tizen_input_device_manager *tizen_input_device_manager)
+{
+   ;
+}
+
+struct tizen_input_device_manager_listener devicemgr_listener =
+{
+   _cb_device_add,
+   _cb_device_remove,
+   _cb_error,
+   _cb_block_expired
 };
 
 static void
@@ -695,14 +761,18 @@ int main(int argc, char **argv)
 
 	const char *use_xdg_shell = NULL;
 	const char *use_keyrouter = NULL;
+	const char *use_devicemgr = NULL;
 
 	use_xdg_shell = getenv("USE_XDG_SHELL");
 	use_keyrouter = getenv("USE_KEYROUTER");
+	use_devicemgr = getenv("USE_DEVICEMGR");
 
 	if (!use_xdg_shell)
 		TRACE("* Note : XDG SHELL can be initialized by setting USE_XDG_SHELL environment variable !\n");
 	if (!use_keyrouter)
 		TRACE("* Note : tizen_keyrouter interface can be initialized by setting USE_KEYROUTER environment variable !\n");
+	if (!use_devicemgr)
+		TRACE("* Note : tizen_input_device_manager interface can be initialized by setting USE_DEVICEMGR environment variable !\n");
 
 	client = calloc(1, sizeof(sample_client_t));
 	ERROR_CHECK(client, goto shutdown, "Failed to allocate memory for sample client !\n");
@@ -730,6 +800,9 @@ int main(int argc, char **argv)
 	if (use_xdg_shell)
 		ERROR_CHECK(client->shell, goto shutdown, "[PID:%d] Failed to bind to the xdg shell interface !\n", client->pid);
 
+	if (use_devicemgr)
+		ERROR_CHECK(client->devicemgr, goto shutdown, "[PID:%d] Failed to bind to the devicemgr interface !\n", client->pid);
+
 	client->surface = wl_compositor_create_surface(client->compositor);
 	ERROR_CHECK(client->surface, goto shutdown, "[PID:%d] can't create surface\n", client->pid);
 
@@ -746,13 +819,25 @@ int main(int argc, char **argv)
 
 	if (use_keyrouter)
 	{
-		if (0 > tizen_keyrouter_add_listener(client->keyrouter, &keyrouter_listener, NULL))
+		if (0 > tizen_keyrouter_add_listener(client->keyrouter, &keyrouter_listener, client))
 		{
 			TRACE("[PID:%d] Failed on tizen_keyrouter_add_listener !\n", client->pid);
 			return 0;
 		}
 
+		do_keygrab(client, "XF86Menu", TIZEN_KEYROUTER_MODE_OVERRIDABLE_EXCLUSIVE);
+		do_keygrab(client, "XF86AudioRaiseVolume", TIZEN_KEYROUTER_MODE_OVERRIDABLE_EXCLUSIVE);
+		do_keygrab(client, "XF86AudioLowerVolume", TIZEN_KEYROUTER_MODE_OVERRIDABLE_EXCLUSIVE);
 		do_keygrab(client, "XF86Home", TIZEN_KEYROUTER_MODE_OVERRIDABLE_EXCLUSIVE);
+		do_keygrab(client, "XF86Back", TIZEN_KEYROUTER_MODE_OVERRIDABLE_EXCLUSIVE);
+	}
+	if (use_devicemgr)
+	{
+		if (0 > tizen_input_device_manager_add_listener(client->devicemgr, &devicemgr_listener, client))
+		{
+			TRACE("[PID:%d] Failed on tizen_input_device_manager_add_listener !\n", client->pid);
+			return 0;
+		}
 	}
 
 	while (wl_display_dispatch(client->display) != -1)

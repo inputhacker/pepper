@@ -1,0 +1,14 @@
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+libdir=@libdir@
+includedir=@includedir@
+libexecdir=@libexecdir@
+pkglibexecdir=${libexecdir}/@PACKAGE@
+
+Name: Pepper Devicemgr Library
+Description: Pepper devicemgr library header and library files
+Version: @PEPPER_DEVICEMGR_VERSION@
+
+Requires.private: @PEPPER_DEVICEMGR_REQUIRES@
+Cflags: -I${includedir}/pepper
+Libs: -L${libdir} -lpepper-devicemgr

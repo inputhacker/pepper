@@ -1,5 +1,6 @@
 SUBDIRS = lib/pepper        \
           lib/keyrouter      \
+          lib/devicemgr     \
           lib/evdev         \
           lib/libinput      \
           lib/xkb           \

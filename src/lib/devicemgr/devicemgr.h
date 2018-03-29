@@ -21,37 +21,30 @@
 * DEALINGS IN THE SOFTWARE.
 */
 
-#ifndef PEPPER_XKB_H
-#define PEPPER_XKB_H
+#ifndef DEVICEMGR_H
+#define DEVICEMGR_H
 
 #include <pepper.h>
-#include <xkbcommon/xkbcommon.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-typedef struct xkb_rule_names pepper_xkb_rule_names;
-typedef pepper_xkb_rule_names pepper_xkb_rule_names_t;
-typedef struct pepper_xkb_info pepper_xkb_info_t;
-typedef struct pepper_xkb pepper_xkb_t;
+typedef struct devicemgr devicemgr_t;
+typedef struct devicemgr_device devicemgr_device_t;
 
-PEPPER_API void
-pepper_xkb_keyboard_set_keymap(pepper_xkb_t *xkb,
-										pepper_keyboard_t *keyboard,
-										pepper_xkb_rule_names_t *names);
+PEPPER_API devicemgr_t *devicemgr_create(pepper_compositor_t *compositor, pepper_seat_t *seat);
+PEPPER_API void devicemgr_destroy(devicemgr_t *devicemgr);
+PEPPER_API int devicemgr_input_generator_init(devicemgr_t *devicemgr, unsigned int clas, const char *name);
+PEPPER_API int devicemgr_input_generator_deinit(devicemgr_t *devicemgr);
+PEPPER_API int devicemgr_input_generator_generate_key(devicemgr_t *devicemgr, int keycode, pepper_bool_t pressed);
 
-PEPPER_API pepper_xkb_t *
-pepper_xkb_create(void);
-
-PEPPER_API void
-pepper_xkb_destroy(pepper_xkb_t *xkb);
-
-PEPPER_API int
-pepper_xkb_info_keyname_to_keycode(pepper_xkb_info_t *xkb_info, const char *keyname);
+PEPPER_API void devicemgr_input_generator_keyboard_set(devicemgr_t *devicemgr, pepper_keyboard_t *keyboard);
+PEPPER_API void devicemgr_input_generator_keyboard_unset(devicemgr_t *devicemgr, pepper_keyboard_t *keyboard);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* PEPPER_XKB_H */
+#endif /* DEVICEMGR_H */
+
