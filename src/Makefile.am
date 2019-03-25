@@ -8,7 +8,8 @@ SUBDIRS = lib/pepper        \
           lib/render        \
           lib/drm           \
           lib/fbdev         \
-          lib/wayland
+          lib/wayland       \
+          lib/inotify
 
 if ENABLE_TDM
 SUBDIRS += lib/tdm

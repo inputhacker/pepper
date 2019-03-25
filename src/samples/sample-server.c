@@ -33,6 +33,7 @@
 #include <pepper-keyrouter.h>
 #include <pepper-input-backend.h>
 #include <pepper-devicemgr.h>
+#include <pepper-inotify.h>
 
 /* basic pepper objects */
 pepper_xkb_t *xkb = NULL;
@@ -41,6 +42,7 @@ pepper_evdev_t *evdev = NULL;
 pepper_keyrouter_t *keyrouter = NULL;
 pepper_input_device_t *input_device = NULL;
 pepper_devicemgr_t *devicemgr = NULL;
+pepper_inotify_t *inotify = NULL;
 
 /* event listeners */
 pepper_event_listener_t *listener_seat_add = NULL;
@@ -162,6 +164,28 @@ _pepper_devicemgr_keymap_set(pepper_devicemgr_t *pepper_devicemgr, pepper_list_t
 	pepper_devicemgr_keymap_set(pepper_devicemgr, list);
 }
 
+static void
+_handle_pepper_inotify_event(uint32_t type, pepper_inotify_event_t *ev, void *data)
+{
+	pepper_evdev_t *evdev = data;
+
+	switch (type)
+	{
+		case PEPPER_INOTIFY_EVENT_TYPE_CREATE:
+			pepper_evdev_device_path_add(evdev, pepper_inotify_event_name_get(ev));
+			break;
+		case PEPPER_INOTIFY_EVENT_TYPE_REMOVE:
+			pepper_evdev_device_path_remove(evdev, pepper_inotify_event_name_get(ev));
+			break;
+		case PEPPER_INOTIFY_EVENT_TYPE_MODIFY:
+			pepper_evdev_device_path_remove(evdev, pepper_inotify_event_name_get(ev));
+			pepper_evdev_device_path_add(evdev, pepper_inotify_event_name_get(ev));
+			break;
+		default:
+			break;
+	}
+}
+
 int
 main(int argc, char **argv)
 {
@@ -248,6 +272,11 @@ main(int argc, char **argv)
 
 	if (!probed)
 		PEPPER_TRACE("No evdev devices have been probed.\n");
+
+	inotify = pepper_inotify_create(compositor, _handle_pepper_inotify_event, evdev);
+	PEPPER_CHECK(inotify, ;, "Failed to create inotify\n");
+
+	pepper_inotify_add(inotify, "/dev/input/");
 
 	/* Enter main loop. */
 	wl_display_run(display);

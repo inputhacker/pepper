@@ -11,6 +11,7 @@ if ENABLE_TDM
 pkgconfig_DATA += pkgconfig/pepper-tdm.pc
 endif
 pkgconfig_DATA += pkgconfig/pepper-fbdev.pc
+pkgconfig_DATA += pkgconfig/pepper-inotify.pc
 pkgconfig_DATA += pkgconfig/pepper-keyrouter.pc
 pkgconfig_DATA += pkgconfig/pepper-devicemgr.pc
 pkgconfig_DATA += pkgconfig/pepper-evdev.pc

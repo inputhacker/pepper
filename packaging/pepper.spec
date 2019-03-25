@@ -44,6 +44,21 @@ Requires: %{name} = %{version}-%{release}
 %description devel
 This package includes developer files common to all packages.
 
+###### pepper-inotify
+%package inotify
+Summary: inotify module for pepper package
+
+%description inotify
+This package includes inotify module files.
+
+###### inotify-devel
+%package inotify-devel
+Summary: Inotify development module for pepper package
+Requires: pepper-inotify = %{version}-%{release}
+
+%description inotify-devel
+This package includes inotify development module files.
+
 ###### keyrouter
 %package keyrouter
 Summary: Keyrouter module for pepper package
@@ -227,7 +242,7 @@ Requires: pepper-fbdev
 Requires: pepper-tdm
 Requires: pepper-wayland pepper-x11
 Requires: pepper-libinput
-Requires: pepper-keyrouter pepper-evdev pepper-devicemgr
+Requires: pepper-keyrouter pepper-evdev pepper-devicemgr pepper-inotify
 Requires: pepper-xkb
 
 %description samples
@@ -274,6 +289,9 @@ install -m 0644 data/doctor/units/display_env.sh %{buildroot}%{_sysconfdir}/prof
 
 %post -n %{name} -p /sbin/ldconfig
 %postun -n %{name} -p /sbin/ldconfig
+
+%post inotify -p /sbin/ldconfig
+%postun inotify -p /sbin/ldconfig
 
 %post keyrouter -p /sbin/ldconfig
 %postun keyrouter -p /sbin/ldconfig
@@ -336,6 +354,19 @@ rm -f %{_unitdir_user}/basic.target.wants/display-user.service
 %{_includedir}/pepper/pepper-input-backend.h
 %{_libdir}/pkgconfig/pepper.pc
 %{_libdir}/libpepper.so
+
+%files inotify
+%manifest %{name}.manifest
+%defattr(-,root,root,-)
+%license COPYING
+%{_libdir}/libpepper-inotify.so.*
+
+%files inotify-devel
+%manifest %{name}.manifest
+%defattr(-,root,root,-)
+%{_includedir}/pepper/pepper-inotify.h
+%{_libdir}/pkgconfig/pepper-inotify.pc
+%{_libdir}/libpepper-inotify.so
 
 %files keyrouter
 %manifest %{name}.manifest
