@@ -27,6 +27,8 @@
 #include <pepper.h>
 #include <pepper-evdev.h>
 
+#define MAX_PATH_LEN 16
+
 struct pepper_evdev
 {
        pepper_compositor_t *compositor;
@@ -41,6 +43,8 @@ struct evdev_device_info
        pepper_evdev_t *evdev;
        pepper_input_device_t *device;
        struct wl_event_source *event_source;
+       int fd;
+       char path[MAX_PATH_LEN];
        pepper_list_t link;
 };
 

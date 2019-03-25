@@ -213,8 +213,10 @@ _evdev_keyboard_device_open(pepper_evdev_t *evdev, const char *path)
 	PEPPER_CHECK(device_info, goto error, "[%s] Failed to allocate memory for device info...\n", __FUNCTION__);
 
 	event_mask = WL_EVENT_READABLE;
+	device_info->fd = fd;
 	device_info->evdev = evdev;
 	device_info->device = device;
+	strncpy(device_info->path, path, MAX_PATH_LEN - 1);
 	device_info->event_source = wl_event_loop_add_fd(evdev->event_loop,
 			fd, event_mask, _evdev_keyboard_event_fd_read, device_info);
 	PEPPER_CHECK(device_info->event_source, goto error, "[%s] Failed to add fd as an event source...\n", __FUNCTION__);
@@ -243,6 +245,61 @@ error:
 		close(fd);
 
 	return 0;
+}
+
+static void
+_evdev_keyboard_device_close(pepper_evdev_t *evdev, const char *path)
+{
+	evdev_device_info_t *device_info = NULL;
+
+	evdev_device_info_t *tmp = NULL;
+
+	PEPPER_CHECK(path, return, "[%s] Given path is NULL.\n", __FUNCTION__);
+
+	pepper_list_for_each_safe(device_info, tmp, &evdev->device_list, link) {
+		if (!strncmp(path, device_info->path, MAX_PATH_LEN)) {
+			pepper_input_device_destroy(device_info->device);
+			wl_event_source_remove(device_info->event_source);
+			close(device_info->fd);
+
+			pepper_list_remove(&device_info->link);
+			free(device_info);
+
+			break;
+		}
+	}
+}
+
+
+PEPPER_API pepper_bool_t
+pepper_evdev_device_path_add(pepper_evdev_t *evdev, const char *path)
+{
+	int res = 0;
+
+	PEPPER_CHECK(evdev, return PEPPER_FALSE, "Invalid evdev structure.\n");
+	PEPPER_CHECK(path, return PEPPER_FALSE, "Invalid path.\n");
+
+	if (!strncmp(path, "event", 5)) {
+		res = _evdev_keyboard_device_open(evdev, path);
+	} else {
+		PEPPER_ERROR("Invalid path to open: %s\n", path);
+	}
+
+	if (res) return PEPPER_TRUE;
+	return PEPPER_FALSE;
+}
+
+PEPPER_API void
+pepper_evdev_device_path_remove(pepper_evdev_t *evdev, const char *path)
+{
+	PEPPER_CHECK(evdev, return, "Invalid evdev structure.\n");
+	PEPPER_CHECK(path, return, "Invalid path.\n");
+
+	if (!strncmp(path, "event", 5)) {
+		_evdev_keyboard_device_close(evdev, path);
+	} else {
+		PEPPER_ERROR("Invalid path to close: %s\n", path);
+	}
 }
 
 PEPPER_API uint32_t
@@ -317,6 +374,8 @@ pepper_evdev_destroy(pepper_evdev_t *evdev)
 				pepper_input_device_destroy(device_info->device);
 			if (device_info->event_source)
 				wl_event_source_remove(device_info->event_source);
+			if (device_info->fd)
+				close(device_info->fd);
 
 			pepper_list_remove(&device_info->link);
 			free(device_info);

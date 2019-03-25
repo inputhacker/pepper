@@ -34,6 +34,12 @@ typedef struct pepper_evdev pepper_evdev_t;
 typedef struct evdev_device_info evdev_device_info_t;
 typedef struct evdev_key_event evdev_key_event_t;
 
+PEPPER_API pepper_bool_t
+pepper_evdev_device_path_add(pepper_evdev_t *evdev, const char *path);
+
+PEPPER_API void
+pepper_evdev_device_path_remove(pepper_evdev_t *evdev, const char *path);
+
 PEPPER_API uint32_t
 pepper_evdev_device_probe(pepper_evdev_t *evdev, uint32_t caps);
 
