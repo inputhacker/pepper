@@ -32,6 +32,7 @@ BuildRequires:  pkgconfig(tizen-extension-client)
 %if "%{ENABLE_TDM}" == "1"
 BuildRequires:  pkgconfig(libtdm)
 %endif
+BuildRequires:  pkgconfig(dlog)
 
 %description
 Pepper is a lightweight and flexible library for developing various types of wayland compositors.

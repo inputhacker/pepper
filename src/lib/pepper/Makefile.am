@@ -8,6 +8,11 @@ libpepper_include_HEADERS = pepper.h pepper-utils.h pepper-utils-pixman.h pepper
 libpepper_la_CFLAGS = $(AM_CFLAGS) $(PEPPER_CFLAGS)
 libpepper_la_LIBADD = $(PEPPER_LIBS) -lm
 
+if HAVE_DLOG
+libpepper_la_CFLAGS += $(DLOG_CFLAGS)
+libpepper_la_LIBADD += $(DLOG_LIBS)
+endif
+
 libpepper_la_SOURCES = pepper.h                 \
                        pepper-internal.h        \
                        object.c                 \

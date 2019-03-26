@@ -36,8 +36,14 @@ if test x$have_tbm = xyes; then
    AC_DEFINE([HAVE_TBM], [1], [Build the tbm backend])
    PEPPER_REQUIRES="$PEPPER_REQUIRES libtbm wayland-tbm-server"
 fi
-
 AM_CONDITIONAL([HAVE_TBM], [test "x${have_tbm}" = "xyes"])
+
+PKG_CHECK_MODULES(DLOG, dlog, [have_dlog="yes"], [have_dlog="no"])
+if test "x${have_dlog}" = "xyes"; then
+	AC_DEFINE([HAVE_DLOG], [1], [Define to 1 if you have dlog])
+	PEPPER_REQUIRES="$PEPPER_REQUIRES dlog"
+fi
+AM_CONDITIONAL([HAVE_DLOG], [test "x${have_dlog}" = "xyes"])
 
 PEPPER_DIR="-I\$(top_srcdir)/src/lib/pepper"
 PEPPER_LIB="\$(top_srcdir)/src/lib/pepper/libpepper.la"

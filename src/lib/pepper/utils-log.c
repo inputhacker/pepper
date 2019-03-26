@@ -32,9 +32,21 @@
 #include <stdarg.h>
 #include <time.h>
 #include <sys/time.h>
+#include <config.h>
+
+#ifdef HAVE_DLOG
+# include <dlog.h>
+#  ifdef LOG_TAG
+#   undef LOG_TAG
+#  endif
+# define LOG_TAG "PEPPER"
+#endif
 
 static FILE *pepper_log_file;
 static int pepper_log_verbosity = 3;
+#ifdef HAVE_DLOG
+static pepper_bool_t pepper_dlog_enable = PEPPER_FALSE;
+#endif
 static int cached_tm_mday = -1;
 
 static void __attribute__ ((constructor))
@@ -85,26 +97,56 @@ pepper_print_domain(const char *log_domain)
 }
 
 static int
-pepper_vlog(const char *format, va_list ap)
+pepper_vlog(const char *format, int level, va_list ap)
 {
+#ifdef HAVE_DLOG
+	int dlog_level = DLOG_INFO;
+
+	if (pepper_dlog_enable)
+	{
+		if (level == PEPPER_LOG_LEVEL_DEBUG)
+			dlog_level = DLOG_DEBUG;
+		else if (level == PEPPER_LOG_LEVEL_ERROR)
+			dlog_level = DLOG_ERROR;
+
+		return dlog_vprint(dlog_level, LOG_TAG, format, ap);
+	}
+#endif
 	return vfprintf(pepper_log_file, format, ap);
 }
 
 PEPPER_API int
 pepper_log(const char *domain, int level, const char *format, ...)
 {
-	int l;
+	int l = 0;
 	va_list argp;
 
 	if (level > pepper_log_verbosity || level < 0)
 		return 0;
-
+#ifdef HAVE_DLOG
+	if (!pepper_dlog_enable)
+	{
+		l = pepper_print_timestamp();
+		l += pepper_print_domain(domain);
+	}
+#else
 	l = pepper_print_timestamp();
 	l += pepper_print_domain(domain);
+#endif
 
 	va_start(argp, format);
-	l += pepper_vlog(format, argp);
+	l += pepper_vlog(format, level, argp);
 	va_end(argp);
 
 	return l;
+}
+
+PEPPER_API void
+pepper_log_dlog_enable(pepper_bool_t enabled)
+{
+#ifdef HAVE_DLOG
+	pepper_dlog_enable = enabled;
+#else
+	;
+#endif
 }

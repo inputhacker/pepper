@@ -315,17 +315,27 @@ pepper_id_allocator_free(pepper_id_allocator_t *allocator, uint32_t id);
 PEPPER_API int
 pepper_create_anonymous_file(off_t size);
 
+typedef enum pepper_log_level {
+	PEPPER_LOG_LEVEL_NONE,
+	PEPPER_LOG_LEVEL_DEBUG,
+	PEPPER_LOG_LEVEL_ERROR
+} pepper_log_level_t;
+
 PEPPER_API int
 pepper_log(const char *domain, int level, const char *format, ...);
 
+PEPPER_API void
+pepper_log_dlog_enable(pepper_bool_t enabled);
+
 #define PEPPER_ERROR(fmt, ...)                                                          \
     do {                                                                                \
-        pepper_log("ERROR", 0, "%s:%s: " fmt, __FILE__, __FUNCTION__, ##__VA_ARGS__);	\
+        pepper_log("ERROR", PEPPER_LOG_LEVEL_ERROR, "%s:%s: " fmt,                      \
+                   __FILE__, __FUNCTION__, ##__VA_ARGS__);                              \
     } while (0)
 
 #define PEPPER_TRACE(fmt, ...)                                                          \
     do {                                                                                \
-        pepper_log("DEBUG", 0, fmt, ##__VA_ARGS__);                                     \
+        pepper_log("DEBUG", PEPPER_LOG_LEVEL_DEBUG, fmt, ##__VA_ARGS__);                \
     } while (0)
 
 #define PEPPER_CHECK(exp, action, fmt, ...)                                             \
