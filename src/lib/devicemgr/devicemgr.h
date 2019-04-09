@@ -39,8 +39,8 @@ PEPPER_API int devicemgr_input_generator_init(devicemgr_t *devicemgr, unsigned i
 PEPPER_API int devicemgr_input_generator_deinit(devicemgr_t *devicemgr);
 PEPPER_API int devicemgr_input_generator_generate_key(devicemgr_t *devicemgr, int keycode, pepper_bool_t pressed);
 
-PEPPER_API void devicemgr_input_generator_keyboard_set(devicemgr_t *devicemgr, pepper_keyboard_t *keyboard);
-PEPPER_API void devicemgr_input_generator_keyboard_unset(devicemgr_t *devicemgr, pepper_keyboard_t *keyboard);
+PEPPER_API void devicemgr_input_generator_keyboard_set(devicemgr_t *devicemgr, pepper_input_device_t *device);
+PEPPER_API void devicemgr_input_generator_keyboard_unset(devicemgr_t *devicemgr, pepper_input_device_t *device);
 
 #ifdef __cplusplus
 }

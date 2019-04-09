@@ -25,7 +25,7 @@
 #include <tizen-extension-server-protocol.h>
 
 static void
-_devicemgr_generate_key(pepper_keyboard_t *keyboard, int keycode, int pressed)
+_devicemgr_generate_key(pepper_input_device_t *device, int keycode, int pressed)
 {
 	pepper_input_event_t event;
 	struct timeval time;
@@ -38,8 +38,8 @@ _devicemgr_generate_key(pepper_keyboard_t *keyboard, int keycode, int pressed)
 	event.key = keycode - 8;
 	event.state = pressed ? PEPPER_KEY_STATE_PRESSED : PEPPER_KEY_STATE_RELEASED;
 
-	pepper_object_emit_event((pepper_object_t *)keyboard,
-								PEPPER_EVENT_KEYBOARD_KEY, &event);
+	pepper_object_emit_event((pepper_object_t *)device,
+		PEPPER_EVENT_INPUT_DEVICE_KEYBOARD_KEY, &event);
 }
 
 PEPPER_API int
@@ -48,36 +48,36 @@ devicemgr_input_generator_generate_key(devicemgr_t *devicemgr, int keycode, pepp
 	PEPPER_CHECK(devicemgr,
 		return TIZEN_INPUT_DEVICE_MANAGER_ERROR_NO_SYSTEM_RESOURCES,
 		"Invalid devicemgr structure.\n");
-	PEPPER_CHECK(devicemgr->keyboard && devicemgr->keyboard->kbd,
+	PEPPER_CHECK(devicemgr->keyboard && devicemgr->keyboard->input_device,
 		return TIZEN_INPUT_DEVICE_MANAGER_ERROR_NO_SYSTEM_RESOURCES,
 		"Keyboard device is not initialized\n");
 
-	_devicemgr_generate_key(devicemgr->keyboard->kbd, keycode, pressed);
+	_devicemgr_generate_key(devicemgr->keyboard->input_device, keycode, pressed);
 
 	return TIZEN_INPUT_DEVICE_MANAGER_ERROR_NONE;
 }
 
 PEPPER_API void
-devicemgr_input_generator_keyboard_set(devicemgr_t *devicemgr, pepper_keyboard_t *keyboard)
+devicemgr_input_generator_keyboard_set(devicemgr_t *devicemgr, pepper_input_device_t *device)
 {
 	PEPPER_CHECK(devicemgr, return, "Invalid devicemgr structure.\n");
 	PEPPER_CHECK(devicemgr->keyboard, return, "input generator is not initialized yet.\n");
-	if (devicemgr->keyboard->kbd) return;
-	devicemgr->keyboard->kbd = keyboard;
+	if (devicemgr->keyboard->input_device) return;
+	devicemgr->keyboard->input_device = device;
 }
 
 PEPPER_API void
-devicemgr_input_generator_keyboard_unset(devicemgr_t *devicemgr, pepper_keyboard_t *keyboard)
+devicemgr_input_generator_keyboard_unset(devicemgr_t *devicemgr, pepper_input_device_t *device)
 {
 	PEPPER_CHECK(devicemgr, return, "Invalid devicemgr structure.\n");
-	devicemgr->keyboard->kbd = NULL;
+	devicemgr->keyboard->input_device = NULL;
 }
 
 
 static pepper_bool_t
 _devicemgr_input_generator_keyboard_create(devicemgr_t *devicemgr, const char *name)
 {
-	if (devicemgr->keyboard->kbd) return PEPPER_TRUE;
+	if (devicemgr->keyboard->input_device) return PEPPER_TRUE;
 
 	devicemgr->keyboard->input_device = pepper_input_device_create(devicemgr->compositor, WL_SEAT_CAPABILITY_KEYBOARD, NULL, NULL);
 	PEPPER_CHECK(devicemgr->keyboard->input_device, return PEPPER_FALSE, "Failed to create input device !\n");

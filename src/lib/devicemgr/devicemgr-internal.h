@@ -36,7 +36,6 @@
 struct devicemgr_device {
 	char name[UINPUT_MAX_NAME_SIZE + 1];
 	pepper_input_device_t *input_device;
-	pepper_keyboard_t *kbd;
 };
 
 struct devicemgr {
