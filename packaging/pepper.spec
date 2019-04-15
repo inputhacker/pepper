@@ -235,6 +235,14 @@ Requires: libtbm
 %description doctor
 This package includes doctor server files.
 
+###### headless server
+%package headless
+Summary: Headless server for pepper package
+Requires: pepper
+
+%description headless
+This package includes headless server files.
+
 ###### samples
 %package samples
 Summary: samples for pepper package
@@ -277,16 +285,22 @@ make %{?_smp_mflags}
 install -m 644 data/doctor/units/display-manager.service %{buildroot}%{_unitdir}
 install -m 644 data/doctor/units/display-manager-ready.path %{buildroot}%{_unitdir}
 install -m 644 data/doctor/units/display-manager-ready.service %{buildroot}%{_unitdir}
+install -m 644 data/headless/units/display-manager.service %{buildroot}%{_unitdir}
+install -m 644 data/headless/units/display-manager-ready.path %{buildroot}%{_unitdir}
+install -m 644 data/headless/units/display-manager-ready.service %{buildroot}%{_unitdir}
 
 # install user session service
 %__mkdir_p %{buildroot}%{_unitdir_user}
 install -m 644 data/doctor/units/display-user.service %{buildroot}%{_unitdir_user}
+install -m 644 data/headless/units/display-user.service %{buildroot}%{_unitdir_user}
 
 # install env file and scripts for service
 %__mkdir_p %{buildroot}%{_sysconfdir}/sysconfig
 install -m 0644 data/doctor/units/display-manager.env %{buildroot}%{_sysconfdir}/sysconfig
+install -m 0644 data/headless/units/display-manager.env %{buildroot}%{_sysconfdir}/sysconfig
 %__mkdir_p %{buildroot}%{_sysconfdir}/profile.d
 install -m 0644 data/doctor/units/display_env.sh %{buildroot}%{_sysconfdir}/profile.d
+install -m 0644 data/headless/units/display_env.sh %{buildroot}%{_sysconfdir}/profile.d
 
 %post -n %{name} -p /sbin/ldconfig
 %postun -n %{name} -p /sbin/ldconfig
@@ -327,6 +341,12 @@ getent group %{display_group} >/dev/null || %{_sbindir}/groupadd -r -o %{display
 # create user 'display'
 getent passwd %{display_user} >/dev/null || %{_sbindir}/useradd -r -g %{display_group} -d /run/display -s /bin/false -c "Display" %{display_user}
 
+%pre headless
+# create groups 'display'
+getent group %{display_group} >/dev/null || %{_sbindir}/groupadd -r -o %{display_group}
+# create user 'display'
+getent passwd %{display_user} >/dev/null || %{_sbindir}/useradd -r -g %{display_group} -d /run/display -s /bin/false -c "Display" %{display_user}
+
 # create links within systemd's target(s)
 %__mkdir_p %{_unitdir}/graphical.target.wants/
 %__mkdir_p %{_unitdir_user}/basic.target.wants/
@@ -335,6 +355,11 @@ ln -sf ../display-manager-ready.service %{_unitdir}/graphical.target.wants/
 ln -sf ../display-user.service %{_unitdir_user}/basic.target.wants/
 
 %postun doctor
+rm -f %{_unitdir}/graphical.target.wants/display-manager.service
+rm -f %{_unitdir}/graphical.target.wants/display-manager-ready.service
+rm -f %{_unitdir_user}/basic.target.wants/display-user.service
+
+%postun headless
 rm -f %{_unitdir}/graphical.target.wants/display-manager.service
 rm -f %{_unitdir}/graphical.target.wants/display-manager-ready.service
 rm -f %{_unitdir_user}/basic.target.wants/display-user.service
@@ -528,6 +553,18 @@ rm -f %{_unitdir_user}/basic.target.wants/display-user.service
 %{_unitdir}/display-manager-ready.path
 %{_unitdir}/display-manager-ready.service
 %{_unitdir}//display-manager.service
+%{_unitdir_user}/display-user.service
+%config %{_sysconfdir}/sysconfig/display-manager.env
+%config %{_sysconfdir}/profile.d/display_env.sh
+
+%files headless
+%manifest %{name}.manifest
+%defattr(-,root,root,-)
+%license COPYING
+%{_bindir}/headless*
+%{_unitdir}/display-manager-ready.path
+%{_unitdir}/display-manager-ready.service
+%{_unitdir}/display-manager.service
 %{_unitdir_user}/display-user.service
 %config %{_sysconfdir}/sysconfig/display-manager.env
 %config %{_sysconfdir}/profile.d/display_env.sh

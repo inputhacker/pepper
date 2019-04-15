@@ -306,6 +306,15 @@ SAMPLES_LIBS="$PEPPER_X11_LIB $PEPPER_X11_LIBS $SAMPLES_LIBS"
 AC_SUBST(SAMPLES_CFLAGS)
 AC_SUBST(SAMPLES_LIBS)
 
+# headless server
+HEADLESS_SERVER_REQUIRES="wayland-server"
+PKG_CHECK_MODULES(HEADLESS_SERVER, $[HEADLESS_SERVER_REQUIRES])
+HEADLESS_SERVER_CFLAGS="$PEPPER_DIR $HEADLESS_SERVER_CFLAGS"
+HEADLESS_SERVER_LIBS="$PEPPER_LIB $PEPPER_LIBS $HEADLESS_SERVER_LIBS"
+
+AC_SUBST(HEADLESS_SERVER_CFLAGS)
+AC_SUBST(HEADLESS_SERVER_LIBS)
+
 # doctor (headless server) and headless client samples
 DOCTOR_SERVER_REQUIRES="wayland-server libtbm"
 PKG_CHECK_MODULES(DOCTOR_SERVER, $[DOCTOR_SERVER_REQUIRES])
@@ -392,6 +401,7 @@ src/lib/drm/Makefile
 src/lib/fbdev/Makefile
 src/lib/wayland/Makefile
 src/bin/doctor/Makefile
+src/bin/headless/Makefile
 src/samples/Makefile
 pkgconfig/pepper.pc
 pkgconfig/pepper-render.pc
