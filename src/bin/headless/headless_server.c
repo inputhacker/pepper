@@ -1,5 +1,34 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <signal.h>
+
 #include <pepper.h>
 #include <headless_server.h>
+
+static int
+handle_sigint(int signal_number, void *data)
+{
+	struct wl_display *display = (struct wl_display *)data;
+	wl_display_terminate(display);
+
+	return 0;
+}
+
+static pepper_bool_t
+init_signal(pepper_compositor_t *compositor)
+{
+    struct wl_display *display;
+    struct wl_event_loop *loop;
+    struct wl_event_source *sigint;
+
+    display = pepper_compositor_get_display(compositor);
+    loop = wl_display_get_event_loop(display);
+	sigint = wl_event_loop_add_signal(loop, SIGINT, handle_sigint, display);
+	if (!sigint)
+		return PEPPER_FALSE;
+
+    return PEPPER_TRUE;
+}
 
 int main(int argc, char *argv[])
 {
@@ -17,6 +46,9 @@ int main(int argc, char *argv[])
 
     /* Init Output */
     pepper_output_led_init(compositor);
+
+    /* Init Signal for SIGINT */
+    init_signal(compositor);
 
 	/* run event loop */
 	wl_display_run(pepper_compositor_get_display(compositor));
