@@ -574,3 +574,4 @@ rm -f %{_unitdir_user}/basic.target.wants/display-user.service
 %defattr(-,root,root,-)
 %{_bindir}/*-backend
 %{_bindir}/sample-*
+%{_bindir}/headless*
