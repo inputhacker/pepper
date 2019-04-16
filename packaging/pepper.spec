@@ -30,6 +30,8 @@ BuildRequires:  pkgconfig(wayland-tbm-server)
 BuildRequires:  pkgconfig(libtbm)
 BuildRequires:  pkgconfig(tizen-extension-server)
 BuildRequires:  pkgconfig(tizen-extension-client)
+BuildRequires:  pkgconfig(ecore-wl2)
+BuildRequires:  pkgconfig(capi-ui-efl-util)
 %if "%{ENABLE_TDM}" == "1"
 BuildRequires:  pkgconfig(libtdm)
 %endif
