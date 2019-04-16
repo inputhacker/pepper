@@ -26,6 +26,9 @@
 #include <unistd.h>
 
 #include <pepper-output-backend.h>
+#include "HL_UI_LED.h"
+
+#define NUM_LED 12
 
 typedef struct {
     pepper_compositor_t *compositor;
@@ -33,6 +36,7 @@ typedef struct {
     pepper_plane_t    *plane;
 
     int num_led;
+    HL_UI_LED *ui_led;
 }led_output_t;
 
 static const int KEY_OUTPUT;
@@ -42,6 +46,10 @@ led_output_destroy(void *o)
 {
     led_output_t *output = (led_output_t *)o;
     PEPPER_TRACE("Output Destroy %p base %p\n", output, output->output);
+
+    if (output->ui_led)
+        HL_UI_LED_Close(output->ui_led);
+
     free(output);
 }
 
@@ -75,7 +83,7 @@ led_output_get_mode(void *o, int index, pepper_output_mode_t *mode)
     led_output_t *output = (led_output_t *)o;
 
     if (index != 0)
-    	return;
+        return;
 
     mode->flags = WL_OUTPUT_MODE_CURRENT | WL_OUTPUT_MODE_PREFERRED;
     mode->w = output->num_led;
@@ -146,9 +154,14 @@ pepper_output_led_init(pepper_compositor_t *compositor)
     PEPPER_TRACE("Output Init\n");
 
     if (!output) {
-    	PEPPER_ERROR("Failed to allocate memory in %s\n", __FUNCTION__);
-    	goto error;
+        PEPPER_ERROR("Failed to allocate memory in %s\n", __FUNCTION__);
+        goto error;
     }
+
+    output->num_led = NUM_LED;
+    output->ui_led = HL_UI_LED_Init(output->num_led);
+    if (!output->ui_led)
+        PEPPER_ERROR("HL_UI_LED_Init() failed.\n");
 
     output->compositor = compositor;
     output->output = pepper_compositor_add_output(compositor,
@@ -163,10 +176,13 @@ pepper_output_led_init(pepper_compositor_t *compositor)
                                  &KEY_OUTPUT, output, led_output_destroy);
     PEPPER_TRACE("\t Add Output %p, base %p\n", output, output->output);
     PEPPER_TRACE("\t Add Output %p, plane %p\n", output, output->plane);
-    PEPPER_TRACE("\t Userdata %p\n", pepper_object_get_user_data(compositor,&KEY_OUTPUT));
+    PEPPER_TRACE("\t Userdata %p\n", pepper_object_get_user_data((pepper_object_t *)compositor,&KEY_OUTPUT));
     return PEPPER_TRUE;
 
     error:
+    if (output->ui_led)
+        HL_UI_LED_Close(output->ui_led);
+
     if (output->output)
       pepper_output_destroy(output->output);
 

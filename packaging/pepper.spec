@@ -9,6 +9,7 @@ Source:		%{name}-%{version}.tar.xz
 source1001:     %name.manifest
 
 %define ENABLE_TDM	1
+%define HEADLESS_SERVER 1
 
 BuildRequires:	autoconf > 2.64
 BuildRequires:	automake >= 1.11
@@ -33,6 +34,9 @@ BuildRequires:  pkgconfig(tizen-extension-client)
 BuildRequires:  pkgconfig(libtdm)
 %endif
 BuildRequires:  pkgconfig(dlog)
+%if "%{HEADLESS_SERVER}" == "1"
+BuildRequires:  pkgconfig(capi-system-peripheral-io)
+%endif
 
 %description
 Pepper is a lightweight and flexible library for developing various types of wayland compositors.

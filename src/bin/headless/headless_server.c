@@ -34,6 +34,7 @@ int main(int argc, char *argv[])
 {
 	const char *socket_name = NULL;
 	pepper_compositor_t *compositor = NULL;
+    pepper_bool_t ret;
 
 	socket_name = getenv("WAYLAND_DISPLAY");
 
@@ -45,7 +46,8 @@ int main(int argc, char *argv[])
 	PEPPER_CHECK(compositor, return EXIT_FAILURE, "Failed to create compositor !");
 
     /* Init Output */
-    pepper_output_led_init(compositor);
+    ret = pepper_output_led_init(compositor);
+    PEPPER_CHECK(ret, goto end, "pepper_output_led_init() failed.\n");
 
     /* Init Signal for SIGINT */
     init_signal(compositor);
@@ -53,6 +55,7 @@ int main(int argc, char *argv[])
 	/* run event loop */
 	wl_display_run(pepper_compositor_get_display(compositor));
 
+end:
     /* Deinit Process */
     pepper_output_led_deinit(compositor);
 	pepper_compositor_destroy(compositor);
