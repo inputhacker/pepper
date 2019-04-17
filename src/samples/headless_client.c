@@ -192,8 +192,12 @@ int main(int argc, char **argv)
 	x = y = 0;
 	w = h = 1;
 	client->win = ecore_wl2_window_new(client->ewd, NULL, x, y, w, h);
+	ecore_wl2_window_show(client->win);
+	ecore_wl2_window_activate(client->win);
+	ecore_wl2_window_commit(client->win, EINA_TRUE);
 
 	/* TODO */
+	ecore_main_loop_begin();
 
 	return EXIT_SUCCESS;
 
