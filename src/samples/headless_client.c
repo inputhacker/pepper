@@ -8,24 +8,24 @@
 #define DEBUG
 #ifdef DEBUG
 #define TRACE(fmt, ...)	\
-    do { \
-        printf("[headless-client : %s] "fmt, __FUNCTION__, ##__VA_ARGS__); \
-    } while (0)
+	do { \
+		printf("[headless-client : %s] "fmt, __FUNCTION__, ##__VA_ARGS__); \
+	} while (0)
 #else
-#define TRACE(fmt, ...)
-    do { \
-	;
-    } while (0)
+#define TRACE(fmt, ...) \
+	do { \
+		;
+	} while (0)
 #endif
 
 #define ERROR_CHECK(exp, action, fmt, ...) \
-    do { \
-        if (!(exp)) \
-        { \
-            printf(fmt, ##__VA_ARGS__);	\
-            action; \
-        } \
-    } while (0)
+	do { \
+		if (!(exp)) \
+		{ \
+			printf(fmt, ##__VA_ARGS__);	\
+			action; \
+		} \
+	} while (0)
 
 typedef struct app_data app_data_t;
 struct app_data
@@ -140,7 +140,8 @@ _cb_key_up(void *data EINA_UNUSED, int type EINA_UNUSED, void *event)
 	return ECORE_CALLBACK_PASS_ON;
 }
 
-static void _event_handlers_init(app_data_t *client)
+static void
+_event_handlers_init(app_data_t *client)
 {
 	Ecore_Event_Handler *h = NULL;
 
