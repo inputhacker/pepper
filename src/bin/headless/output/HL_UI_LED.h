@@ -13,10 +13,10 @@
 #define BITRATE 8000000
 
 typedef struct{
-    uint32_t number;
+	uint32_t number;
 	peripheral_spi_h hnd_spi;
-    uint8_t  *pixels;
-    uint8_t  brightness;
+	uint8_t  *pixels;
+	uint8_t  brightness;
 }HL_UI_LED;
 
 /**

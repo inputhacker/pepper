@@ -49,70 +49,70 @@ zxdg_toplevel_cb_resource_destroy(struct wl_resource *resource)
 static void
 zxdg_toplevel_cb_destroy(struct wl_client *client, struct wl_resource *resource)
 {
-   wl_resource_destroy(resource);
+	wl_resource_destroy(resource);
 }
 
 static void
 zxdg_toplevel_cb_parent_set(struct wl_client *client,
-                              struct wl_resource *resource,
-                              struct wl_resource *res_parent)
+			    struct wl_resource *resource,
+			    struct wl_resource *res_parent)
 {
 }
 
 static void
 zxdg_toplevel_cb_title_set(struct wl_client *client,
-                             struct wl_resource *resource,
-                             const char *title)
+			   struct wl_resource *resource,
+			   const char *title)
 {
 }
 
 static void
 zxdg_toplevel_cb_app_id_set(struct wl_client *client,
-                              struct wl_resource *resource,
-                              const char *app_id)
+			    struct wl_resource *resource,
+			    const char *app_id)
 {
 }
 
 static void
 zxdg_toplevel_cb_win_menu_show(struct wl_client *client,
-                                 struct wl_resource *resource,
-                                 struct wl_resource *res_seat,
-                                 uint32_t serial,
-                                 int32_t x,
-                                 int32_t y)
+			       struct wl_resource *resource,
+			       struct wl_resource *res_seat,
+			       uint32_t serial,
+			       int32_t x,
+			       int32_t y)
 {
 }
 
 static void
 zxdg_toplevel_cb_move(struct wl_client *client,
-                        struct wl_resource *resource,
-                        struct wl_resource *res_seat,
-                        uint32_t serial)
+		      struct wl_resource *resource,
+		      struct wl_resource *res_seat,
+		      uint32_t serial)
 {
 }
 
 static void
 zxdg_toplevel_cb_resize(struct wl_client *client,
-                          struct wl_resource *resource,
-                          struct wl_resource *res_seat,
-                          uint32_t serial,
-                          uint32_t edges)
+			struct wl_resource *resource,
+			struct wl_resource *res_seat,
+			uint32_t serial,
+			uint32_t edges)
 {
 }
 
 static void
 zxdg_toplevel_cb_max_size_set(struct wl_client *client,
-                                struct wl_resource *resource,
-                                int32_t w,
-                                int32_t h)
+			      struct wl_resource *resource,
+			      int32_t w,
+			      int32_t h)
 {
 }
 
 static void
 zxdg_toplevel_cb_min_size_set(struct wl_client *client,
-                                struct wl_resource *resource,
-                                int32_t w,
-                                int32_t h)
+			      struct wl_resource *resource,
+			      int32_t w,
+			      int32_t h)
 {
 }
 
@@ -128,8 +128,8 @@ zxdg_toplevel_cb_maximized_unset(struct wl_client *client, struct wl_resource *r
 
 static void
 zxdg_toplevel_cb_fullscreen_set(struct wl_client *client,
-                                  struct wl_resource *resource,
-                                  struct wl_resource *res_output)
+				struct wl_resource *resource,
+				struct wl_resource *res_output)
 {
 }
 
@@ -145,20 +145,20 @@ zxdg_toplevel_cb_minimized_set(struct wl_client *client, struct wl_resource *res
 
 static const struct zxdg_toplevel_v6_interface zxdg_toplevel_interface =
 {
-   zxdg_toplevel_cb_destroy,
-   zxdg_toplevel_cb_parent_set,
-   zxdg_toplevel_cb_title_set,
-   zxdg_toplevel_cb_app_id_set,
-   zxdg_toplevel_cb_win_menu_show,
-   zxdg_toplevel_cb_move,
-   zxdg_toplevel_cb_resize,
-   zxdg_toplevel_cb_max_size_set,
-   zxdg_toplevel_cb_min_size_set,
-   zxdg_toplevel_cb_maximized_set,
-   zxdg_toplevel_cb_maximized_unset,
-   zxdg_toplevel_cb_fullscreen_set,
-   zxdg_toplevel_cb_fullscreen_unset,
-   zxdg_toplevel_cb_minimized_set
+	zxdg_toplevel_cb_destroy,
+	zxdg_toplevel_cb_parent_set,
+	zxdg_toplevel_cb_title_set,
+	zxdg_toplevel_cb_app_id_set,
+	zxdg_toplevel_cb_win_menu_show,
+	zxdg_toplevel_cb_move,
+	zxdg_toplevel_cb_resize,
+	zxdg_toplevel_cb_max_size_set,
+	zxdg_toplevel_cb_min_size_set,
+	zxdg_toplevel_cb_maximized_set,
+	zxdg_toplevel_cb_maximized_unset,
+	zxdg_toplevel_cb_fullscreen_set,
+	zxdg_toplevel_cb_fullscreen_unset,
+	zxdg_toplevel_cb_minimized_set
 };
 
 static void
@@ -169,21 +169,21 @@ zxdg_popup_cb_resource_destroy(struct wl_resource *resource)
 static void
 zxdg_popup_cb_destroy(struct wl_client *client, struct wl_resource *resource)
 {
-   wl_resource_destroy(resource);
+	wl_resource_destroy(resource);
 }
 
 static void
 zxdg_popup_cb_grab(struct wl_client *client,
-                     struct wl_resource *resource,
-                     struct wl_resource *res_seat,
-                     uint32_t serial)
+		   struct wl_resource *resource,
+		   struct wl_resource *res_seat,
+		   uint32_t serial)
 {
 }
 
 static const struct zxdg_popup_v6_interface zxdg_popup_interface =
 {
-   zxdg_popup_cb_destroy,
-   zxdg_popup_cb_grab
+	zxdg_popup_cb_destroy,
+	zxdg_popup_cb_grab
 };
 
 static void
@@ -203,7 +203,7 @@ zxdg_surface_cb_resource_destroy(struct wl_resource *resource)
 static void
 zxdg_surface_cb_destroy(struct wl_client *client, struct wl_resource *resource)
 {
-   wl_resource_destroy(resource);
+	wl_resource_destroy(resource);
 }
 
 static void
@@ -218,17 +218,17 @@ zxdg_surface_cb_toplevel_get(struct wl_client *client, struct wl_resource *resou
 	}
 
 	wl_resource_set_implementation(new_res,
-	                          &zxdg_toplevel_interface,
-	                          NULL,
-	                          zxdg_toplevel_cb_resource_destroy);
+			&zxdg_toplevel_interface,
+			NULL,
+			zxdg_toplevel_cb_resource_destroy);
 }
 
 static void
 zxdg_surface_cb_popup_get(struct wl_client *client,
-                            struct wl_resource *resource,
-                            uint32_t id,
-                            struct wl_resource *res_parent,
-                            struct wl_resource *res_pos)
+			  struct wl_resource *resource,
+		uint32_t id,
+		struct wl_resource *res_parent,
+		struct wl_resource *res_pos)
 {
 	struct wl_resource *new_res;
 	new_res = wl_resource_create(client, &zxdg_popup_v6_interface, 1, id);
@@ -267,11 +267,11 @@ zxdg_surface_cb_configure_ack(struct wl_client *client, struct wl_resource *reso
 
 static const struct zxdg_surface_v6_interface zxdg_surface_interface =
 {
-   zxdg_surface_cb_destroy,
-   zxdg_surface_cb_toplevel_get,
-   zxdg_surface_cb_popup_get,
-   zxdg_surface_cb_win_geometry_set,
-   zxdg_surface_cb_configure_ack
+	zxdg_surface_cb_destroy,
+	zxdg_surface_cb_toplevel_get,
+	zxdg_surface_cb_popup_get,
+	zxdg_surface_cb_win_geometry_set,
+	zxdg_surface_cb_configure_ack
 };
 
 static void
@@ -282,43 +282,43 @@ zxdg_positioner_cb_destroy(struct wl_client *client, struct wl_resource *resourc
 
 static void
 zxdg_positioner_cb_size_set(struct wl_client *client,
-                              struct wl_resource *resource,
-                              int32_t w, int32_t h)
+			    struct wl_resource *resource,
+			    int32_t w, int32_t h)
 {
 }
 
 static void
 zxdg_positioner_cb_anchor_rect_set(struct wl_client *client,
-                                     struct wl_resource *resource,
-                                     int32_t x, int32_t y, int32_t w, int32_t h)
+				   struct wl_resource *resource,
+				   int32_t x, int32_t y, int32_t w, int32_t h)
 {
 }
 
 static void
 zxdg_positioner_cb_anchor_set(struct wl_client *client,
-                                struct wl_resource *resource,
-                                enum zxdg_positioner_v6_anchor anchor)
+			      struct wl_resource *resource,
+			      enum zxdg_positioner_v6_anchor anchor)
 {
 }
 
 static void
 zxdg_positioner_cb_gravity_set(struct wl_client *client,
-                                 struct wl_resource *resource,
-                                 enum zxdg_positioner_v6_gravity gravity)
+			       struct wl_resource *resource,
+			       enum zxdg_positioner_v6_gravity gravity)
 {
 }
 
 static void
 zxdg_positioner_cb_constraint_adjustment_set(struct wl_client *client,
-                                               struct wl_resource *resource,
-                                               enum zxdg_positioner_v6_constraint_adjustment constraint_adjustment)
+					     struct wl_resource *resource,
+					     enum zxdg_positioner_v6_constraint_adjustment constraint_adjustment)
 {
 }
 
 static void
 zxdg_positioner_cb_offset_set(struct wl_client *client,
-                                struct wl_resource *resource,
-                                int32_t x, int32_t y)
+			      struct wl_resource *resource,
+			      int32_t x, int32_t y)
 {
 }
 
@@ -336,9 +336,9 @@ static const struct zxdg_positioner_v6_interface zxdg_positioner_interface =
 static void
 zxdg_shell_cb_destroy(struct wl_client *client, struct wl_resource *resource)
 {
-   PEPPER_TRACE("Destroy zxdg_shell\n");
+	PEPPER_TRACE("Destroy zxdg_shell\n");
 
-   wl_resource_destroy(resource);
+	wl_resource_destroy(resource);
 }
 
 static void
@@ -370,7 +370,7 @@ zxdg_shell_cb_surface_get(struct wl_client *client, struct wl_resource *resource
 	if (!hs) {
 		PEPPER_ERROR("fail to get headless_shell\n");
 		wl_resource_post_error(resource, WL_DISPLAY_ERROR_INVALID_OBJECT,
-								"failed to get headless shell");
+				"failed to get headless shell");
 		return;
 	}
 
@@ -389,9 +389,9 @@ zxdg_shell_cb_surface_get(struct wl_client *client, struct wl_resource *resource
 	}
 
 	wl_resource_set_implementation(hs_surface->zxdg_shell_surface,
-									&zxdg_surface_interface,
-									hs_surface,
-									zxdg_surface_cb_resource_destroy);
+			&zxdg_surface_interface,
+			hs_surface,
+			zxdg_surface_cb_resource_destroy);
 
 
 	psurface = wl_resource_get_user_data(wsurface);
@@ -407,21 +407,21 @@ zxdg_shell_cb_surface_get(struct wl_client *client, struct wl_resource *resource
 	if (!pepper_view_set_surface(hs_surface->view, psurface)) {
 		PEPPER_ERROR("fail to set surface\n");
 		wl_resource_post_error(resource, WL_DISPLAY_ERROR_INVALID_OBJECT,
-							   "Assign set psurface to pview");
+				"Assign set psurface to pview");
 		goto error;
 	}
 
 	if (!pepper_surface_set_role(psurface, "xdg_surface")) {
 		PEPPER_ERROR("fail to set role\n");
 		wl_resource_post_error(resource, WL_DISPLAY_ERROR_INVALID_OBJECT,
-							   "Assign \"xdg_surface\" to wl_surface failed\n");
+				"Assign \"xdg_surface\" to wl_surface failed\n");
 		goto error;
 	}
 
 	PEPPER_TRACE("create zxdg_surface:%p, pview:%p, psurface:%p\n",
-					hs_surface->zxdg_shell_surface,
-					hs_surface->view,
-					psurface);
+			hs_surface->zxdg_shell_surface,
+			hs_surface->view,
+			psurface);
 	return;
 error:
 	if (hs_surface) {
@@ -443,10 +443,10 @@ zxdg_shell_cb_pong(struct wl_client *client, struct wl_resource *resource, uint3
 
 static const struct zxdg_shell_v6_interface zxdg_shell_interface =
 {
-   zxdg_shell_cb_destroy,
-   zxdg_shell_cb_positioner_create,
-   zxdg_shell_cb_surface_get,
-   zxdg_shell_cb_pong
+	zxdg_shell_cb_destroy,
+	zxdg_shell_cb_positioner_create,
+	zxdg_shell_cb_surface_get,
+	zxdg_shell_cb_pong
 };
 
 static void
@@ -459,9 +459,9 @@ zxdg_shell_cb_bind(struct wl_client *client, void *data, uint32_t version, uint3
 
 	/* Create resource for zxdg_shell_v6 */
 	resource = wl_resource_create(client,
-	             &zxdg_shell_v6_interface,
-	             version,
-	             id);
+			&zxdg_shell_v6_interface,
+			version,
+			id);
 	PEPPER_CHECK(resource, goto err_shell, "fail to create the zxdg_shell_v6\n");
 
 	wl_resource_set_implementation(resource, &zxdg_shell_interface, hs, NULL);
