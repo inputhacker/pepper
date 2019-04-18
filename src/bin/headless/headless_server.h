@@ -33,6 +33,7 @@ extern "C" {
 PEPPER_API pepper_bool_t pepper_output_led_init(pepper_compositor_t *compositor);
 PEPPER_API void pepper_output_led_deinit(pepper_compositor_t *compositor);
 
+PEPPER_API pepper_bool_t headless_shell_init(pepper_compositor_t *compositor);
 #ifdef __cplusplus
 }
 #endif

@@ -49,6 +49,10 @@ int main(int argc, char *argv[])
     ret = pepper_output_led_init(compositor);
     PEPPER_CHECK(ret, goto end, "pepper_output_led_init() failed.\n");
 
+	/* Init Shell */
+	ret = headless_shell_init(compositor);
+	PEPPER_CHECK(ret, goto end, "headless_shell_init() failed.\n");
+
     /* Init Signal for SIGINT */
     init_signal(compositor);
 

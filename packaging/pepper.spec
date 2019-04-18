@@ -38,6 +38,8 @@ BuildRequires:  pkgconfig(libtdm)
 BuildRequires:  pkgconfig(dlog)
 %if "%{HEADLESS_SERVER}" == "1"
 BuildRequires:  pkgconfig(capi-system-peripheral-io)
+BuildRequires:	pkgconfig(xdg-shell-unstable-v6-server)
+BuildRequires:	pkgconfig(tizen-extension-server)
 %endif
 
 %description
