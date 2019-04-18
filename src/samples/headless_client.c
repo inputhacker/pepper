@@ -45,6 +45,7 @@ _cb_focus_in(void *data, int type EINA_UNUSED, void *event)
 	TRACE("");
 
 	/* TODO */
+	(void) client;
 
 	return ECORE_CALLBACK_PASS_ON;
 }
@@ -58,6 +59,7 @@ _cb_focus_out(void *data, int type EINA_UNUSED, void *event)
 	TRACE("");
 
 	/* TODO */
+	(void) client;
 
 	return ECORE_CALLBACK_PASS_ON;
 }
@@ -71,6 +73,7 @@ _cb_window_show(void *data, int type EINA_UNUSED, void *event)
 	TRACE("");
 
 	/* TODO */
+	(void) client;
 
 	return ECORE_CALLBACK_PASS_ON;
 }
@@ -84,6 +87,7 @@ _cb_window_lower(void *data, int type EINA_UNUSED, void *event)
 	TRACE("");
 
 	/* TODO */
+	(void) client;
 
 	return ECORE_CALLBACK_PASS_ON;
 }
@@ -97,6 +101,7 @@ _cb_window_activate(void *data, int type EINA_UNUSED, void *event)
 	TRACE("");
 
 	/* TODO */
+	(void) client;
 
 	return ECORE_CALLBACK_PASS_ON;
 }
@@ -110,6 +115,7 @@ _cb_window_deactivate(void *data, int type EINA_UNUSED, void *event)
 	TRACE("");
 
 	/* TODO */
+	(void) client;
 
 	return ECORE_CALLBACK_PASS_ON;
 }
@@ -123,6 +129,7 @@ _cb_key_down(void *data EINA_UNUSED, int type EINA_UNUSED, void *event)
 	TRACE("");
 
 	/* TODO */
+	(void) client;
 
 	return ECORE_CALLBACK_PASS_ON;
 }
@@ -136,6 +143,7 @@ _cb_key_up(void *data EINA_UNUSED, int type EINA_UNUSED, void *event)
 	TRACE("");
 
 	/* TODO */
+	(void) client;
 
 	return ECORE_CALLBACK_PASS_ON;
 }
