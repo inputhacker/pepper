@@ -144,8 +144,10 @@ _pepper_devicemgr_deinit_generator(pepper_devicemgr_t *pepper_devicemgr, struct 
 				rdata->init = PEPPER_FALSE;
 				pepper_devicemgr->ref--;
 				if (pepper_devicemgr->ref < 0) pepper_devicemgr->ref = 0;
+				break;
+			} else {
+				return ret;
 			}
-			break;
 		}
 	}
 
