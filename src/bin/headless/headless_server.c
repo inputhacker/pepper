@@ -41,9 +41,16 @@ int main(int argc, char *argv[])
 	if (!socket_name)
 		socket_name = "headless-0";
 
+	if (!getenv("XDG_RUNTIME_DIR"))
+		setenv("XDG_RUNTIME_DIR", "/run", 1);
+
 	/* create pepper compositir */
 	compositor = pepper_compositor_create(socket_name);
 	PEPPER_CHECK(compositor, return EXIT_FAILURE, "Failed to create compositor !");
+
+	/* Init input for headless */
+	ret = headless_input_init(compositor);
+	PEPPER_CHECK(ret, goto end, "headless_input_init() failed\n");
 
 	/* Init Output */
 	ret = pepper_output_led_init(compositor);
