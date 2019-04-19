@@ -125,8 +125,14 @@ keyrouter_key_process(keyrouter_t *keyrouter,
 		}
 	}
 	else if (!pepper_list_empty(&keyrouter->hard_keys[keycode].grab.top)) {
-		/* Not supported yet */
-		return 0;
+		info = pepper_container_of(keyrouter->hard_keys[keycode].grab.top.next, info, link);
+		if (info) {
+			delivery = (keyrouter_key_info_t *)calloc(1, sizeof(keyrouter_key_info_t));
+			PEPPER_CHECK(delivery, return 0, "Failed to allocate memory\n");
+			delivery->data = info->data;
+			pepper_list_insert(delivery_list, &delivery->link);
+			return 1;
+		}
 	}
 	else if (!pepper_list_empty(&keyrouter->hard_keys[keycode].grab.shared)) {
 		pepper_list_for_each(info, &keyrouter->hard_keys[keycode].grab.shared, link) {

@@ -36,6 +36,7 @@ struct pepper_keyrouter {
 	struct wl_display *display;
 	pepper_compositor_t *compositor;
 	pepper_seat_t *seat;
+	pepper_keyboard_t *keyboard;
 
 	pepper_list_t resources;
 
@@ -63,6 +64,13 @@ pepper_keyrouter_set_seat(pepper_keyrouter_t *pepper_keyrouter, pepper_seat_t *s
 {
 	PEPPER_CHECK(pepper_keyrouter, return, "Invalid pepper_keyrouter_t\n");
 	pepper_keyrouter->seat = seat;
+}
+
+PEPPER_API void
+pepper_keyrouter_set_keyboard(pepper_keyrouter_t * pepper_keyrouter, pepper_keyboard_t *keyboard)
+{
+	PEPPER_CHECK(pepper_keyrouter, return, "Invalid pepper_keyrouter_t\n");
+	pepper_keyrouter->keyboard = keyboard;
 }
 
 static void
@@ -103,6 +111,9 @@ pepper_keyrouter_key_process(pepper_keyrouter_t *pepper_keyrouter,
 			if (pepper_keyrouter->seat && pepper_object_get_type((pepper_object_t *)pepper_keyrouter->seat) == PEPPER_OBJECT_SEAT) {
 				_pepper_keyrouter_key_send(pepper_keyrouter, pepper_keyrouter->seat, (struct wl_client *)info->data, key, state, time);
 			}
+			else if (pepper_keyrouter->keyboard && pepper_object_get_type((pepper_object_t *)pepper_keyrouter->keyboard) == PEPPER_OBJECT_KEYBOARD) {
+				_pepper_keyrouter_key_send(pepper_keyrouter, pepper_keyboard_get_seat(pepper_keyrouter->keyboard), (struct wl_client *)info->data, key, state, time);
+			}
 			else {
 				seat_list = (pepper_list_t *)pepper_compositor_get_seat_list(pepper_keyrouter->compositor);
 				if (!pepper_list_empty(seat_list)) {
@@ -112,6 +123,12 @@ pepper_keyrouter_key_process(pepper_keyrouter_t *pepper_keyrouter,
 				}
 			}
 		}
+	}
+	else {
+		/* send key event to focused client */
+		pepper_view_t *focus_view = pepper_keyboard_get_focus(pepper_keyrouter->keyboard);
+		PEPPER_CHECK(focus_view, return , "No focused view exists.\n");
+		pepper_keyboard_send_key(pepper_keyrouter->keyboard, focus_view, time, key, state);
 	}
 }
 
@@ -392,6 +409,7 @@ pepper_keyrouter_event_handler(pepper_event_listener_t *listener,
 {
 	pepper_input_event_t *event;
 	pepper_keyrouter_t *pepper_keyrouter;
+	pepper_keyboard_t *keyboard = (pepper_keyboard_t *)object;
 
 	PEPPER_CHECK((id == PEPPER_EVENT_KEYBOARD_KEY),
 	             return, "%d event is not handled by keyrouter\n", id);
@@ -400,6 +418,7 @@ pepper_keyrouter_event_handler(pepper_event_listener_t *listener,
 
 	event = (pepper_input_event_t *)info;
 	pepper_keyrouter = (pepper_keyrouter_t *)data;
+	pepper_keyrouter_set_keyboard(pepper_keyrouter, keyboard);
 	pepper_keyrouter_key_process(pepper_keyrouter, event->key, event->state, event->time);
 }
 
