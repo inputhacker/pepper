@@ -22,12 +22,19 @@
 */
 #include <pepper-evdev.h>
 #include <pepper-input-backend.h>
+#include <pepper-keyrouter.h>
 
 typedef struct
 {
 	pepper_compositor_t *compositor;
-	pepper_evdev_t *evdev;
 	pepper_seat_t *seat;
+	pepper_evdev_t *evdev;
+	pepper_keyboard_t *keyboard;
+
+	pepper_view_t *focus_view;
+	pepper_view_t *top_view;
+
+	pepper_keyrouter_t *keyrouter;
 
 	pepper_event_listener_t *listener_seat_keyboard_key;
 	pepper_event_listener_t *listener_seat_keyboard_add;
@@ -38,6 +45,7 @@ typedef struct
 	uint32_t ndevices;
 } headless_input_t;
 
+headless_input_t *input = NULL;
 const static int KEY_INPUT = 0xdeadbeaf;
 
 static void init_event_listeners(headless_input_t *hi);
@@ -78,6 +86,7 @@ _handle_seat_keyboard_add(pepper_event_listener_t *listener, pepper_object_t *ob
 								0, _handle_keyboard_key, hi);
 	PEPPER_CHECK(h, goto end, "Failed to add keyboard key listener.\n");
 	hi->listener_seat_keyboard_key = h;
+	hi->keyboard = keyboard;
 
 	return;
 
@@ -138,6 +147,45 @@ _handle_seat_add(pepper_event_listener_t *listener, pepper_object_t *object, uin
 
 end:
 	deinit_event_listeners(hi);
+}
+
+void
+headless_input_set_focus_view(void *input, pepper_view_t *focus_view)
+{
+	headless_input_t *hi = (headless_input_t *)input;
+
+	PEPPER_CHECK(hi, return, "Invalid headless input.\n");
+
+	if (hi->focus_view != focus_view)
+	{
+		if (hi->focus_view)
+			pepper_keyboard_send_leave(hi->keyboard, hi->focus_view);
+		pepper_keyboard_set_focus(hi->keyboard, focus_view);
+		pepper_keyboard_send_enter(hi->keyboard, focus_view);
+		hi->focus_view = focus_view;
+	}
+
+	if (hi->keyrouter)
+		pepper_keyrouter_set_focus_view(hi->keyrouter, focus_view);
+}
+
+void
+headless_input_set_top_view(void *input, pepper_view_t *top_view)
+{
+	headless_input_t *hi = (headless_input_t *)input;
+
+	PEPPER_CHECK(hi, return, "Invalid headless input.\n");
+
+	hi->top_view = top_view;
+
+	if (hi->keyrouter)
+		pepper_keyrouter_set_top_view(hi->keyrouter, top_view);
+}
+
+headless_input_t *
+headless_input_get(void)
+{
+	return input;
 }
 
 static void
@@ -242,6 +290,35 @@ end:
 }
 
 static void
+init_modules(headless_input_t *hi)
+{
+	pepper_keyrouter_t *keyrouter = NULL;
+
+	PEPPER_TRACE("[%s] ... begin\n", __FUNCTION);
+
+	/* create pepper keyrouter */
+	keyrouter = pepper_keyrouter_create(hi->compositor);
+	PEPPER_CHECK(keyrouter, goto end, "Failed to create keyrouter !\n");
+
+	hi->keyrouter = keyrouter;
+
+	PEPPER_TRACE("[%s] ... done\n", __FUNCTION);
+
+end:
+	if (keyrouter)
+		pepper_keyrouter_destroy(keyrouter);
+}
+
+static void
+deinit_modules(headless_input_t *hi)
+{
+	if (hi->keyrouter)
+		pepper_keyrouter_destroy(hi->keyrouter);
+
+	hi->keyrouter = NULL;
+}
+
+static void
 headless_input_deinit(void *data)
 {
 	headless_input_t *hi = (headless_input_t*)data;
@@ -249,10 +326,13 @@ headless_input_deinit(void *data)
 	if (!hi) return;
 
 	deinit_event_listeners(hi);
+	deinit_modules(hi);
 	input_deinit(hi);
 
 	pepper_object_set_user_data((pepper_object_t *)hi->compositor, &KEY_INPUT, NULL, NULL);
 	free(hi);
+
+	input = hi = NULL;
 }
 
 pepper_bool_t
@@ -266,9 +346,11 @@ headless_input_init(pepper_compositor_t *compositor)
 	hi->compositor = compositor;
 
 	init_event_listeners(hi);
+	init_modules(hi);
 	init = input_init(hi);
 	PEPPER_CHECK(init, goto error, "input_init() failed\n");
 
+	input = hi;
 	pepper_object_set_user_data((pepper_object_t *)compositor, &KEY_INPUT, NULL, headless_input_deinit);
 
 	return PEPPER_TRUE;
