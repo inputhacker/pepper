@@ -212,9 +212,13 @@ input_init(headless_input_t *hi)
 	seat = pepper_compositor_add_seat(hi->compositor, seat_name);
 	PEPPER_CHECK(seat, goto end, "Failed to add seat (%s)!\n", seat_name);
 
+	hi->seat = seat;
+
 	/* create pepper evdev */
 	evdev = pepper_evdev_create(hi->compositor);
 	PEPPER_CHECK(evdev, goto end, "Failed to create evdev !\n");
+
+	hi->evdev = evdev;
 
 	/* probe evdev keyboard device(s) */
 	caps |= WL_SEAT_CAPABILITY_KEYBOARD;
@@ -225,8 +229,6 @@ input_init(headless_input_t *hi)
 	else
 		PEPPER_TRACE("%d evdev device(s) has been probed.\n", probed);
 
-	hi->evdev = evdev;
-	hi->seat = seat;
 	hi->ndevices = probed;
 
 	return PEPPER_TRUE;
