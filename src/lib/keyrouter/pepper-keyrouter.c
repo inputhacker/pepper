@@ -41,6 +41,9 @@ struct pepper_keyrouter {
 	pepper_list_t resources;
 
 	keyrouter_t *keyrouter;
+
+	pepper_view_t *focus_view;
+	pepper_view_t *top_view;
 };
 
 struct resources_data {
@@ -71,6 +74,27 @@ pepper_keyrouter_set_keyboard(pepper_keyrouter_t * pepper_keyrouter, pepper_keyb
 {
 	PEPPER_CHECK(pepper_keyrouter, return, "Invalid pepper_keyrouter_t\n");
 	pepper_keyrouter->keyboard = keyboard;
+}
+
+PEPPER_API void
+pepper_keyrouter_set_focus_view(pepper_keyrouter_t *pk, pepper_view_t *focus_view)
+{
+	PEPPER_CHECK(pk, return, "pepper keyrouter is invalid.\n");
+	PEPPER_CHECK(pk->keyboard, return, "No keyboard is available for pepper keyrouter.\n");
+	PEPPER_CHECK(focus_view, return, "Given focus_view is invalid.\n");
+
+	pk->focus_view = focus_view;
+	PEPPER_TRACE("[%s] focus_view has been set. (focus=0x%p)\n", __FUNCTION__, focus_view);
+}
+
+PEPPER_API void
+pepper_keyrouter_set_top_view(pepper_keyrouter_t *pk, pepper_view_t *top_view)
+{
+	PEPPER_CHECK(pk, return, "pepper keyrouter is invalid.\n");
+	PEPPER_CHECK(top_view, return, "Given top_view is invalid.\n");
+
+	pk->top_view = top_view;
+	PEPPER_TRACE("[%s] top_view has been set. (top=0x%p)\n", __FUNCTION__, top_view);
 }
 
 static void
