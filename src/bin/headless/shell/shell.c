@@ -29,15 +29,13 @@
 #include <xdg-shell-unstable-v6-server-protocol.h>
 #include <tizen-extension-server-protocol.h>
 
+#include "headless_server.h"
+
 typedef struct {
 	pepper_compositor_t *compositor;
 	struct wl_global *zxdg_shell;
 	struct wl_global *tizen_policy;
 
-	pepper_seat_t *seat;
-
-	pepper_event_listener_t *seat_add_listener;
-	pepper_event_listener_t *seat_remove_listener;
 	pepper_event_listener_t *surface_add_listener;
 	pepper_event_listener_t *surface_remove_listener;
 }headless_shell_t;
@@ -430,24 +428,6 @@ zxdg_shell_cb_surface_get(struct wl_client *client, struct wl_resource *resource
 			hs_surface->view,
 			psurface);
 
-	/* temporary focus view set */
-	if (!hs->seat)
-		return;
-
-	pepper_keyboard_t *keyboard = pepper_seat_get_keyboard(hs->seat);
-	PEPPER_CHECK(keyboard, return, "[%s] pepper_keyboard is null !", __FUNCTION__);
-
-	pepper_view_t *focus = pepper_keyboard_get_focus(keyboard);
-
-	if (!focus || focus != hs_surface->view) {
-		if (focus) pepper_keyboard_send_leave(keyboard, focus);
-		pepper_keyboard_set_focus(keyboard, hs_surface->view);
-		pepper_keyboard_send_enter(keyboard, hs_surface->view);
-	}
-
-	/* temporary top view set */
-	pepper_view_stack_top(hs_surface->view, PEPPER_FALSE);
-
 	return;
 error:
 	if (hs_surface) {
@@ -602,7 +582,10 @@ tizen_policy_cb_activate(struct wl_client *client, struct wl_resource *resource,
 	hs_surface = pepper_object_get_user_data((pepper_object_t *)psurface, surf);
 	PEPPER_CHECK(hs_surface, return, "fail to get headless_shell_surface\n");
 
-	pepper_view_stack_top(hs_surface->view, PEPPER_TRUE);
+	/* FIXME: set a view of the given surface as the focus/top view */
+	void *input = headless_input_get();
+	headless_input_set_focus_view(input, hs_surface->view);
+	headless_input_set_top_view(input, hs_surface->view);
 }
 
 static void
@@ -925,39 +908,6 @@ headless_shell_cb_surface_remove(pepper_event_listener_t *listener,
 }
 
 static void
-headless_shell_cb_seat_add(pepper_event_listener_t    *listener,
-				  pepper_object_t            *object,
-				  uint32_t                    id,
-				  void                       *info,
-				  void                       *data)
-{
-	headless_shell_t *shell = (headless_shell_t *)data;
-	shell->seat = (pepper_seat_t *)info;
-
-	if (shell->seat)
-		PEPPER_TRACE("[%s] seat added (name:%s)\n", __FUNCTION__, pepper_seat_get_name(shell->seat));
-	else
-		PEPPER_TRACE("[%s] seat is NULL.\n", __FUNCTION__);
-}
-
-static void
-headless_shell_cb_seat_remove(pepper_event_listener_t    *listener,
-					 pepper_object_t            *object,
-					 uint32_t                    id,
-					 void                       *info,
-					 void                       *data)
-{
-	headless_shell_t *shell = (headless_shell_t *)data;
-
-	if (shell->seat)
-		PEPPER_TRACE("[%s] seat removed (name:%s)\n", __FUNCTION__, pepper_seat_get_name(shell->seat));
-	else
-		PEPPER_TRACE("[%s] seat is NULL.\n", __FUNCTION__);
-
-	shell->seat = NULL;
-}
-
-static void
 headless_shell_init_listeners(headless_shell_t *shell)
 {
 	shell->surface_add_listener = pepper_object_add_event_listener((pepper_object_t *)shell->compositor,
@@ -967,14 +917,6 @@ headless_shell_init_listeners(headless_shell_t *shell)
 	shell->surface_remove_listener = pepper_object_add_event_listener((pepper_object_t *)shell->compositor,
 																		PEPPER_EVENT_COMPOSITOR_SURFACE_REMOVE,
 																		0, headless_shell_cb_surface_remove, shell);
-
-	shell->seat_add_listener = pepper_object_add_event_listener((pepper_object_t *)shell->compositor,
-																PEPPER_EVENT_COMPOSITOR_SEAT_ADD,
-																0, headless_shell_cb_seat_add, shell);
-
-	shell->seat_remove_listener = pepper_object_add_event_listener((pepper_object_t *)shell->compositor,
-																	PEPPER_EVENT_COMPOSITOR_SEAT_REMOVE,
-																	0, headless_shell_cb_seat_remove, shell);
 }
 
 static void
@@ -982,8 +924,6 @@ headless_shell_deinit_listeners(headless_shell_t *shell)
 {
 	pepper_event_listener_remove(shell->surface_add_listener);
 	pepper_event_listener_remove(shell->surface_remove_listener);
-	pepper_event_listener_remove(shell->seat_add_listener);
-	pepper_event_listener_remove(shell->seat_remove_listener);
 }
 
 static void
