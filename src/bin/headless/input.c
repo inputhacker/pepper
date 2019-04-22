@@ -294,7 +294,7 @@ init_modules(headless_input_t *hi)
 {
 	pepper_keyrouter_t *keyrouter = NULL;
 
-	PEPPER_TRACE("[%s] ... begin\n", __FUNCTION);
+	PEPPER_TRACE("[%s] ... begin\n", __FUNCTION__);
 
 	/* create pepper keyrouter */
 	keyrouter = pepper_keyrouter_create(hi->compositor);
@@ -302,7 +302,7 @@ init_modules(headless_input_t *hi)
 
 	hi->keyrouter = keyrouter;
 
-	PEPPER_TRACE("[%s] ... done\n", __FUNCTION);
+	PEPPER_TRACE("[%s] ... done\n", __FUNCTION__);
 
 end:
 	if (keyrouter)
