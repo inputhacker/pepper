@@ -35,8 +35,11 @@ typedef struct {
 	struct wl_global *tizen_policy;
 
 	pepper_seat_t *seat;
+
 	pepper_event_listener_t *seat_add_listener;
-	pepper_event_listener_t  *seat_remove_listener;
+	pepper_event_listener_t *seat_remove_listener;
+	pepper_event_listener_t *surface_add_listener;
+	pepper_event_listener_t *surface_remove_listener;
 }headless_shell_t;
 
 typedef struct {
@@ -368,7 +371,7 @@ static void
 zxdg_shell_cb_surface_get(struct wl_client *client, struct wl_resource *resource, uint32_t id, struct wl_resource *wsurface)
 {
 	headless_shell_t *hs;
-	headless_shell_surface_t *hs_surface;
+	headless_shell_surface_t *hs_surface = NULL;
 	pepper_surface_t *psurface;
 
 	hs = wl_resource_get_user_data(resource);
@@ -882,7 +885,7 @@ tizen_policy_deinit(headless_shell_t *shell)
 }
 
 static void
-headless_shell_surface_free(void *data)
+headless_shell_cb_surface_free(void *data)
 {
 	headless_shell_surface_t *surface = (headless_shell_surface_t *)data;
 
@@ -904,7 +907,7 @@ headless_shell_cb_surface_add(pepper_event_listener_t *listener,
 	pepper_object_set_user_data((pepper_object_t *)surface,
 								pepper_surface_get_resource(surface),
 								hs_surface,
-								headless_shell_surface_free);
+								headless_shell_cb_surface_free);
 	PEPPER_TRACE("Add headless_shell:%p to pepper_surface:%p\n", hs_surface, object);
 }
 
@@ -921,7 +924,8 @@ headless_shell_cb_surface_remove(pepper_event_listener_t *listener,
 	hs_surface->surface = (pepper_surface_t *)info;
 }
 
-_seat_add_callback(pepper_event_listener_t    *listener,
+static void
+headless_shell_cb_seat_add(pepper_event_listener_t    *listener,
 				  pepper_object_t            *object,
 				  uint32_t                    id,
 				  void                       *info,
@@ -937,7 +941,7 @@ _seat_add_callback(pepper_event_listener_t    *listener,
 }
 
 static void
-_seat_remove_callback(pepper_event_listener_t    *listener,
+headless_shell_cb_seat_remove(pepper_event_listener_t    *listener,
 					 pepper_object_t            *object,
 					 uint32_t                    id,
 					 void                       *info,
@@ -954,20 +958,30 @@ _seat_remove_callback(pepper_event_listener_t    *listener,
 }
 
 static void
-init_listeners(headless_shell_t *shell)
+headless_shell_init_listeners(headless_shell_t *shell)
 {
+	shell->surface_add_listener = pepper_object_add_event_listener((pepper_object_t *)shell->compositor,
+																	PEPPER_EVENT_COMPOSITOR_SURFACE_ADD,
+																	0, headless_shell_cb_surface_add, shell);
+
+	shell->surface_remove_listener = pepper_object_add_event_listener((pepper_object_t *)shell->compositor,
+																		PEPPER_EVENT_COMPOSITOR_SURFACE_REMOVE,
+																		0, headless_shell_cb_surface_remove, shell);
+
 	shell->seat_add_listener = pepper_object_add_event_listener((pepper_object_t *)shell->compositor,
-								PEPPER_EVENT_COMPOSITOR_SEAT_ADD,
-								0, _seat_add_callback, shell);
+																PEPPER_EVENT_COMPOSITOR_SEAT_ADD,
+																0, headless_shell_cb_seat_add, shell);
 
 	shell->seat_remove_listener = pepper_object_add_event_listener((pepper_object_t *)shell->compositor,
-								PEPPER_EVENT_COMPOSITOR_SEAT_REMOVE,
-								0, _seat_remove_callback, shell);
+																	PEPPER_EVENT_COMPOSITOR_SEAT_REMOVE,
+																	0, headless_shell_cb_seat_remove, shell);
 }
 
 static void
-deinit_listeners(headless_shell_t *shell)
+headless_shell_deinit_listeners(headless_shell_t *shell)
 {
+	pepper_event_listener_remove(shell->surface_add_listener);
+	pepper_event_listener_remove(shell->surface_remove_listener);
 	pepper_event_listener_remove(shell->seat_add_listener);
 	pepper_event_listener_remove(shell->seat_remove_listener);
 }
@@ -978,7 +992,7 @@ headless_shell_deinit(void *data)
 	headless_shell_t *shell = (headless_shell_t*)data;
 	if (!shell) return;
 
-	deinit_listeners(shell);
+	headless_shell_deinit_listeners(shell);
 	zxdg_deinit(shell);
 	tizen_policy_deinit(shell);
 
@@ -995,14 +1009,12 @@ headless_shell_init(pepper_compositor_t *compositor)
 	PEPPER_CHECK(shell, goto error, "fail to alloc for shell\n");
 	shell->compositor = compositor;
 
-	init_listeners(shell);
+	headless_shell_init_listeners(shell);
 	PEPPER_CHECK(zxdg_init(shell), goto error, "zxdg_init() failed\n");
 	PEPPER_CHECK(tizen_policy_init(shell), goto error, "tizen_policy_init() failed\n");
 
 	pepper_object_set_user_data((pepper_object_t *)compositor, &KEY_SHELL, NULL, headless_shell_deinit);
 
-	pepper_object_add_event_listener((pepper_object_t *)compositor, PEPPER_EVENT_COMPOSITOR_SURFACE_ADD, 0, headless_shell_cb_surface_add, shell);
-	pepper_object_add_event_listener((pepper_object_t *)compositor, PEPPER_EVENT_COMPOSITOR_SURFACE_REMOVE, 0, headless_shell_cb_surface_remove, shell);
 	return PEPPER_TRUE;
 error:
 	headless_shell_deinit(shell);
