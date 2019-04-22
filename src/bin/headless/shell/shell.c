@@ -45,6 +45,8 @@ typedef struct {
 	pepper_view_t *view;
 	struct wl_resource *zxdg_shell_surface;
 	uint32_t last_ack_configure;
+
+	pepper_bool_t skip_focus;
 }headless_shell_surface_t;
 
 const static int KEY_SHELL = 0;
@@ -611,11 +613,31 @@ tizen_policy_cb_lower_by_res_id(struct wl_client *client, struct wl_resource *re
 static void
 tizen_policy_cb_focus_skip_set(struct wl_client *client, struct wl_resource *resource, struct wl_resource *surf)
 {
+	pepper_surface_t *psurface;
+	headless_shell_surface_t *hs_surface;
+
+	psurface = wl_resource_get_user_data(surf);
+	PEPPER_CHECK(psurface, return, "fail to get pepper_surface_t\n");
+
+	hs_surface = pepper_object_get_user_data((pepper_object_t *)psurface, surf);
+	PEPPER_CHECK(hs_surface, return, "fail to get headless_shell_surface\n");
+
+	hs_surface->skip_focus = PEPPER_TRUE;
 }
 
 static void
 tizen_policy_cb_focus_skip_unset(struct wl_client *client, struct wl_resource *resource, struct wl_resource *surf)
 {
+	pepper_surface_t *psurface;
+	headless_shell_surface_t *hs_surface;
+
+	psurface = wl_resource_get_user_data(surf);
+	PEPPER_CHECK(psurface, return, "fail to get pepper_surface_t\n");
+
+	hs_surface = pepper_object_get_user_data((pepper_object_t *)psurface, surf);
+	PEPPER_CHECK(hs_surface, return, "fail to get headless_shell_surface\n");
+
+	hs_surface->skip_focus = PEPPER_FALSE;
 }
 
 static void
