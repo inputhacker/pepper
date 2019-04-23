@@ -23,6 +23,7 @@
 #include <pepper-evdev.h>
 #include <pepper-input-backend.h>
 #include <pepper-keyrouter.h>
+#include <pepper-xkb.h>
 
 typedef struct
 {
@@ -35,6 +36,7 @@ typedef struct
 	pepper_view_t *top_view;
 
 	pepper_keyrouter_t *keyrouter;
+	pepper_xkb_t *xkb;
 
 	pepper_event_listener_t *listener_seat_keyboard_key;
 	pepper_event_listener_t *listener_seat_keyboard_add;
@@ -80,7 +82,9 @@ _cb_handle_seat_keyboard_add(pepper_event_listener_t *listener, pepper_object_t 
 
 	PEPPER_TRACE("[%s] keyboard added\n", __FUNCTION__);
 
-	pepper_keyboard_set_keymap_info(keyboard, WL_KEYBOARD_KEYMAP_FORMAT_NO_KEYMAP, -1, 0);
+	/* FIXME: without a keymap, ecore wl2 based client must work properly. */
+	//pepper_keyboard_set_keymap_info(keyboard, WL_KEYBOARD_KEYMAP_FORMAT_NO_KEYMAP, -1, 0);
+	pepper_xkb_keyboard_set_keymap(hi->xkb, keyboard, NULL);
 
 	h = pepper_object_add_event_listener((pepper_object_t *)keyboard, PEPPER_EVENT_KEYBOARD_KEY,
 								0, _cb_handle_keyboard_key, hi);
@@ -293,8 +297,15 @@ static void
 headless_input_init_modules(headless_input_t *hi)
 {
 	pepper_keyrouter_t *keyrouter = NULL;
+	pepper_xkb_t *xkb = NULL;
 
 	PEPPER_TRACE("[%s] ... begin\n", __FUNCTION__);
+
+	/* create pepper xkb */
+	xkb = pepper_xkb_create();
+	PEPPER_CHECK(xkb, goto end, "Failed to create pepper_xkb !\n");
+
+	hi->xkb = xkb;
 
 	/* create pepper keyrouter */
 	keyrouter = pepper_keyrouter_create(hi->compositor);
@@ -306,16 +317,24 @@ headless_input_init_modules(headless_input_t *hi)
 
 	return;
 end:
-	if (keyrouter)
-		pepper_keyrouter_destroy(keyrouter);
+	if (hi->xkb)
+		pepper_xkb_destroy(hi->xkb);
+	if (hi->keyrouter)
+		pepper_keyrouter_destroy(hi->keyrouter);
+
+	hi->xkb = NULL;
+	hi->keyrouter = NULL;
 }
 
 static void
 headless_input_deinit_modules(headless_input_t *hi)
 {
+	if (hi->xkb)
+		pepper_xkb_destroy(hi->xkb);
 	if (hi->keyrouter)
 		pepper_keyrouter_destroy(hi->keyrouter);
 
+	hi->xkb = NULL;
 	hi->keyrouter = NULL;
 }
 
