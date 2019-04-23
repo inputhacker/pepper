@@ -42,7 +42,7 @@ _cb_focus_in(void *data, int type EINA_UNUSED, void *event)
 	app_data_t *client =  (app_data_t *)data;
 	Ecore_Wl2_Event_Focus_In *ev = (Ecore_Wl2_Event_Focus_In *)event;
 
-	TRACE("");
+	TRACE("\n");
 
 	/* TODO */
 	(void) client;
@@ -57,7 +57,7 @@ _cb_focus_out(void *data, int type EINA_UNUSED, void *event)
 	app_data_t *client =  (app_data_t *)data;
 	Ecore_Wl2_Event_Focus_Out *ev = (Ecore_Wl2_Event_Focus_Out *)event;
 
-	TRACE("");
+	TRACE("\n");
 
 	/* TODO */
 	(void) client;
@@ -72,7 +72,7 @@ _cb_window_show(void *data, int type EINA_UNUSED, void *event)
 	app_data_t *client =  (app_data_t *)data;
 	Ecore_Wl2_Event_Window_Show *ev = (Ecore_Wl2_Event_Window_Show *)event;
 
-	TRACE("");
+	TRACE("\n");
 
 	/* TODO */
 	(void) client;
@@ -87,7 +87,7 @@ _cb_window_lower(void *data, int type EINA_UNUSED, void *event)
 	app_data_t *client =  (app_data_t *)data;
 	Ecore_Wl2_Event_Window_Lower *ev = (Ecore_Wl2_Event_Window_Lower *)event;
 
-	TRACE("");
+	TRACE("\n");
 
 	/* TODO */
 	(void) client;
@@ -102,7 +102,7 @@ _cb_window_activate(void *data, int type EINA_UNUSED, void *event)
 	app_data_t *client =  (app_data_t *)data;
 	Ecore_Wl2_Event_Window_Activate *ev = (Ecore_Wl2_Event_Window_Activate *)event;
 
-	TRACE("");
+	TRACE("\n");
 
 	/* TODO */
 	(void) client;
@@ -117,7 +117,7 @@ _cb_window_deactivate(void *data, int type EINA_UNUSED, void *event)
 	app_data_t *client =  (app_data_t *)data;
 	Ecore_Wl2_Event_Window_Deactivate *ev = (Ecore_Wl2_Event_Window_Deactivate *)event;
 
-	TRACE("");
+	TRACE("\n");
 
 	/* TODO */
 	(void) client;
@@ -132,7 +132,7 @@ _cb_key_down(void *data EINA_UNUSED, int type EINA_UNUSED, void *event)
 	app_data_t *client =  (app_data_t *)data;
 	Ecore_Event_Key *ev = event;
 
-	TRACE("");
+	TRACE("\n");
 
 	/* TODO */
 	(void) client;
@@ -147,7 +147,7 @@ _cb_key_up(void *data EINA_UNUSED, int type EINA_UNUSED, void *event)
 	app_data_t *client =  (app_data_t *)data;
 	Ecore_Event_Key *ev = event;
 
-	TRACE("");
+	TRACE("\n");
 
 	/* TODO */
 	(void) client;
@@ -191,6 +191,8 @@ int main(int argc, char **argv)
 {
 	int x, y, w, h;
 	app_data_t *client = NULL;
+
+	setvbuf(stdout, NULL, _IONBF, 0);
 
 	client = (app_data_t *)calloc(1, sizeof(app_data_t));
 	ERROR_CHECK(client, goto shutdown, "Failed to allocate memory for app_data_t");
