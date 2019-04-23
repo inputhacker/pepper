@@ -346,6 +346,13 @@ _pepper_keyrouter_cb_set_input_config(struct wl_client *client,
 	tizen_keyrouter_send_set_input_config_notify(resource, (int)PEPPER_FALSE);
 }
 
+static void
+_pepper_keyrouter_cb_destory(struct wl_client *client,
+							struct wl_resource *resource)
+{
+	wl_resource_destroy(resource);
+}
+
 static const struct tizen_keyrouter_interface _pepper_keyrouter_implementation = {
    _pepper_keyrouter_cb_keygrab_set,
    _pepper_keyrouter_cb_keygrab_unset,
@@ -355,12 +362,13 @@ static const struct tizen_keyrouter_interface _pepper_keyrouter_implementation =
    _pepper_keyrouter_cb_get_keygrab_list,
    _pepper_keyrouter_cb_set_register_none_key,
    _pepper_keyrouter_cb_get_keyregister_status,
-   _pepper_keyrouter_cb_set_input_config
+   _pepper_keyrouter_cb_set_input_config,
+   _pepper_keyrouter_cb_destory
 };
 
 /* tizen_keyrouter global object destroy function */
 static void
-_pepper_keyrouter_cb_destory(struct wl_resource *resource)
+_pepper_keyrouter_cb_resource_destory(struct wl_resource *resource)
 {
 	resources_data_t *rdata, *rtmp;
 	pepper_list_t *list;
@@ -400,7 +408,7 @@ _pepper_keyrouter_cb_bind(struct wl_client *client, void *data, uint32_t version
 	PEPPER_CHECK(client, return, "Invalid client\n");
 	PEPPER_CHECK(pepper_keyrouter, return, "Invalid pepper_keyrouter_t\n");
 
-	resource = wl_resource_create(client, &tizen_keyrouter_interface, MIN(version, 1), id);
+	resource = wl_resource_create(client, &tizen_keyrouter_interface, MIN(version, 2), id);
 	if (!resource) {
 		PEPPER_ERROR("Failed to create resource ! (version :%d, id:%d)", version, id);
 		wl_client_post_no_memory(client);
@@ -423,7 +431,7 @@ _pepper_keyrouter_cb_bind(struct wl_client *client, void *data, uint32_t version
 
 
 	wl_resource_set_implementation(resource, &_pepper_keyrouter_implementation,
-	                               pepper_keyrouter, _pepper_keyrouter_cb_destory);
+	                               pepper_keyrouter, _pepper_keyrouter_cb_resource_destory);
 }
 
 PEPPER_API void
@@ -465,7 +473,7 @@ pepper_keyrouter_create(pepper_compositor_t *compositor)
 
 	pepper_list_init(&pepper_keyrouter->resources);
 
-	global = wl_global_create(display, &tizen_keyrouter_interface, 1, pepper_keyrouter, _pepper_keyrouter_cb_bind);
+	global = wl_global_create(display, &tizen_keyrouter_interface, 2, pepper_keyrouter, _pepper_keyrouter_cb_bind);
 	PEPPER_CHECK(global, goto failed, "Failed to create wl_global for tizen_keyrouter\n");
 
 	pepper_keyrouter->keyrouter = keyrouter_create();
