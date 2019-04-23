@@ -450,7 +450,8 @@ pepper_keyrouter_event_handler(pepper_event_listener_t *listener,
 
 	event = (pepper_input_event_t *)info;
 	pepper_keyrouter = (pepper_keyrouter_t *)data;
-	pepper_keyrouter_set_keyboard(pepper_keyrouter, keyboard);
+	if (!pepper_keyrouter->keyboard)
+		pepper_keyrouter_set_keyboard(pepper_keyrouter, keyboard);
 	pepper_keyrouter_key_process(pepper_keyrouter, event->key, event->state, event->time);
 }
 
