@@ -24,10 +24,19 @@
 #include "pepper-keyrouter.h"
 #include "pepper-internal.h"
 #include <tizen-extension-server-protocol.h>
+#ifdef HAVE_CYNARA
+#include <cynara-session.h>
+#include <cynara-client.h>
+#include <cynara-creds-socket.h>
+#include <sys/smack.h>
+#include <stdio.h>
+#include <stdarg.h>
+#endif
 
 #define MIN(a,b) ((a)<(b)?(a):(b))
 
 typedef struct resources_data resources_data_t;
+typedef struct clients_data clients_data_t;
 typedef struct grab_list_data grab_list_data_t;
 typedef struct ungrab_list_data ungrab_list_data_t;
 
@@ -39,15 +48,24 @@ struct pepper_keyrouter {
 	pepper_keyboard_t *keyboard;
 
 	pepper_list_t resources;
+	pepper_list_t grabbed_clients;
 
 	keyrouter_t *keyrouter;
 
 	pepper_view_t *focus_view;
 	pepper_view_t *top_view;
+#ifdef HAVE_CYNARA
+	cynara *p_cynara;
+#endif
 };
 
 struct resources_data {
 	struct wl_resource *resource;
+	pepper_list_t link;
+};
+
+struct clients_data {
+	struct wl_client *client;
 	pepper_list_t link;
 };
 
@@ -61,6 +79,124 @@ struct ungrab_list_data {
 	int key;
 	int err;
 };
+
+#ifdef HAVE_CYNARA
+static void
+_pepper_keyrouter_util_cynara_log(int err, const char *fmt, ...)
+{
+#define CYNARA_BUFSIZE 128
+	char buf[CYNARA_BUFSIZE] = "\0", tmp[CYNARA_BUFSIZE + CYNARA_BUFSIZE] = "\0";
+	va_list args;
+	int ret;
+
+	if (fmt) {
+		va_start(args, fmt);
+		vsnprintf(tmp, CYNARA_BUFSIZE + CYNARA_BUFSIZE, fmt, args);
+		va_end(args);
+	}
+
+	ret = cynara_strerror(err, buf, CYNARA_BUFSIZE);
+	if (ret != CYNARA_API_SUCCESS) {
+		PEPPER_ERROR("Failed to cynara_strerror: %d (error log about %s: %d)\n", ret, tmp, err);
+		return;
+	}
+
+	PEPPER_ERROR("%s is failed: %s\n", tmp, buf);
+}
+#endif
+
+static pepper_bool_t
+_pepper_keyrouter_util_cynara_init(pepper_keyrouter_t *pepper_keyrouter)
+{
+#ifdef HAVE_CYNARA
+	int ret;
+	if (pepper_keyrouter->p_cynara) return PEPPER_TRUE;
+
+	ret = cynara_initialize(&pepper_keyrouter->p_cynara, NULL);
+	if (CYNARA_API_SUCCESS != ret) {
+		_pepper_keyrouter_util_cynara_log(ret, "cynara_initialize");
+		return PEPPER_FALSE;
+	}
+#endif
+	return PEPPER_TRUE;
+}
+
+static void
+_pepper_keyrouter_util_cynara_deinit(pepper_keyrouter_t *pepper_keyrouter)
+{
+#ifdef HAVE_CYNARA
+	if (pepper_keyrouter->p_cynara) cynara_finish(pepper_keyrouter->p_cynara);
+#else
+	;
+#endif
+}
+
+static pepper_bool_t
+_pepper_keyrouter_util_do_privilege_check(pepper_keyrouter_t *pepper_keyrouter, struct wl_client *client, uint32_t mode, uint32_t keycode)
+{
+	pepper_bool_t res = PEPPER_TRUE;
+#ifdef HAVE_CYNARA
+	int ret, retry_cnt = 0, len = 0;
+	char *clientSmack = NULL, *client_session = NULL, uid2[16]={0, };
+	clients_data_t *cdata;
+	static pepper_bool_t retried = PEPPER_FALSE;
+	pid_t pid = 0;
+	uid_t uid = 0;
+	gid_t gid = 0;
+
+	res = PEPPER_FALSE;
+
+	/* Top position grab is always allowed. This mode do not need privilege.*/
+	if (mode == TIZEN_KEYROUTER_MODE_TOPMOST) return PEPPER_TRUE;
+	if (!client) return PEPPER_FALSE;
+
+	/* If initialize cynara is failed, allow keygrabs regardless of the previlege permition. */
+	if (pepper_keyrouter->p_cynara == NULL) {
+		if (retried == PEPPER_FALSE) {
+			retried = PEPPER_TRUE;
+			for(retry_cnt = 0; retry_cnt < 5; retry_cnt++) {
+				PEPPER_TRACE("Retry cynara initialize: %d\n", retry_cnt + 1);
+
+				ret = cynara_initialize(&pepper_keyrouter->p_cynara, NULL);
+				if (CYNARA_API_SUCCESS != ret) {
+					_pepper_keyrouter_util_cynara_log(ret, "cynara_initialize retry..");
+					pepper_keyrouter->p_cynara = NULL;
+				} else {
+					PEPPER_TRACE("Success cynara initialize to try %d times\n", retry_cnt + 1);
+					break;
+				}
+			}
+		}
+		if (!pepper_keyrouter->p_cynara) return PEPPER_TRUE;
+	}
+
+	pepper_list_for_each(cdata, &pepper_keyrouter->grabbed_clients, link) {
+		if (cdata->client == client) return PEPPER_TRUE;
+	}
+
+	wl_client_get_credentials(client, &pid, &uid, &gid);
+
+	len = smack_new_label_from_process((int)pid, &clientSmack);
+	if (len <= 0) goto finish;
+
+	snprintf(uid2, 15, "%d", (int)uid);
+	client_session = cynara_session_from_pid(pid);
+
+	ret = cynara_check(pepper_keyrouter->p_cynara, clientSmack, client_session, uid2, "http://tizen.org/privilege/keygrab");
+	if (CYNARA_API_ACCESS_ALLOWED == ret) {
+		res = PEPPER_TRUE;
+		PEPPER_TRACE("Success to check cynara, clientSmack: %s client_session: %s, uid2: %s\n", clientSmack, client_session, uid2);
+	} else {
+		//PEPPER_TRACE("Fail to check cynara, error : %d (pid : %d)", ret, pid);
+		_pepper_keyrouter_util_cynara_log(ret, "clientsmack: %s, pid: %d", clientSmack, pid);
+	}
+
+finish:
+	if (client_session) free(client_session);
+	if (clientSmack) free(clientSmack);
+#endif
+	return res;
+}
 
 static struct wl_client *
 _pepper_keyrouter_get_client_from_view(pepper_view_t *view)
@@ -190,6 +326,29 @@ _pepper_keyrouter_remove_client_from_list(pepper_keyrouter_t *pepper_keyrouter, 
 	}
 }
 
+static int
+_pepper_keyrouter_add_client_to_list(pepper_keyrouter_t *pepper_keyrouter, struct wl_client *client)
+{
+	clients_data_t *cdata;
+
+	pepper_list_for_each(cdata, &pepper_keyrouter->grabbed_clients, link) {
+		if (cdata->client == client) return TIZEN_KEYROUTER_ERROR_NONE;
+	}
+
+	cdata = (clients_data_t *)calloc(1, sizeof(clients_data_t));
+	if (!cdata)
+	{
+		PEPPER_ERROR("Failed to allocate memory !\n");
+		return TIZEN_KEYROUTER_ERROR_NO_SYSTEM_RESOURCES;
+	}
+
+	cdata->client = client;
+	pepper_list_init(&cdata->link);
+	pepper_list_insert(&pepper_keyrouter->grabbed_clients, &cdata->link);
+
+	return TIZEN_KEYROUTER_ERROR_NONE;
+}
+
 static void
 _pepper_keyrouter_cb_keygrab_set(struct wl_client *client,
                                          struct wl_resource *resource,
@@ -199,11 +358,21 @@ _pepper_keyrouter_cb_keygrab_set(struct wl_client *client,
 {
 	int res = TIZEN_KEYROUTER_ERROR_NONE;
 	pepper_keyrouter_t *pepper_keyrouter = NULL;
+	pepper_bool_t ret;
 
 	pepper_keyrouter = (pepper_keyrouter_t *)wl_resource_get_user_data(resource);
 	PEPPER_CHECK(pepper_keyrouter, goto notify, "Invalid pepper_keyrouter_t\n");
 
+	ret = _pepper_keyrouter_util_do_privilege_check(pepper_keyrouter, client, mode, key);
+	if (!ret) {
+		res = TIZEN_KEYROUTER_ERROR_NO_PERMISSION;
+		goto notify;
+	}
+
 	res = keyrouter_grab_key(pepper_keyrouter->keyrouter, mode, key, (void *)client);
+
+	if (res == TIZEN_KEYROUTER_ERROR_NONE)
+		res = _pepper_keyrouter_add_client_to_list(pepper_keyrouter, client);
 
 notify:
 	tizen_keyrouter_send_keygrab_notify(resource, surface, key, mode, res);
@@ -215,10 +384,23 @@ _pepper_keyrouter_cb_keygrab_unset(struct wl_client *client,
                                            struct wl_resource *surface,
                                            uint32_t key)
 {
+	int res = TIZEN_KEYROUTER_ERROR_NONE;
 	pepper_keyrouter_t *pepper_keyrouter = NULL;
+	pepper_bool_t ret;
 
 	pepper_keyrouter = (pepper_keyrouter_t *)wl_resource_get_user_data(resource);
 	PEPPER_CHECK(pepper_keyrouter, goto notify, "Invalid pepper_keyrouter_t\n");
+
+	/* ungrab TOP POSITION grab first, this grab mode is not check privilege */
+	keyrouter_ungrab_key(pepper_keyrouter->keyrouter,
+	                           TIZEN_KEYROUTER_MODE_TOPMOST,
+	                           key, (void *)client);
+
+	ret = _pepper_keyrouter_util_do_privilege_check(pepper_keyrouter, client, TIZEN_KEYROUTER_MODE_NONE, key);
+	if (!ret) {
+		res = TIZEN_KEYROUTER_ERROR_NO_PERMISSION;
+		goto notify;
+	}
 
 	keyrouter_ungrab_key(pepper_keyrouter->keyrouter,
 	                           TIZEN_KEYROUTER_MODE_EXCLUSIVE,
@@ -234,7 +416,7 @@ _pepper_keyrouter_cb_keygrab_unset(struct wl_client *client,
 	                           key, (void *)client);
 
 notify:
-	tizen_keyrouter_send_keygrab_notify(resource, surface, key, TIZEN_KEYROUTER_MODE_NONE, TIZEN_KEYROUTER_ERROR_NONE);
+	tizen_keyrouter_send_keygrab_notify(resource, surface, key, TIZEN_KEYROUTER_MODE_NONE, res);
 }
 
 static void
@@ -269,6 +451,7 @@ _pepper_keyrouter_cb_keygrab_set_list(struct wl_client *client,
 	grab_list_data_t *grab_data = NULL;
 	int res = TIZEN_KEYROUTER_ERROR_NONE;
 	pepper_keyrouter_t *pepper_keyrouter = NULL;
+	pepper_bool_t ret;
 
 	pepper_keyrouter = (pepper_keyrouter_t *)wl_resource_get_user_data(resource);
 
@@ -278,8 +461,15 @@ _pepper_keyrouter_cb_keygrab_set_list(struct wl_client *client,
 	             "Invalid keycode and grab mode pair. Check arguments in a list\n");
 
 	wl_array_for_each(grab_data, grab_list) {
-		res = keyrouter_grab_key(pepper_keyrouter->keyrouter, grab_data->mode, grab_data->key, (void *)client);
-		grab_data->err = res;
+		ret = _pepper_keyrouter_util_do_privilege_check(pepper_keyrouter, client, grab_data->mode, grab_data->key);
+		if (!ret) {
+			grab_data->err = TIZEN_KEYROUTER_ERROR_NO_PERMISSION;
+		} else {
+			res = keyrouter_grab_key(pepper_keyrouter->keyrouter, grab_data->mode, grab_data->key, (void *)client);
+			grab_data->err = res;
+			if (res == TIZEN_KEYROUTER_ERROR_NONE)
+				res = _pepper_keyrouter_add_client_to_list(pepper_keyrouter, client);
+		}
 	}
 
 	return_list = grab_list;
@@ -296,6 +486,7 @@ _pepper_keyrouter_cb_keygrab_unset_list(struct wl_client *client,
 	struct wl_array *return_list = NULL;
 	ungrab_list_data_t *ungrab_data = NULL;
 	pepper_keyrouter_t *pepper_keyrouter = NULL;
+	pepper_bool_t ret;
 
 	pepper_keyrouter = (pepper_keyrouter_t *)wl_resource_get_user_data(resource);
 
@@ -305,19 +496,31 @@ _pepper_keyrouter_cb_keygrab_unset_list(struct wl_client *client,
 
 	wl_array_for_each(ungrab_data, ungrab_list) {
 		keyrouter_ungrab_key(pepper_keyrouter->keyrouter,
-		                            TIZEN_KEYROUTER_MODE_EXCLUSIVE,
-		                            ungrab_data->key, (void *)client);
-		keyrouter_ungrab_key(pepper_keyrouter->keyrouter,
-		                            TIZEN_KEYROUTER_MODE_OVERRIDABLE_EXCLUSIVE,
-		                            ungrab_data->key, (void *)client);
-		keyrouter_ungrab_key(pepper_keyrouter->keyrouter,
 		                            TIZEN_KEYROUTER_MODE_TOPMOST,
 		                            ungrab_data->key, (void *)client);
-		keyrouter_ungrab_key(pepper_keyrouter->keyrouter,
-		                            TIZEN_KEYROUTER_MODE_SHARED,
-		                            ungrab_data->key, (void *)client);
 
-		ungrab_data->err = TIZEN_KEYROUTER_ERROR_NONE;;
+		ret = _pepper_keyrouter_util_do_privilege_check(pepper_keyrouter, client, TIZEN_KEYROUTER_MODE_TOPMOST, ungrab_data->key);
+		if (!ret) {
+			ungrab_data->err = TIZEN_KEYROUTER_ERROR_NO_PERMISSION;
+		} else {
+			keyrouter_ungrab_key(pepper_keyrouter->keyrouter,
+			                            TIZEN_KEYROUTER_MODE_EXCLUSIVE,
+			                            ungrab_data->key, (void *)client);
+
+			keyrouter_ungrab_key(pepper_keyrouter->keyrouter,
+			                            TIZEN_KEYROUTER_MODE_OVERRIDABLE_EXCLUSIVE,
+			                            ungrab_data->key, (void *)client);
+
+			keyrouter_ungrab_key(pepper_keyrouter->keyrouter,
+			                            TIZEN_KEYROUTER_MODE_TOPMOST,
+			                            ungrab_data->key, (void *)client);
+
+			keyrouter_ungrab_key(pepper_keyrouter->keyrouter,
+			                            TIZEN_KEYROUTER_MODE_SHARED,
+			                            ungrab_data->key, (void *)client);
+
+			ungrab_data->err = TIZEN_KEYROUTER_ERROR_NONE;
+		}
 	}
 
 	return_list = ungrab_list;
@@ -385,6 +588,7 @@ static void
 _pepper_keyrouter_cb_resource_destory(struct wl_resource *resource)
 {
 	resources_data_t *rdata, *rtmp;
+	clients_data_t *cdata, *ctmp;
 	pepper_list_t *list;
 	struct wl_client *client;
 	pepper_keyrouter_t *pepper_keyrouter;
@@ -395,7 +599,16 @@ _pepper_keyrouter_cb_resource_destory(struct wl_resource *resource)
 	pepper_keyrouter = wl_resource_get_user_data(resource);
 	PEPPER_CHECK(pepper_keyrouter, return, "Invalid pepper_keyrouter_t\n");
 
-	_pepper_keyrouter_remove_client_from_list(pepper_keyrouter, client);
+	list = &pepper_keyrouter->grabbed_clients;
+	if (!pepper_list_empty(list)) {
+		pepper_list_for_each_safe(cdata, ctmp, list, link) {
+			if (cdata->client == client) {
+				_pepper_keyrouter_remove_client_from_list(pepper_keyrouter, client);
+				pepper_list_remove(&cdata->link);
+				free(cdata);
+			}
+		}
+	}
 
 	list = &pepper_keyrouter->resources;
 
@@ -475,6 +688,7 @@ pepper_keyrouter_create(pepper_compositor_t *compositor)
 	struct wl_display *display = NULL;
 	struct wl_global *global = NULL;
 	pepper_keyrouter_t *pepper_keyrouter;
+	pepper_bool_t ret;
 
 	PEPPER_CHECK(compositor, return PEPPER_FALSE, "Invalid compositor\n");
 
@@ -487,12 +701,16 @@ pepper_keyrouter_create(pepper_compositor_t *compositor)
 	pepper_keyrouter->compositor = compositor;
 
 	pepper_list_init(&pepper_keyrouter->resources);
+	pepper_list_init(&pepper_keyrouter->grabbed_clients);
 
 	global = wl_global_create(display, &tizen_keyrouter_interface, 2, pepper_keyrouter, _pepper_keyrouter_cb_bind);
 	PEPPER_CHECK(global, goto failed, "Failed to create wl_global for tizen_keyrouter\n");
 
 	pepper_keyrouter->keyrouter = keyrouter_create();
 	PEPPER_CHECK(pepper_keyrouter->keyrouter, goto failed, "Failed to create keyrouter\n");
+
+	ret = _pepper_keyrouter_util_cynara_init(pepper_keyrouter);
+	if (!ret) PEPPER_TRACE("cynara initialize is failed, process keyrouter without cynara\n");
 
 	return pepper_keyrouter;
 
@@ -512,8 +730,14 @@ PEPPER_API void
 pepper_keyrouter_destroy(pepper_keyrouter_t *pepper_keyrouter)
 {
 	resources_data_t *rdata, *rtmp;
+	clients_data_t *cdata, *ctmp;
 
 	PEPPER_CHECK(pepper_keyrouter, return, "Pepper keyrouter is not initialized\n");
+
+	pepper_list_for_each_safe(cdata, ctmp, &pepper_keyrouter->grabbed_clients, link) {
+		pepper_list_remove(&cdata->link);
+		free(cdata);
+	}
 
 	pepper_list_for_each_safe(rdata, rtmp, &pepper_keyrouter->resources, link) {
 		wl_resource_destroy(rdata->resource);
@@ -528,6 +752,8 @@ pepper_keyrouter_destroy(pepper_keyrouter_t *pepper_keyrouter)
 
 	if (pepper_keyrouter->global)
 		wl_global_destroy(pepper_keyrouter->global);
+
+	_pepper_keyrouter_util_cynara_deinit(pepper_keyrouter);
 
 	free(pepper_keyrouter);
 	pepper_keyrouter = NULL;

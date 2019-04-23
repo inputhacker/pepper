@@ -45,6 +45,14 @@ if test "x${have_dlog}" = "xyes"; then
 fi
 AM_CONDITIONAL([HAVE_DLOG], [test "x${have_dlog}" = "xyes"])
 
+PKG_CHECK_MODULES(CYNARA, [cynara-client, cynara-creds-socket, cynara-session, libsmack],
+   [have_cynara="yes"], [have_cynara="no"])
+if test "x${have_cynara}" = "xyes"; then
+	AC_DEFINE([HAVE_CYNARA], [1], [Define to 1 if you have cynara])
+	PEPPER_REQUIRES="$PEPPER_REQUIRES cynara-client cynara-creds-socket cynara-session libsmack"
+fi
+AM_CONDITIONAL([HAVE_CYNARA], [test "x${have_cynara}" = "xyes"])
+
 PEPPER_DIR="-I\$(top_srcdir)/src/lib/pepper"
 PEPPER_LIB="\$(top_srcdir)/src/lib/pepper/libpepper.la"
 

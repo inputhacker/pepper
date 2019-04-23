@@ -41,6 +41,9 @@ BuildRequires:  pkgconfig(capi-system-peripheral-io)
 BuildRequires:	pkgconfig(xdg-shell-unstable-v6-server)
 BuildRequires:	pkgconfig(tizen-extension-server)
 %endif
+BuildRequires:  pkgconfig(cynara-client)
+BuildRequires:  pkgconfig(cynara-creds-socket)
+BuildRequires:  pkgconfig(libsmack)
 
 %description
 Pepper is a lightweight and flexible library for developing various types of wayland compositors.
