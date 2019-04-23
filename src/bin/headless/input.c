@@ -304,6 +304,7 @@ init_modules(headless_input_t *hi)
 
 	PEPPER_TRACE("[%s] ... done\n", __FUNCTION__);
 
+	return;
 end:
 	if (keyrouter)
 		pepper_keyrouter_destroy(keyrouter);
