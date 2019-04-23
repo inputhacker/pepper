@@ -149,10 +149,11 @@ pepper_keyrouter_key_process(pepper_keyrouter_t *pepper_keyrouter,
 		}
 	}
 	else {
-		/* send key event to focused client */
-		pepper_view_t *focus_view = pepper_keyboard_get_focus(pepper_keyrouter->keyboard);
-		PEPPER_CHECK(focus_view, return , "No focused view exists.\n");
-		pepper_keyboard_send_key(pepper_keyrouter->keyboard, focus_view, time, key, state);
+		/* send key event to focus view if any */
+		if (pepper_keyrouter->focus_view)
+			pepper_keyboard_send_key(pepper_keyrouter->keyboard, pepper_keyrouter->focus_view, time, key, state);
+		else
+			PEPPER_TRACE("No focused view exists.\n", __FUNCTION__);
 	}
 }
 
