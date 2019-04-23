@@ -92,6 +92,31 @@ _keyrouter_grabbed_check(keyrouter_t *keyrouter,
 	return res;
 }
 
+PEPPER_API void
+keyrouter_set_focus_client(keyrouter_t *keyrouter, void *focus_client)
+{
+	PEPPER_CHECK(keyrouter, return, "keyrouter is invalid.\n");
+	keyrouter->focus_client = focus_client;
+
+	if (focus_client)
+		PEPPER_TRACE("[%s] focus client has been set. (focus_client=0x%p)\n", __FUNCTION__, focus_client);
+	else
+		PEPPER_TRACE("[%s] focus client has been set to NULL.\n", __FUNCTION__);
+}
+
+PEPPER_API void
+keyrouter_set_top_client(keyrouter_t *keyrouter, void *top_client)
+{
+	PEPPER_CHECK(keyrouter, return, "keyrouter is invalid.\n");
+
+	keyrouter->top_client = top_client;
+
+	if (top_client)
+		PEPPER_TRACE("[%s] top client has been set. (top_client=0x%p)\n", __FUNCTION__, top_client);
+	else
+		PEPPER_TRACE("[%s] top client has been set to NULL.\n", __FUNCTION__);
+}
+
 PEPPER_API int
 keyrouter_key_process(keyrouter_t *keyrouter,
                              int keycode, int pressed, pepper_list_t *delivery_list)

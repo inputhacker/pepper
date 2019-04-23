@@ -34,6 +34,9 @@ typedef struct keyrouter_grabbed keyrouter_grabbed_t;
 struct keyrouter {
 	pepper_compositor_t        *compositor;
 	keyrouter_grabbed_t *hard_keys;
+
+	void *focus_client;
+	void *top_client;
 };
 
 struct keyrouter_grabbed {

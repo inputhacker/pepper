@@ -62,6 +62,21 @@ struct ungrab_list_data {
 	int err;
 };
 
+static struct wl_client *
+_pepper_keyrouter_get_client_from_view(pepper_view_t *view)
+{
+	pepper_surface_t *surface = pepper_view_get_surface(view);
+	PEPPER_CHECK(surface, return NULL, "No surfce available for the given view.\n");
+
+	struct wl_resource *resource = pepper_surface_get_resource(surface);
+
+	if (resource)
+		return wl_resource_get_client(resource);
+
+	return NULL;
+}
+
+
 PEPPER_API void
 pepper_keyrouter_set_seat(pepper_keyrouter_t *pepper_keyrouter, pepper_seat_t *seat)
 {
@@ -81,20 +96,18 @@ pepper_keyrouter_set_focus_view(pepper_keyrouter_t *pk, pepper_view_t *focus_vie
 {
 	PEPPER_CHECK(pk, return, "pepper keyrouter is invalid.\n");
 	PEPPER_CHECK(pk->keyboard, return, "No keyboard is available for pepper keyrouter.\n");
-	PEPPER_CHECK(focus_view, return, "Given focus_view is invalid.\n");
 
 	pk->focus_view = focus_view;
-	PEPPER_TRACE("[%s] focus_view has been set. (focus=0x%p)\n", __FUNCTION__, focus_view);
+	keyrouter_set_focus_client(pk->keyrouter, _pepper_keyrouter_get_client_from_view(focus_view));
 }
 
 PEPPER_API void
 pepper_keyrouter_set_top_view(pepper_keyrouter_t *pk, pepper_view_t *top_view)
 {
 	PEPPER_CHECK(pk, return, "pepper keyrouter is invalid.\n");
-	PEPPER_CHECK(top_view, return, "Given top_view is invalid.\n");
 
 	pk->top_view = top_view;
-	PEPPER_TRACE("[%s] top_view has been set. (top=0x%p)\n", __FUNCTION__, top_view);
+	keyrouter_set_top_client(pk->keyrouter, _pepper_keyrouter_get_client_from_view(top_view));
 }
 
 static void
