@@ -53,25 +53,6 @@ const static int KEY_INPUT = 0xdeadbeaf;
 static void headless_input_init_event_listeners(headless_input_t *hi);
 static void headless_input_deinit_event_listeners(headless_input_t *hi);
 
-/* PEPPER_EVENT_KEYBOARD_KEY handler (must be changed to pepper_keyrouter_event_handler) */
-static void
-_cb_handle_keyboard_key(pepper_event_listener_t *listener, pepper_object_t *object, uint32_t id, void *info, void *data)
-{
-	pepper_input_event_t *event;
-	headless_input_t *hi = (headless_input_t *)data;
-	pepper_keyboard_t *keyboard = pepper_seat_get_keyboard(hi->seat);
-
-	event = (pepper_input_event_t *)info;
-	event->key +=8;
-
-	PEPPER_TRACE("[%s] keycode:%d, state=%d\n", __FUNCTION__, event->key, event->state);
-
-	/* send key event to focused client */
-	pepper_view_t *focus_view = pepper_keyboard_get_focus(keyboard);
-	PEPPER_CHECK(focus_view, return, "[%s] No focused view exists.\n", __FUNCTION__);
-	pepper_keyboard_send_key(keyboard, focus_view, event->time, event->key, event->state);
-}
-
 /* seat keyboard add event handler */
 static void
 _cb_handle_seat_keyboard_add(pepper_event_listener_t *listener, pepper_object_t *object, uint32_t id, void *info, void *data)
@@ -86,8 +67,9 @@ _cb_handle_seat_keyboard_add(pepper_event_listener_t *listener, pepper_object_t 
 	//pepper_keyboard_set_keymap_info(keyboard, WL_KEYBOARD_KEYMAP_FORMAT_NO_KEYMAP, -1, 0);
 	pepper_xkb_keyboard_set_keymap(hi->xkb, keyboard, NULL);
 
+	pepper_keyrouter_set_keyboard(hi->keyrouter, keyboard);
 	h = pepper_object_add_event_listener((pepper_object_t *)keyboard, PEPPER_EVENT_KEYBOARD_KEY,
-								0, _cb_handle_keyboard_key, hi);
+								0, pepper_keyrouter_event_handler, hi->keyrouter);
 	PEPPER_CHECK(h, goto end, "Failed to add keyboard key listener.\n");
 	hi->listener_seat_keyboard_key = h;
 	hi->keyboard = keyboard;
