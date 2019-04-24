@@ -217,7 +217,6 @@ _evdev_keyboard_device_open(pepper_evdev_t *evdev, const char *path)
 
 	device_info->fd = fd;
 	device_info->evdev = evdev;
-	device_info->device = device;
 	strncpy(device_info->path, path, MAX_PATH_LEN - 1);
 
 	_evdev_device_configure(device_info);
@@ -226,6 +225,7 @@ _evdev_keyboard_device_open(pepper_evdev_t *evdev, const char *path)
 	device = pepper_input_device_create(evdev->compositor, WL_SEAT_CAPABILITY_KEYBOARD, NULL, NULL);
 	PEPPER_CHECK(device, goto error, "[%s] Failed to create pepper input device.\n", __FUNCTION__);
 
+	device_info->device = device;
 	event_mask = WL_EVENT_READABLE;
 	device_info->event_source = wl_event_loop_add_fd(evdev->event_loop,
 			fd, event_mask, _evdev_keyboard_event_fd_read, device_info);
