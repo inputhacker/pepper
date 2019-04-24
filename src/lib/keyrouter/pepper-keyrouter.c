@@ -230,20 +230,30 @@ pepper_keyrouter_set_keyboard(pepper_keyrouter_t * pepper_keyrouter, pepper_keyb
 PEPPER_API void
 pepper_keyrouter_set_focus_view(pepper_keyrouter_t *pk, pepper_view_t *focus_view)
 {
+	struct wl_client *client = NULL;
 	PEPPER_CHECK(pk, return, "pepper keyrouter is invalid.\n");
 	PEPPER_CHECK(pk->keyboard, return, "No keyboard is available for pepper keyrouter.\n");
 
 	pk->focus_view = focus_view;
-	keyrouter_set_focus_client(pk->keyrouter, _pepper_keyrouter_get_client_from_view(focus_view));
+
+	if (focus_view)
+		client = _pepper_keyrouter_get_client_from_view(focus_view);
+
+	keyrouter_set_focus_client(pk->keyrouter, client);
 }
 
 PEPPER_API void
 pepper_keyrouter_set_top_view(pepper_keyrouter_t *pk, pepper_view_t *top_view)
 {
+	struct wl_client *client = NULL;
 	PEPPER_CHECK(pk, return, "pepper keyrouter is invalid.\n");
 
 	pk->top_view = top_view;
-	keyrouter_set_top_client(pk->keyrouter, _pepper_keyrouter_get_client_from_view(top_view));
+
+	if (top_view)
+		client = _pepper_keyrouter_get_client_from_view(top_view);
+
+	keyrouter_set_top_client(pk->keyrouter, client);
 }
 
 static void

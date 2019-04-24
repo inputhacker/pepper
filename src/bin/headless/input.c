@@ -146,8 +146,11 @@ headless_input_set_focus_view(pepper_compositor_t *compositor, pepper_view_t *fo
 	{
 		if (hi->focus_view)
 			pepper_keyboard_send_leave(hi->keyboard, hi->focus_view);
-		pepper_keyboard_set_focus(hi->keyboard, focus_view);
-		pepper_keyboard_send_enter(hi->keyboard, focus_view);
+
+		if (focus_view) {
+			pepper_keyboard_set_focus(hi->keyboard, focus_view);
+			pepper_keyboard_send_enter(hi->keyboard, focus_view);
+		}
 		hi->focus_view = focus_view;
 	}
 
@@ -162,6 +165,8 @@ headless_input_set_top_view(void *compositor, pepper_view_t *top_view)
 
 	hi = (headless_input_t *)pepper_object_get_user_data((pepper_object_t *) compositor, &KEY_INPUT);
 	PEPPER_CHECK(hi, return, "Invalid headless input.\n");
+
+	if (hi->top_view == top_view) return;
 
 	hi->top_view = top_view;
 
