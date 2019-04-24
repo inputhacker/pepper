@@ -31,6 +31,16 @@
 
 #include "headless_server.h"
 
+#define UPDATE_SURFACE_TYPE	0		//update the surface_type(map. unmap)
+#define SET_UPDATE(x, type)	(x |= ((uint32_t)(1<<type)))
+#define IS_UPDATE(x, type)	(!!(x & ((uint32_t)(1<<type))))
+
+typedef enum {
+	HEADLESS_SURFACE_NONE,
+	HEADLESS_SURFACE_TOPLEVEL,
+	HEADLESS_SURFACE_POPUP
+} headless_surface_type_t;
+
 typedef struct {
 	pepper_compositor_t *compositor;
 	struct wl_global *zxdg_shell;
@@ -43,17 +53,36 @@ typedef struct {
 typedef struct {
 	pepper_surface_t *surface;
 	pepper_view_t *view;
+	uint32_t	updates;
+
+	headless_surface_type_t surface_type;
 	struct wl_resource *zxdg_shell_surface;
+	struct wl_resource *zxdg_surface;	/*resource of toplevel, popup and etc*/
 	uint32_t last_ack_configure;
 
 	pepper_bool_t skip_focus;
+
+	pepper_event_listener_t *cb_commit;
 }headless_shell_surface_t;
+
+static void
+headless_shell_cb_surface_commit(pepper_event_listener_t *listener,
+										pepper_object_t *object,
+										uint32_t id, void *info, void *data);
 
 const static int KEY_SHELL = 0;
 
 static void
 zxdg_toplevel_cb_resource_destroy(struct wl_resource *resource)
 {
+	headless_shell_surface_t *hs_surface = (headless_shell_surface_t *)wl_resource_get_user_data(resource);
+
+	PEPPER_CHECK(hs_surface, return, "fail to get headless_surface.\n");
+	PEPPER_CHECK((hs_surface->surface_type == HEADLESS_SURFACE_TOPLEVEL), return, "Invalid surface type.\n");
+	PEPPER_CHECK((hs_surface->zxdg_surface == resource), return, "Invalid surface.");
+
+	hs_surface->surface_type = HEADLESS_SURFACE_NONE;
+	hs_surface->zxdg_surface = NULL;
 }
 
 static void
@@ -174,6 +203,16 @@ static const struct zxdg_toplevel_v6_interface zxdg_toplevel_interface =
 static void
 zxdg_popup_cb_resource_destroy(struct wl_resource *resource)
 {
+	headless_shell_surface_t *hs_surface = (headless_shell_surface_t *)wl_resource_get_user_data(resource);
+
+	PEPPER_CHECK(hs_surface, return, "fail to get headless_surface.\n");
+	PEPPER_CHECK((hs_surface->surface_type == HEADLESS_SURFACE_POPUP), return, "Invalid surface type.\n");
+	PEPPER_CHECK((hs_surface->zxdg_surface == resource), return, "Invalid surface.");
+
+	hs_surface->surface_type = HEADLESS_SURFACE_NONE;
+	hs_surface->zxdg_surface = NULL;
+
+	SET_UPDATE(hs_surface->updates, UPDATE_SURFACE_TYPE);
 }
 
 static void
@@ -204,8 +243,15 @@ zxdg_surface_cb_resource_destroy(struct wl_resource *resource)
 	hs_surface = wl_resource_get_user_data(resource);
 	PEPPER_CHECK(hs_surface, return, "fail to get hs_surface\n");
 
-	hs_surface->zxdg_shell_surface = NULL;
 	pepper_view_destroy(hs_surface->view);
+	pepper_event_listener_remove(hs_surface->cb_commit);
+
+	hs_surface->view = NULL;
+	hs_surface->zxdg_shell_surface = NULL;
+	hs_surface->skip_focus = PEPPER_FALSE;
+	hs_surface->cb_commit = NULL;
+
+	SET_UPDATE(hs_surface->updates, UPDATE_SURFACE_TYPE);
 }
 
 static void
@@ -217,7 +263,12 @@ zxdg_surface_cb_destroy(struct wl_client *client, struct wl_resource *resource)
 static void
 zxdg_surface_cb_toplevel_get(struct wl_client *client, struct wl_resource *resource, uint32_t id)
 {
+	headless_shell_surface_t *hs_surface = (headless_shell_surface_t *)wl_resource_get_user_data(resource);
 	struct wl_resource *new_res;
+
+	PEPPER_CHECK(hs_surface, return, "fail to get headless_surface\n");
+	PEPPER_CHECK((hs_surface->zxdg_surface == NULL), return, "alwreay assign zdg_surface:%p role:%d\n", hs_surface->zxdg_surface, hs_surface->surface_type);
+
 	new_res = wl_resource_create(client, &zxdg_toplevel_v6_interface, 1, id);
 	if (!new_res) {
 		PEPPER_ERROR("fail to create zxdg_toplevel");
@@ -227,18 +278,28 @@ zxdg_surface_cb_toplevel_get(struct wl_client *client, struct wl_resource *resou
 
 	wl_resource_set_implementation(new_res,
 			&zxdg_toplevel_interface,
-			NULL,
+			hs_surface,
 			zxdg_toplevel_cb_resource_destroy);
+
+	hs_surface->surface_type = HEADLESS_SURFACE_TOPLEVEL;
+	hs_surface->zxdg_surface = new_res;
+
+	SET_UPDATE(hs_surface->updates, UPDATE_SURFACE_TYPE);
 }
 
 static void
 zxdg_surface_cb_popup_get(struct wl_client *client,
-			  struct wl_resource *resource,
-		uint32_t id,
-		struct wl_resource *res_parent,
-		struct wl_resource *res_pos)
+									struct wl_resource *resource,
+									uint32_t id,
+									struct wl_resource *res_parent,
+									struct wl_resource *res_pos)
 {
+	headless_shell_surface_t *hs_surface = (headless_shell_surface_t *)wl_resource_get_user_data(resource);
 	struct wl_resource *new_res;
+
+	PEPPER_CHECK(hs_surface, return, "fail to get headless_surface\n");
+	PEPPER_CHECK((hs_surface->zxdg_surface == NULL), return, "alwreay assign zdg_surface:%p role:%d\n", hs_surface->zxdg_surface, hs_surface->surface_type);
+
 	new_res = wl_resource_create(client, &zxdg_popup_v6_interface, 1, id);
 	if (!new_res) {
 		PEPPER_ERROR("fail to create popup");
@@ -248,8 +309,13 @@ zxdg_surface_cb_popup_get(struct wl_client *client,
 
 	wl_resource_set_implementation(new_res,
 	                          &zxdg_popup_interface,
-	                          NULL,
+	                          hs_surface,
 	                          zxdg_popup_cb_resource_destroy);
+
+	hs_surface->surface_type = HEADLESS_SURFACE_POPUP;
+	hs_surface->zxdg_surface = new_res;
+
+	SET_UPDATE(hs_surface->updates, UPDATE_SURFACE_TYPE);
 }
 
 static void
@@ -418,6 +484,9 @@ zxdg_shell_cb_surface_get(struct wl_client *client, struct wl_resource *resource
 		goto error;
 	}
 
+	hs_surface->cb_commit = pepper_object_add_event_listener((pepper_object_t *)psurface,
+															PEPPER_EVENT_SURFACE_COMMIT, 0, headless_shell_cb_surface_commit, hs_surface);
+
 	if (!pepper_surface_set_role(psurface, "xdg_surface")) {
 		PEPPER_ERROR("fail to set role\n");
 		wl_resource_post_error(resource, WL_DISPLAY_ERROR_INVALID_OBJECT,
@@ -583,6 +652,8 @@ tizen_policy_cb_activate(struct wl_client *client, struct wl_resource *resource,
 
 	hs_surface = pepper_object_get_user_data((pepper_object_t *)psurface, surf);
 	PEPPER_CHECK(hs_surface, return, "fail to get headless_shell_surface\n");
+
+	pepper_view_stack_top(hs_surface->view, PEPPER_TRUE);
 
 	/* FIXME: set a view of the given surface as the focus/top view */
 	void *input = headless_input_get();
@@ -887,6 +958,30 @@ tizen_policy_deinit(headless_shell_t *shell)
 {
 	if (shell->zxdg_shell)
 		wl_global_destroy(shell->tizen_policy);
+}
+
+static void
+headless_shell_cb_surface_commit(pepper_event_listener_t *listener,
+										pepper_object_t *object,
+										uint32_t id, void *info, void *data)
+{
+	headless_shell_surface_t * hs_surface = (headless_shell_surface_t *)data;
+
+	PEPPER_CHECK(((pepper_object_t *)hs_surface->surface == object), return, "Invalid object\n");
+
+	/*TODO
+	1. Check the changes(buffer, map status...)
+	*/
+	if (IS_UPDATE(hs_surface->updates, UPDATE_SURFACE_TYPE)) {
+		if (hs_surface->surface_type != HEADLESS_SURFACE_NONE)
+			pepper_view_map(hs_surface->view);
+		else
+			pepper_view_unmap(hs_surface->view);
+
+		PEPPER_TRACE("Surface type change. view:%p, type:%d, res:%p\n", hs_surface->view, hs_surface->surface_type, hs_surface->zxdg_surface);
+	}
+
+	hs_surface->updates = 0;
 }
 
 static void

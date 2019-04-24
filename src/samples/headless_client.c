@@ -153,6 +153,7 @@ _cb_key_up(void *data EINA_UNUSED, int type EINA_UNUSED, void *event)
 	(void) client;
 	(void) ev;
 
+	ecore_wl2_window_hide(client->win);
 	return ECORE_CALLBACK_PASS_ON;
 }
 
