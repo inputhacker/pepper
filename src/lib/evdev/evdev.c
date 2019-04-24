@@ -148,42 +148,52 @@ _evdev_keyboard_event_fd_read(int fd, uint32_t mask, void *data)
 }
 
 static int
-_evdev_is_key_device(int fd, const char *path)
+bit_is_set(const unsigned long *array, int bit)
 {
-	int rc;
-	unsigned long key_bits[NLONGS(KEY_CNT)];
-
-	if (fd < 0 || !path)
-		return 0;
-
-	/* Check if the given device is a key device */
-	rc = ioctl(fd, EVIOCGBIT(EV_KEY, sizeof(key_bits)), key_bits);
-	if (rc < 0)
-		return 0;
-
-	return 1;
+    return !!(array[bit / LONG_BITS] & (1LL << (bit % LONG_BITS)));
 }
 
-static int
-_evdev_is_mouse_device(int fd, const char *path)
+static void
+_evdev_device_configure(evdev_device_info_t *device_info)
 {
 	int rc;
-	char device_name[256];
-	unsigned long rel_bits[NLONGS(REL_CNT)];
+	unsigned long bits[NLONGS(EV_CNT)] = {0, };
+	unsigned long key_bits[NLONGS(KEY_CNT)] = {0, };
+	unsigned long found = 0, i;
+	char device_name[256] = {0, };
 
-	if (fd < 0 || !path)
-		return 0;
+	rc = ioctl(device_info->fd, EVIOCGBIT(0, sizeof(bits)), bits);
+	PEPPER_CHECK(rc >= 0, return, "Failed to get event bits\n");
 
-	/* Check if the given device is a mouse device */
-	rc = ioctl(fd, EVIOCGBIT(EV_REL, sizeof(rel_bits)), rel_bits);
-	if (rc < 0)
-		return 0;
+	if (bit_is_set(bits, EV_KEY)) {
+		rc = ioctl(device_info->fd, EVIOCGBIT(EV_KEY, sizeof(key_bits)), key_bits);
+		if (rc >= 0) {
+			for (i = 0; i < BTN_MISC / BITS_PER_LONG; ++i) {
+				found |= key_bits[i];
+				if (found) break;
+			}
+			if (!found) {
+				for (i = KEY_OK; i < BTN_TRIGGER_HAPPY; ++i) {
+					if (bit_is_set(key_bits, i)) {
+						found = 1;
+						break;
+					}
+				}
+			}
 
-	rc = ioctl(fd, EVIOCGNAME(sizeof(device_name)-1), device_name);
-	if (rc < 0 || !strcasestr(device_name, "mouse"))
-		return 0;
+			if (found) device_info->caps |= WL_SEAT_CAPABILITY_KEYBOARD;
+		} else
+			PEPPER_ERROR("Failed to get key bits\n");
+	}
 
-	return 1;
+	if (bit_is_set(bits, EV_REL)) {
+		rc = ioctl(device_info->fd, EVIOCGNAME(sizeof(device_name) - 1), device_name);
+		if (rc >= 0) {
+			if (strcasestr(device_name, "mouse"))
+				device_info->caps |= WL_SEAT_CAPABILITY_POINTER;
+		} else
+			PEPPER_ERROR("Failed to get device name\n");
+	}
 }
 
 static int
@@ -202,21 +212,21 @@ _evdev_keyboard_device_open(pepper_evdev_t *evdev, const char *path)
 	fd = open(device_path, O_RDONLY | O_NONBLOCK | O_CLOEXEC);
 	PEPPER_CHECK(fd >= 0, return 0, "[%s] Failed to open given path of device.\n", __FUNCTION__);
 
-	/* Skip mouse device as it usually has a key capability */
-	if (!_evdev_is_key_device(fd, path) || _evdev_is_mouse_device(fd, path))
-		goto error;
-
-	device = pepper_input_device_create(evdev->compositor, WL_SEAT_CAPABILITY_KEYBOARD, NULL, NULL);
-	PEPPER_CHECK(device, goto error, "[%s] Failed to create pepper input device.\n", __FUNCTION__);
-
 	device_info = (evdev_device_info_t *)calloc(1, sizeof(evdev_device_info_t));
 	PEPPER_CHECK(device_info, goto error, "[%s] Failed to allocate memory for device info...\n", __FUNCTION__);
 
-	event_mask = WL_EVENT_READABLE;
 	device_info->fd = fd;
 	device_info->evdev = evdev;
 	device_info->device = device;
 	strncpy(device_info->path, path, MAX_PATH_LEN - 1);
+
+	_evdev_device_configure(device_info);
+	if (device_info->caps != WL_SEAT_CAPABILITY_KEYBOARD) goto error;
+
+	device = pepper_input_device_create(evdev->compositor, WL_SEAT_CAPABILITY_KEYBOARD, NULL, NULL);
+	PEPPER_CHECK(device, goto error, "[%s] Failed to create pepper input device.\n", __FUNCTION__);
+
+	event_mask = WL_EVENT_READABLE;
 	device_info->event_source = wl_event_loop_add_fd(evdev->event_loop,
 			fd, event_mask, _evdev_keyboard_event_fd_read, device_info);
 	PEPPER_CHECK(device_info->event_source, goto error, "[%s] Failed to add fd as an event source...\n", __FUNCTION__);

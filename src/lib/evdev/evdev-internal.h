@@ -29,6 +29,10 @@
 
 #define MAX_PATH_LEN 16
 
+#ifndef BITS_PER_LONG
+#define BITS_PER_LONG (sizeof(unsigned long) * 8)
+#endif
+
 struct pepper_evdev
 {
        pepper_compositor_t *compositor;
@@ -45,6 +49,7 @@ struct evdev_device_info
        struct wl_event_source *event_source;
        int fd;
        char path[MAX_PATH_LEN];
+       unsigned int caps;
        pepper_list_t link;
 };
 
