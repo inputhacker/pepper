@@ -47,7 +47,6 @@ typedef struct
 	uint32_t ndevices;
 } headless_input_t;
 
-headless_input_t *input = NULL;
 const static int KEY_INPUT = 0xdeadbeaf;
 
 static void headless_input_init_event_listeners(headless_input_t *hi);
@@ -136,10 +135,11 @@ end:
 }
 
 void
-headless_input_set_focus_view(void *input, pepper_view_t *focus_view)
+headless_input_set_focus_view(pepper_compositor_t *compositor, pepper_view_t *focus_view)
 {
-	headless_input_t *hi = (headless_input_t *)input;
+	headless_input_t *hi;
 
+	hi = (headless_input_t *)pepper_object_get_user_data((pepper_object_t *) compositor, &KEY_INPUT);
 	PEPPER_CHECK(hi, return, "Invalid headless input.\n");
 
 	if (hi->focus_view != focus_view)
@@ -156,22 +156,17 @@ headless_input_set_focus_view(void *input, pepper_view_t *focus_view)
 }
 
 void
-headless_input_set_top_view(void *input, pepper_view_t *top_view)
+headless_input_set_top_view(void *compositor, pepper_view_t *top_view)
 {
-	headless_input_t *hi = (headless_input_t *)input;
+	headless_input_t *hi;
 
+	hi = (headless_input_t *)pepper_object_get_user_data((pepper_object_t *) compositor, &KEY_INPUT);
 	PEPPER_CHECK(hi, return, "Invalid headless input.\n");
 
 	hi->top_view = top_view;
 
 	if (hi->keyrouter)
 		pepper_keyrouter_set_top_view(hi->keyrouter, top_view);
-}
-
-headless_input_t *
-headless_input_get(void)
-{
-	return input;
 }
 
 static void
@@ -333,8 +328,6 @@ headless_input_deinit(void *data)
 
 	pepper_object_set_user_data((pepper_object_t *)hi->compositor, &KEY_INPUT, NULL, NULL);
 	free(hi);
-
-	input = hi = NULL;
 }
 
 pepper_bool_t
@@ -352,8 +345,7 @@ headless_input_init(pepper_compositor_t *compositor)
 	init = headless_input_init_input(hi);
 	PEPPER_CHECK(init, goto error, "headless_input_init_input() failed\n");
 
-	input = hi;
-	pepper_object_set_user_data((pepper_object_t *)compositor, &KEY_INPUT, NULL, headless_input_deinit);
+	pepper_object_set_user_data((pepper_object_t *)compositor, &KEY_INPUT, hi, headless_input_deinit);
 
 	return PEPPER_TRUE;
 

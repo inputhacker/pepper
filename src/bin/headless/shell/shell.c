@@ -656,9 +656,8 @@ tizen_policy_cb_activate(struct wl_client *client, struct wl_resource *resource,
 	pepper_view_stack_top(hs_surface->view, PEPPER_TRUE);
 
 	/* FIXME: set a view of the given surface as the focus/top view */
-	void *input = headless_input_get();
-	headless_input_set_focus_view(input, hs_surface->view);
-	headless_input_set_top_view(input, hs_surface->view);
+	headless_input_set_focus_view(pepper_surface_get_compositor(psurface), hs_surface->view);
+	headless_input_set_top_view(pepper_surface_get_compositor(psurface), hs_surface->view);
 }
 
 static void
