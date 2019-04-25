@@ -136,6 +136,7 @@ keyrouter_key_process(keyrouter_t *keyrouter,
 			PEPPER_CHECK(delivery, return 0, "Failed to allocate memory\n");
 			delivery->data = info->data;
 			pepper_list_insert(delivery_list, &delivery->link);
+			PEPPER_TRACE("Exclusive Mode: keycode: %d to data: %p\n", keycode, info->data);
 			return 1;
 		}
 	}
@@ -146,26 +147,42 @@ keyrouter_key_process(keyrouter_t *keyrouter,
 			PEPPER_CHECK(delivery, return 0, "Failed to allocate memory\n");
 			delivery->data = info->data;
 			pepper_list_insert(delivery_list, &delivery->link);
+			PEPPER_TRACE("OR-Excl Mode: keycode: %d to data: %p\n", keycode, info->data);
 			return 1;
 		}
 	}
 	else if (!pepper_list_empty(&keyrouter->hard_keys[keycode].grab.top)) {
-		info = pepper_container_of(keyrouter->hard_keys[keycode].grab.top.next, info, link);
-		if (info) {
-			delivery = (keyrouter_key_info_t *)calloc(1, sizeof(keyrouter_key_info_t));
-			PEPPER_CHECK(delivery, return 0, "Failed to allocate memory\n");
-			delivery->data = info->data;
-			pepper_list_insert(delivery_list, &delivery->link);
-			return 1;
+		pepper_list_for_each(info, &keyrouter->hard_keys[keycode].grab.top, link) {
+			if (keyrouter->top_client && keyrouter->top_client == info->data) {
+				delivery = (keyrouter_key_info_t *)calloc(1, sizeof(keyrouter_key_info_t));
+				PEPPER_CHECK(delivery, return 0, "Failed to allocate memory\n");
+				delivery->data = info->data;
+				pepper_list_insert(delivery_list, &delivery->link);
+				PEPPER_TRACE("Topmost Mode: keycode: %d to data: %p\n", keycode, info->data);
+				return 1;
+			}
 		}
 	}
-	else if (!pepper_list_empty(&keyrouter->hard_keys[keycode].grab.shared)) {
+
+	if (keyrouter->focus_client) {
+		delivery = (keyrouter_key_info_t *)calloc(1, sizeof(keyrouter_key_info_t));
+		PEPPER_CHECK(delivery, return 0, "Failed to allocate memory\n");
+		delivery->data = keyrouter->focus_client;
+		pepper_list_insert(delivery_list, &delivery->link);
+		count++;
+		PEPPER_TRACE("Focus: keycode: %d to data: %p, count: %d\n", keycode, delivery->data, count);
+	}
+
+	if (!pepper_list_empty(&keyrouter->hard_keys[keycode].grab.shared)) {
 		pepper_list_for_each(info, &keyrouter->hard_keys[keycode].grab.shared, link) {
+			if (keyrouter->focus_client && keyrouter->focus_client == info->data)
+				continue;
 			delivery = (keyrouter_key_info_t *)calloc(1, sizeof(keyrouter_key_info_t));
-			PEPPER_CHECK(delivery, return 0, "Failed to allocate memory\n");
+			PEPPER_CHECK(delivery, return count, "Failed to allocate memory\n");
 			delivery->data = info->data;
 			pepper_list_insert(delivery_list, &delivery->link);
 			count++;
+			PEPPER_TRACE("Shared: keycode: %d to data: %p, count: %d\n", keycode, info->data, count);
 		}
 	}
 

@@ -271,7 +271,7 @@ _pepper_keyrouter_key_send(pepper_keyrouter_t *pepper_keyrouter,
 		if (wl_resource_get_client(resource) == client)
 		{
 			wl_keyboard_send_key(resource, wl_display_get_serial(pepper_keyrouter->display), time, key, state);
-			PEPPER_TRACE("[%s] key : %d, state : %d, time : %d\n", __FUNCTION__, key, state, time);
+			PEPPER_TRACE("[%s] key : %d, state : %d, time : %lu\n", __FUNCTION__, key, state, time);
 		}
 	}
 }
