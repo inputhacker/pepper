@@ -144,13 +144,10 @@ headless_input_set_focus_view(pepper_compositor_t *compositor, pepper_view_t *fo
 
 	if (hi->focus_view != focus_view)
 	{
-		if (hi->focus_view)
-			pepper_keyboard_send_leave(hi->keyboard, hi->focus_view);
+		pepper_keyboard_send_leave(hi->keyboard, hi->focus_view);
+		pepper_keyboard_set_focus(hi->keyboard, focus_view);
+		pepper_keyboard_send_enter(hi->keyboard, focus_view);
 
-		if (focus_view) {
-			pepper_keyboard_set_focus(hi->keyboard, focus_view);
-			pepper_keyboard_send_enter(hi->keyboard, focus_view);
-		}
 		hi->focus_view = focus_view;
 	}
 
