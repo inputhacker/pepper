@@ -56,24 +56,28 @@ led_output_destroy(void *o)
 static int32_t
 led_output_get_subpixel_order(void *o)
 {
+	PEPPER_TRACE("[OUTPUT]\n");
 	return 0;
 }
 
 static const char *
 led_output_get_maker_name(void *o)
 {
+	PEPPER_TRACE("[OUTPUT]\n");
 	return "PePPer LED";
 }
 
 static const char *
 led_output_get_model_name(void *o)
 {
+	PEPPER_TRACE("[OUTPUT]\n");
 	return "PePPer LED";
 }
 
 static int
 led_output_get_mode_count(void *o)
 {
+	PEPPER_TRACE("[OUTPUT]\n");
 	return 1;
 }
 
@@ -81,6 +85,8 @@ static void
 led_output_get_mode(void *o, int index, pepper_output_mode_t *mode)
 {
 	led_output_t *output = (led_output_t *)o;
+
+	PEPPER_TRACE("[OUTPUT]\n");
 
 	if (index != 0)
 		return;
@@ -100,6 +106,16 @@ led_output_set_mode(void *o, const pepper_output_mode_t *mode)
 static void
 led_output_assign_planes(void *o, const pepper_list_t *view_list)
 {
+	led_output_t *output = (led_output_t *)o;
+	pepper_list_t *l;
+	pepper_view_t *view;
+
+	PEPPER_TRACE("[OUTPUT] Assign plane\n");
+	pepper_list_for_each_list(l, view_list) {
+		view = (pepper_view_t*)l->item;
+		pepper_view_assign_plane(view, output->output, output->plane);
+		PEPPER_TRACE("\t view(%p) assign to output:%p plane:%p\n", view, output->output, output->plane);
+	}
 }
 
 static void
@@ -108,6 +124,7 @@ led_output_start_repaint_loop(void *o)
 	led_output_t *output = (led_output_t *)o;
 	struct timespec     ts;
 
+	PEPPER_TRACE("[OUTPUT] Start reapint loop\n");
 	pepper_compositor_get_time(output->compositor, &ts);
 	pepper_output_finish_frame(output->output, &ts);
 }
@@ -115,16 +132,36 @@ led_output_start_repaint_loop(void *o)
 static void
 led_output_repaint(void *o, const pepper_list_t *plane_list)
 {
+	pepper_list_t *l;
+	pepper_list_t *rl;
+	pepper_plane_t *plane;
+	pepper_render_item_t *ritem;
+
+	PEPPER_TRACE("[OUTPUT] Repaint\n");
+	pepper_list_for_each_list(l, plane_list) {
+		plane = (pepper_plane_t *)l->item;
+		PEPPER_TRACE("\t plane:%p\n", plane);
+
+		pepper_list_for_each_list(rl, pepper_plane_get_render_list(plane)) {
+			ritem = (pepper_render_item_t *)rl->item;
+			PEPPER_TRACE("\t\t render item: view:%p\n", ritem->view);
+		}
+	}
 }
 
 static void
 led_output_attach_surface(void *o, pepper_surface_t *surface, int *w, int *h)
 {
+	*w = 10;
+	*h = 10;
+	PEPPER_TRACE("[OUTPUT] surface:%p\n", surface);
 }
 
 static void
 led_output_flush_surface_damage(void *o, pepper_surface_t *surface, pepper_bool_t *keep_buffer)
 {
+	*keep_buffer = PEPPER_FALSE;
+	PEPPER_TRACE("[OUTPUT] surface:%p\n", surface);
 }
 
 struct pepper_output_backend led_output_backend = {
