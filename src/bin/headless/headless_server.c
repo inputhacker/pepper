@@ -68,6 +68,7 @@ int main(int argc, char *argv[])
 
 end:
 	/* Deinit Process */
+	headless_input_deinit(compositor);
 	pepper_output_led_deinit(compositor);
 	pepper_compositor_destroy(compositor);
 
