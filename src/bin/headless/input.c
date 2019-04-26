@@ -42,7 +42,6 @@ typedef struct
 	pepper_event_listener_t *listener_seat_keyboard_add;
 	pepper_event_listener_t *listener_seat_add;
 	pepper_event_listener_t *listener_input_device_add;
-	pepper_event_listener_t *listener_input_device_remove;
 
 	uint32_t ndevices;
 } headless_input_t;
@@ -94,23 +93,6 @@ _cb_handle_input_device_add(pepper_event_listener_t *listener, pepper_object_t *
 
 	if (hi->seat)
 		pepper_seat_add_input_device(hi->seat, device);
-}
-
-/* compositor input device remove event handler */
-static void
-_cb_handle_input_device_remove(pepper_event_listener_t *listener, pepper_object_t *object, uint32_t id, void *info, void *data)
-{
-	pepper_input_device_t *device = (pepper_input_device_t *)info;
-	headless_input_t *hi = (headless_input_t *)data;
-
-	/* temporary : only handle the removal of a keyboard device */
-	if (!(WL_SEAT_CAPABILITY_KEYBOARD & pepper_input_device_get_caps(device)))
-		return;
-
-	PEPPER_TRACE("[%s] input device removed.\n", __FUNCTION__);
-
-	if (hi->seat)
-		pepper_seat_remove_input_device(hi->seat, device);
 }
 
 /* seat add event handler */
@@ -188,11 +170,6 @@ headless_input_init_event_listeners(headless_input_t *hi)
 	PEPPER_CHECK(h, goto end, "Failed to add input device add listener.\n");
 	hi->listener_input_device_add = h;
 
-	h = pepper_object_add_event_listener((pepper_object_t *)compositor,
-						PEPPER_EVENT_COMPOSITOR_INPUT_DEVICE_REMOVE, 0, _cb_handle_input_device_remove, hi);
-	PEPPER_CHECK(h, goto end, "Failed to add input device remove listener.\n");
-	hi->listener_input_device_remove = h;
-
 	return;
 
 end:
@@ -207,17 +184,17 @@ headless_input_deinit_event_listeners(headless_input_t *hi)
 	pepper_event_listener_remove(hi->listener_seat_keyboard_add);
 	pepper_event_listener_remove(hi->listener_seat_add);
 	pepper_event_listener_remove(hi->listener_input_device_add);
-	pepper_event_listener_remove(hi->listener_input_device_remove);
 
-	PEPPER_TRACE("[%s] event listeners have been removed.\n");
+	PEPPER_TRACE("[%s] event listeners have been removed.\n", __FUNCTION__);
 }
 
 static void
 headless_input_deinit_input(headless_input_t *hi)
 {
+	pepper_evdev_destroy(hi->evdev);
+
 	if (hi->seat)
 		pepper_seat_destroy(hi->seat);
-	pepper_evdev_destroy(hi->evdev);
 
 	hi->seat = NULL;
 	hi->evdev = NULL;
@@ -317,12 +294,13 @@ headless_input_deinit_modules(headless_input_t *hi)
 	hi->keyrouter = NULL;
 }
 
-static void
-headless_input_deinit(void *data)
+PEPPER_API void
+headless_input_deinit(pepper_compositor_t * compositor)
 {
-	headless_input_t *hi = (headless_input_t*)data;
+	headless_input_t *hi = NULL;
 
-	if (!hi) return;
+	hi = (headless_input_t *)pepper_object_get_user_data((pepper_object_t *) compositor, &KEY_INPUT);
+	PEPPER_CHECK(hi, return, "Failed to get headless input instance.\n");
 
 	headless_input_deinit_event_listeners(hi);
 	headless_input_deinit_modules(hi);
@@ -347,12 +325,12 @@ headless_input_init(pepper_compositor_t *compositor)
 	init = headless_input_init_input(hi);
 	PEPPER_CHECK(init, goto error, "headless_input_init_input() failed\n");
 
-	pepper_object_set_user_data((pepper_object_t *)compositor, &KEY_INPUT, hi, headless_input_deinit);
+	pepper_object_set_user_data((pepper_object_t *)compositor, &KEY_INPUT, hi, NULL);
 
 	return PEPPER_TRUE;
 
 error:
-	headless_input_deinit(hi);
+	headless_input_deinit(compositor);
 
 	return PEPPER_FALSE;
 }
