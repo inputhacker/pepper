@@ -716,6 +716,8 @@ pepper_keyrouter_create(pepper_compositor_t *compositor)
 	global = wl_global_create(display, &tizen_keyrouter_interface, 2, pepper_keyrouter, _pepper_keyrouter_cb_bind);
 	PEPPER_CHECK(global, goto failed, "Failed to create wl_global for tizen_keyrouter\n");
 
+	pepper_keyrouter->global = global;
+
 	pepper_keyrouter->keyrouter = keyrouter_create();
 	PEPPER_CHECK(pepper_keyrouter->keyrouter, goto failed, "Failed to create keyrouter\n");
 
@@ -751,8 +753,6 @@ pepper_keyrouter_destroy(pepper_keyrouter_t *pepper_keyrouter)
 
 	pepper_list_for_each_safe(rdata, rtmp, &pepper_keyrouter->resources, link) {
 		wl_resource_destroy(rdata->resource);
-		pepper_list_remove(&rdata->link);
-		free(rdata);
 	}
 
 	if (pepper_keyrouter->keyrouter) {
