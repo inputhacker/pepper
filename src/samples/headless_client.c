@@ -7,6 +7,7 @@
 #include <tbm_surface_internal.h>
 
 #define DISPLAY_NAME "headless-0"
+#define MAX_STR 1024
 
 #define DEBUG
 #ifdef DEBUG
@@ -31,6 +32,8 @@
 	} while (0)
 
 typedef struct app_data app_data_t;
+typedef enum keygrab_type keygrab_type_e;
+
 struct app_data
 {
 	Ecore_Wl2_Display *ewd;
@@ -39,6 +42,15 @@ struct app_data
 	struct wayland_tbm_client *wl_tbm_client;
 	tbm_surface_queue_h tbm_queue;
 	int last_serial;
+};
+
+enum keygrab_type
+{
+	KEYGRAB_TYPE_NONE,
+	KEYGRAB_TYPE_SHARED,
+	KEYGRAB_TYPE_TOPMOST,
+	KEYGRAB_TYPE_OREXCLUSIVE,
+	KEYGRAB_TYPE_EXCLUSIVE
 };
 
 static Eina_Array *_ecore_event_hdls;
@@ -274,6 +286,178 @@ _cb_key_up(void *data EINA_UNUSED, int type EINA_UNUSED, void *event)
 	return ECORE_CALLBACK_PASS_ON;
 }
 
+static char *
+_keygrab_mode_to_string(keygrab_type_e type)
+{
+	switch (type) {
+		case KEYGRAB_TYPE_SHARED:
+			return "Shared";
+		case KEYGRAB_TYPE_TOPMOST:
+			return "Top position";
+		case KEYGRAB_TYPE_OREXCLUSIVE:
+			return "OR-Exclusive";
+		case KEYGRAB_TYPE_EXCLUSIVE:
+			return "Exclusive";
+		default:
+			return "Unknown";
+	}
+}
+
+static void
+_keygrab(char *keyname, keygrab_type_e type)
+{
+	Ecore_Wl2_Window_Keygrab_Mode mode;
+	Eina_Bool ret;
+
+	switch (type) {
+		case KEYGRAB_TYPE_SHARED:
+			mode = ECORE_WL2_WINDOW_KEYGRAB_SHARED;
+			break;
+		case KEYGRAB_TYPE_TOPMOST:
+			mode = ECORE_WL2_WINDOW_KEYGRAB_TOPMOST;
+			break;
+		case KEYGRAB_TYPE_OREXCLUSIVE:
+			mode = ECORE_WL2_WINDOW_KEYGRAB_OVERRIDE_EXCLUSIVE;
+			break;
+		case KEYGRAB_TYPE_EXCLUSIVE:
+			mode = ECORE_WL2_WINDOW_KEYGRAB_EXCLUSIVE;
+			break;
+		default:
+			printf("Input correct grab mode(%d)\n", type);
+			return;
+	}
+	ret = ecore_wl2_window_keygrab_set(NULL, keyname, 0, 0, 0, mode);
+	if (!ret) printf("Failed to grab %s to %s mode\n", keyname, _keygrab_mode_to_string(type));
+	else printf("Success to grab %s to %s mode\n", keyname, _keygrab_mode_to_string(type));
+}
+
+static void
+_keyungrab(char *keyname)
+{
+	Eina_Bool ret;
+
+	ret = ecore_wl2_window_keygrab_unset(NULL, keyname, 0, 0);
+	if (!ret) printf("Failed to ungrab %s\n", keyname);
+	else printf("Success to ungrab %s\n", keyname);
+}
+
+static void
+_usage(void)
+{
+	printf("  Supported commands:  grab  (Grab a key)\n");
+	printf("                    :  ungrab  (Ungrab a key)\n");
+	printf("                    :  hide  (Hide current window)\n");
+	printf("                    :  show  (Show current window)\n");
+	printf("                    :  help  (Print this help text)\n");
+	printf("                    :  q/quit  (Quit program)\n");
+	printf("grab [key_name] {grab_type}\n");
+	printf("  : grab_type:\n");
+	printf("    - default: shared\n");
+	printf("    - 1: shared mode\n");
+	printf("    - 2: top position mode\n");
+	printf("    - 3: or-exclusive mode\n");
+	printf("    - 4: exclusive mode\n");
+	printf("  : ex> grab XF86Back / grab XF86Back 4\n");
+	printf("ungrab [key_name]\n");
+	printf("  : ex> ungrab XF86Back\n");
+	printf("\n");
+
+	printf("* Actions *\n");
+
+	printf("[TM1]...\n");
+	printf("- hide window : XF86Back\n");
+	printf("- focus skip unset : XF86AudioRaiseVolume\n");
+	printf("- focus skip set : XF86AudioLowerVolume\n");
+
+	printf("[RPi3]...\n");
+	printf("- hide window : XF86AudioForward\n");
+	printf("- focus skip unset : XF86AudioRaiseVolume\n");
+	printf("- focus skip set : XF86AudioLowerVolume\n");
+
+	printf("\n");
+}
+
+static Eina_Bool
+_stdin_cb(void *data, Ecore_Fd_Handler *handler EINA_UNUSED)
+{
+	app_data_t *client = (app_data_t *)data;
+	char c, buf[MAX_STR] = {0, }, *tmp, *buf_ptr;
+	int count = 0;
+	char key_name[MAX_STR] = {0, };
+	int grab_mode = KEYGRAB_TYPE_SHARED;
+
+	while ((c = getchar()) != EOF) {
+		if (c == '\n') break;
+		if (count >= MAX_STR) break;
+
+		buf[count] = c;
+		count++;
+	}
+
+	count = 0;
+	tmp = strtok_r(buf, " ", &buf_ptr);
+	if (!tmp) return ECORE_CALLBACK_RENEW;
+
+	if (!strncmp(buf, "q", MAX_STR) || !strncmp(buf, "quit", MAX_STR)) {
+		ecore_main_loop_quit();
+	}
+	else if (!strncmp(buf, "help", MAX_STR)) {
+		_usage();
+	}
+	else if (!strncmp(tmp, "grab", sizeof("grab"))) {
+		while (tmp) {
+			tmp = strtok_r(NULL, " ", &buf_ptr);
+			if (tmp) {
+				switch (count) {
+					case 0:
+						strncpy(key_name, tmp, MAX_STR - 1);
+						break;
+					case 1:
+						grab_mode = atoi(tmp);
+						break;
+					default:
+						break;
+				}
+			}
+			count++;
+		}
+		if (strlen(key_name) <= 0) {
+			printf("Please input valid arguments for key grab\n");
+			_usage();
+		}
+		else
+			_keygrab(key_name, grab_mode);
+	}
+	else if (!strncmp(tmp, "ungrab", sizeof("ungrab"))) {
+		tmp = strtok_r(NULL, " ", &buf_ptr);
+		if (tmp) {
+			strncpy(key_name, tmp, MAX_STR - 1);
+		}
+		if (strlen(key_name) <= 0) {
+			printf("Please input valid arguments for key ungrab\n");
+			_usage();
+		}
+		else
+			_keyungrab(key_name);
+	}
+	else if (!strncmp(tmp, "hide", sizeof("hide"))) {
+		ecore_wl2_window_hide(client->win);
+		printf("hide window\n");
+	}
+	else if (!strncmp(tmp, "show", sizeof("show"))) {
+		ecore_wl2_window_show(client->win);
+		ecore_wl2_window_activate(client->win);
+		ecore_wl2_window_commit(client->win, EINA_TRUE);
+		printf("show window\n");
+	}
+	else {
+		printf("Invalid arguments\n");
+		_usage();
+	}
+
+	return ECORE_CALLBACK_RENEW;
+}
+
 static void
 _event_handlers_init(app_data_t *client)
 {
@@ -306,24 +490,6 @@ _event_handlers_init(app_data_t *client)
 
 	h = ecore_event_handler_add(ECORE_EVENT_KEY_UP, _cb_key_up, client);
 	eina_array_push(_ecore_event_hdls, h);
-}
-
-static void
-usage()
-{
-	printf("* Usage *\n");
-
-	printf("[TM1]...\n");
-	printf("- hide window : XF86Back\n");
-	printf("- focus skip unset : XF86AudioRaiseVolume\n");
-	printf("- focus skip set : XF86AudioLowerVolume\n");
-
-	printf("[RPi3]...\n");
-	printf("- hide window : XF86AudioForward\n");
-	printf("- focus skip unset : XF86AudioRaiseVolume\n");
-	printf("- focus skip set : XF86AudioLowerVolume\n");
-
-	printf("\n");
 }
 
 int main(int argc, char **argv)
@@ -366,7 +532,8 @@ int main(int argc, char **argv)
 												TBM_FORMAT_ABGR8888);
 	ERROR_CHECK(client->tbm_queue, goto shutdown, "Failed to create tbm_surface_queue");
 
-	usage();
+	_usage();
+	ecore_main_fd_handler_add(STDIN_FILENO, ECORE_FD_READ, _stdin_cb, client, NULL, NULL);
 
 	/*Start Loop*/
 	ecore_main_loop_begin();
