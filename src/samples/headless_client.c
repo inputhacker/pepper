@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <Ecore_Wl2.h>
 #include <Ecore_Input.h>
 
@@ -9,7 +10,7 @@
 #ifdef DEBUG
 #define TRACE(fmt, ...)	\
 	do { \
-		printf("[headless-client : %s] "fmt, __FUNCTION__, ##__VA_ARGS__); \
+		printf("[CLIENT PID:%u][%s] "fmt, _getpid(), __FUNCTION__, ##__VA_ARGS__); \
 	} while (0)
 #else
 #define TRACE(fmt, ...) \
@@ -35,6 +36,37 @@ struct app_data
 };
 
 static Eina_Array *_ecore_event_hdls;
+
+static uint32_t _getpid()
+{
+	static pid_t pid = 0;
+
+	if (pid)
+	{
+		return pid;
+	}
+
+	pid = getpid();
+
+	return (uint32_t)pid;
+}
+
+static void
+do_action(app_data_t *client, const char *keyname)
+{
+	if (!strncmp("XF86Back", keyname, 8) || !strncmp("XF86AudioForward", keyname, 16))
+	{
+		ecore_wl2_window_hide(client->win);
+	}
+	else if (!strncmp("XF86AudioRaiseVolume", keyname, 20))
+	{
+		ecore_wl2_window_focus_skip_set(client->win, EINA_FALSE);
+	}
+	else if (!strncmp("XF86AudioLowerVolume", keyname, 20))
+	{
+		ecore_wl2_window_focus_skip_set(client->win, EINA_TRUE);
+	}
+}
 
 static Eina_Bool
 _cb_focus_in(void *data, int type EINA_UNUSED, void *event)
@@ -71,6 +103,21 @@ _cb_window_show(void *data, int type EINA_UNUSED, void *event)
 {
 	app_data_t *client =  (app_data_t *)data;
 	Ecore_Wl2_Event_Window_Show *ev = (Ecore_Wl2_Event_Window_Show *)event;
+
+	TRACE("\n");
+
+	/* TODO */
+	(void) client;
+	(void) ev;
+
+	return ECORE_CALLBACK_PASS_ON;
+}
+
+static Eina_Bool
+_cb_window_hide(void *data, int type EINA_UNUSED, void *event)
+{
+	app_data_t *client =  (app_data_t *)data;
+	Ecore_Wl2_Event_Window_Hide *ev = (Ecore_Wl2_Event_Window_Hide *)event;
 
 	TRACE("\n");
 
@@ -153,7 +200,8 @@ _cb_key_up(void *data EINA_UNUSED, int type EINA_UNUSED, void *event)
 	(void) client;
 	(void) ev;
 
-	ecore_wl2_window_hide(client->win);
+	do_action(client, ev->keyname);
+
 	return ECORE_CALLBACK_PASS_ON;
 }
 
@@ -172,6 +220,9 @@ _event_handlers_init(app_data_t *client)
 	h = ecore_event_handler_add(ECORE_WL2_EVENT_WINDOW_SHOW, _cb_window_show, client);
 	eina_array_push(_ecore_event_hdls, h);
 
+	h = ecore_event_handler_add(ECORE_WL2_EVENT_WINDOW_HIDE, _cb_window_hide, client);
+	eina_array_push(_ecore_event_hdls, h);
+
 	h = ecore_event_handler_add(ECORE_WL2_EVENT_WINDOW_LOWER, _cb_window_lower, client);
 	eina_array_push(_ecore_event_hdls, h);
 
@@ -186,6 +237,24 @@ _event_handlers_init(app_data_t *client)
 
 	h = ecore_event_handler_add(ECORE_EVENT_KEY_UP, _cb_key_up, client);
 	eina_array_push(_ecore_event_hdls, h);
+}
+
+static void
+usage()
+{
+	printf("* Usage *\n");
+
+	printf("[TM1]...\n");
+	printf("- hide window : XF86Back\n");
+	printf("- focus skip unset : XF86AudioRaiseVolume\n");
+	printf("- focus skip set : XF86AudioLowerVolume\n");
+
+	printf("[RPi3]...\n");
+	printf("- hide window : XF86AudioForward\n");
+	printf("- focus skip unset : XF86AudioRaiseVolume\n");
+	printf("- focus skip set : XF86AudioLowerVolume\n");
+
+	printf("\n");
 }
 
 int main(int argc, char **argv)
@@ -215,6 +284,8 @@ int main(int argc, char **argv)
 	ecore_wl2_window_show(client->win);
 	ecore_wl2_window_activate(client->win);
 	ecore_wl2_window_commit(client->win, EINA_TRUE);
+
+	usage();
 
 	/* TODO */
 	ecore_main_loop_begin();
