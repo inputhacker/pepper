@@ -53,8 +53,8 @@ int main(int argc, char *argv[])
 	PEPPER_CHECK(ret, goto end, "headless_input_init() failed\n");
 
 	/* Init Output */
-	ret = pepper_output_led_init(compositor);
-	PEPPER_CHECK(ret, goto end, "pepper_output_led_init() failed.\n");
+	ret = headless_output_init(compositor);
+	PEPPER_CHECK(ret, goto end, "headless_output_init() failed.\n");
 
 	/* Init Shell */
 	ret = headless_shell_init(compositor);
@@ -68,8 +68,9 @@ int main(int argc, char *argv[])
 
 end:
 	/* Deinit Process */
+	headless_shell_deinit(compositor);
 	headless_input_deinit(compositor);
-	pepper_output_led_deinit(compositor);
+	headless_output_deinit(compositor);
 	pepper_compositor_destroy(compositor);
 
 	return EXIT_SUCCESS;

@@ -58,6 +58,20 @@ static Eina_Array *_ecore_event_hdls;
 static int KEY_WL_BUFFER = 0;
 static int KEY_CLIENT = 0;
 
+static uint32_t _getpid()
+{
+	static pid_t pid = 0;
+
+	if (pid)
+	{
+		return pid;
+	}
+
+	pid = getpid();
+
+	return (uint32_t)pid;
+}
+
 static void
 buffer_release(void *data, struct wl_buffer *buffer)
 {
@@ -120,20 +134,6 @@ _update_window(app_data_t *client)
 	ecore_wl2_window_damage(client->win, NULL, 0);
 	ecore_wl2_window_commit(client->win, EINA_TRUE);
 	//TRACE("[UPDATE] commit wl_buffer:%p, surface:%p\n", wl_buffer, surface);
-}
-
-static uint32_t _getpid()
-{
-	static pid_t pid = 0;
-
-	if (pid)
-	{
-		return pid;
-	}
-
-	pid = getpid();
-
-	return (uint32_t)pid;
 }
 
 static void

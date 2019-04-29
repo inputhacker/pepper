@@ -51,18 +51,20 @@ static void led_output_add_frame_done(led_output_t *output);
 static void led_output_update(led_output_t *output);
 
 static void
-led_output_destroy(void *o)
+led_output_destroy(void *data)
 {
-	led_output_t *output = (led_output_t *)o;
+	led_output_t *output = (led_output_t *)data;
 	PEPPER_TRACE("Output Destroy %p base %p\n", output, output->output);
 
-	if (output->ui_led)
+	if (output->ui_led) {
 		HL_UI_LED_Close(output->ui_led);
+		output->ui_led = NULL;
+	}
 
-	if (output->tbm_server)
+	if (output->tbm_server) {
 		wayland_tbm_server_deinit(output->tbm_server);
-
-	free(output);
+		output->tbm_server = NULL;
+	}
 }
 
 static int32_t
@@ -288,7 +290,7 @@ pepper_output_bind_display(led_output_t *output)
 }
 
 pepper_bool_t
-pepper_output_led_init(pepper_compositor_t *compositor)
+headless_output_init(pepper_compositor_t *compositor)
 {
 	led_output_t *output = (led_output_t*)calloc(sizeof(led_output_t), 1);
 
@@ -319,7 +321,7 @@ pepper_output_led_init(pepper_compositor_t *compositor)
 	PEPPER_CHECK(output->plane, goto error, "pepper_output_add_plane() failed.\n");
 
 	pepper_object_set_user_data((pepper_object_t *)compositor,
-			&KEY_OUTPUT, output, led_output_destroy);
+			&KEY_OUTPUT, output, NULL);
 	PEPPER_TRACE("\t Add Output %p, base %p\n", output, output->output);
 	PEPPER_TRACE("\t Add Output %p, plane %p\n", output, output->plane);
 	PEPPER_TRACE("\t Userdata %p\n", pepper_object_get_user_data((pepper_object_t *)compositor,&KEY_OUTPUT));
@@ -341,7 +343,17 @@ error:
 }
 
 void
-pepper_output_led_deinit(pepper_compositor_t *compositor)
+headless_output_deinit(pepper_compositor_t *compositor)
 {
+	led_output_t *output;
+
+	output = pepper_object_get_user_data((pepper_object_t *)compositor, &KEY_OUTPUT);
+
+	pepper_output_destroy(output->output);
+	led_output_destroy(output);
+
+	pepper_object_set_user_data((pepper_object_t *)compositor, &KEY_OUTPUT, NULL, NULL);
+	free(output);
+
 	PEPPER_TRACE("Output Deinit ... DONE\n");
 }

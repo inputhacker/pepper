@@ -1120,10 +1120,10 @@ headless_shell_deinit_listeners(headless_shell_t *shell)
 }
 
 static void
-headless_shell_deinit(void *data)
+headless_shell_destroy(headless_shell_t *shell)
 {
-	headless_shell_t *shell = (headless_shell_t*)data;
-	if (!shell) return;
+	if (!shell)
+		return;
 
 	if (shell->cb_idle)
 		wl_event_source_remove(shell->cb_idle);
@@ -1131,6 +1131,19 @@ headless_shell_deinit(void *data)
 	headless_shell_deinit_listeners(shell);
 	zxdg_deinit(shell);
 	tizen_policy_deinit(shell);
+}
+
+void
+headless_shell_deinit(pepper_compositor_t *compositor)
+{
+	headless_shell_t *shell;
+
+	PEPPER_CHECK(compositor, return, "compositor is NULL\n");
+
+	shell = (headless_shell_t *)pepper_object_get_user_data((pepper_object_t *)compositor, &KEY_SHELL);
+	PEPPER_CHECK(shell, return, "shell is NULL\n");
+
+	headless_shell_destroy(shell);
 
 	pepper_object_set_user_data((pepper_object_t *)shell->compositor, &KEY_SHELL, NULL, NULL);
 	free(shell);
@@ -1149,10 +1162,14 @@ headless_shell_init(pepper_compositor_t *compositor)
 	PEPPER_CHECK(zxdg_init(shell), goto error, "zxdg_init() failed\n");
 	PEPPER_CHECK(tizen_policy_init(shell), goto error, "tizen_policy_init() failed\n");
 
-	pepper_object_set_user_data((pepper_object_t *)compositor, &KEY_SHELL, NULL, headless_shell_deinit);
+	pepper_object_set_user_data((pepper_object_t *)compositor, &KEY_SHELL, shell, NULL);
 
 	return PEPPER_TRUE;
+
 error:
-	headless_shell_deinit(shell);
+	if (shell) {
+		headless_shell_destroy(shell);
+		free(shell);
+	}
 	return PEPPER_FALSE;
 }
