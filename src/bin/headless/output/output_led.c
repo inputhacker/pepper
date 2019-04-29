@@ -347,13 +347,17 @@ headless_output_deinit(pepper_compositor_t *compositor)
 {
 	led_output_t *output;
 
+
 	output = pepper_object_get_user_data((pepper_object_t *)compositor, &KEY_OUTPUT);
 
-	pepper_output_destroy(output->output);
-	led_output_destroy(output);
+	if (output) {
+		pepper_object_set_user_data((pepper_object_t *)compositor, &KEY_OUTPUT, NULL, NULL);
 
-	pepper_object_set_user_data((pepper_object_t *)compositor, &KEY_OUTPUT, NULL, NULL);
-	free(output);
+		pepper_output_destroy(output->output);
+		led_output_destroy(output);
+
+		free(output);
+	}
 
 	PEPPER_TRACE("Output Deinit ... DONE\n");
 }
