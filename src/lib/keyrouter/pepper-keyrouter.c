@@ -287,7 +287,9 @@ pepper_keyrouter_key_process(pepper_keyrouter_t *pepper_keyrouter,
 	pepper_seat_t *seat;
 
 	pepper_list_init(&delivery_list);
-	count = keyrouter_key_process(pepper_keyrouter->keyrouter, key, state, &delivery_list);
+
+	/* Keygrab list is maintained by keycode + 8 which is used in xkb system */
+	count = keyrouter_key_process(pepper_keyrouter->keyrouter, key + 8, state, &delivery_list);
 
 	if (count > 0) {
 		pepper_list_for_each(info, &delivery_list, link) {
