@@ -496,8 +496,13 @@ int main(int argc, char **argv)
 {
 	int x, y, w, h;
 	app_data_t *client = NULL;
+	Eina_Bool focus_skip = EINA_FALSE;
 
 	setvbuf(stdout, NULL, _IONBF, 0);
+
+	/* get skip focus */
+	if (getenv("HEADLESS_SKIP_FOCUS"))
+		focus_skip = EINA_TRUE;
 
 	client = (app_data_t *)calloc(1, sizeof(app_data_t));
 	ERROR_CHECK(client, goto shutdown, "Failed to allocate memory for app_data_t");
@@ -522,6 +527,7 @@ int main(int argc, char **argv)
 	client->win = ecore_wl2_window_new(client->ewd, NULL, x, y, w, h);
 	ecore_wl2_window_alpha_set(client->win, EINA_FALSE);
 	ecore_wl2_window_show(client->win);
+	ecore_wl2_window_focus_skip_set(client->win, focus_skip);
 	ecore_wl2_window_activate(client->win);
 	ecore_wl2_window_commit(client->win, EINA_TRUE);
 
