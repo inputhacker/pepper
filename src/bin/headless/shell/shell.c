@@ -465,6 +465,7 @@ zxdg_shell_cb_surface_get(struct wl_client *client, struct wl_resource *resource
 	headless_shell_t *hs;
 	headless_shell_surface_t *hs_surface = NULL;
 	pepper_surface_t *psurface;
+	const char *role;
 
 	hs = wl_resource_get_user_data(resource);
 	if (!hs) {
@@ -513,11 +514,16 @@ zxdg_shell_cb_surface_get(struct wl_client *client, struct wl_resource *resource
 	hs_surface->cb_commit = pepper_object_add_event_listener((pepper_object_t *)psurface,
 															PEPPER_EVENT_SURFACE_COMMIT, 0, headless_shell_cb_surface_commit, hs_surface);
 
-	if (!pepper_surface_set_role(psurface, "xdg_surface")) {
-		PEPPER_ERROR("fail to set role\n");
-		wl_resource_post_error(resource, WL_DISPLAY_ERROR_INVALID_OBJECT,
-				"Assign \"xdg_surface\" to wl_surface failed\n");
-		goto error;
+	role = pepper_surface_get_role(psurface);
+	if (!role) {
+		if (!pepper_surface_set_role(psurface, "xdg_surface")) {
+			PEPPER_ERROR("fail to set role\n");
+			wl_resource_post_error(resource, WL_DISPLAY_ERROR_INVALID_OBJECT,
+					"Assign \"xdg_surface\" to wl_surface failed\n");
+			goto error;
+		}
+	} else {
+		PEPPER_CHECK(!strcmp(role, "xdg_surface"), goto error, "surface has alweady role %s\n", role);
 	}
 
 	PEPPER_TRACE("[SHELL] create zxdg_surface:%p, pview:%p, psurface:%p\n",
@@ -528,11 +534,15 @@ zxdg_shell_cb_surface_get(struct wl_client *client, struct wl_resource *resource
 	return;
 error:
 	if (hs_surface) {
-		if (hs_surface->view)
+		if (hs_surface->view) {
 			pepper_view_destroy(hs_surface->view);
+			hs_surface->view = NULL;
+		}
 
-		if (hs_surface->zxdg_shell_surface)
+		if (hs_surface->zxdg_shell_surface) {
 			wl_resource_destroy(hs_surface->zxdg_shell_surface);
+			hs_surface->zxdg_shell_surface = NULL;
+		}
 	}
 }
 

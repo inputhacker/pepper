@@ -442,6 +442,7 @@ _stdin_cb(void *data, Ecore_Fd_Handler *handler EINA_UNUSED)
 	}
 	else if (!strncmp(tmp, "hide", sizeof("hide"))) {
 		ecore_wl2_window_hide(client->win);
+		ecore_wl2_window_commit(client->win, EINA_TRUE);
 		printf("hide window\n");
 	}
 	else if (!strncmp(tmp, "show", sizeof("show"))) {
