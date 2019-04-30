@@ -349,6 +349,7 @@ _usage(void)
 	printf("                    :  hide  (Hide current window)\n");
 	printf("                    :  show  (Show current window)\n");
 	printf("                    :  help  (Print this help text)\n");
+	printf("                    :  update(update current window)\n");
 	printf("                    :  q/quit  (Quit program)\n");
 	printf("grab [key_name] {grab_type}\n");
 	printf("  : grab_type:\n");
@@ -450,6 +451,10 @@ _stdin_cb(void *data, Ecore_Fd_Handler *handler EINA_UNUSED)
 		ecore_wl2_window_activate(client->win);
 		ecore_wl2_window_commit(client->win, EINA_TRUE);
 		printf("show window\n");
+	}
+	else if (!strncmp(tmp, "update", sizeof("update"))) {
+		_update_window(client);
+		printf("update window\n");
 	}
 	else {
 		printf("Invalid arguments\n");
