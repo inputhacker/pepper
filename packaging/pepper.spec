@@ -242,6 +242,7 @@ This package includes wayland backend development module files.
 Summary: Doctor server for pepper package
 Requires: pepper pepper-keyrouter pepper-devicemgr pepper-evdev
 Requires: libtbm
+Conflicts: pepper-headless
 
 %description doctor
 This package includes doctor server files.
@@ -249,7 +250,10 @@ This package includes doctor server files.
 ###### headless server
 %package headless
 Summary: Headless server for pepper package
-Requires: pepper
+Requires: pepper pepper-keyrouter pepper-devicemgr pepper-evdev
+Requires: pepper-xkb xkeyboard-config xkb-tizen-data
+Requires: libtbm
+Conflicts: pepper-doctor
 
 %description headless
 This package includes headless server files.
