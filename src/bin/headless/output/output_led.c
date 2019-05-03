@@ -186,6 +186,21 @@ struct pepper_output_backend led_output_backend = {
 static void
 led_output_update_led(led_output_t *output, unsigned char *data)
 {
+	int i;
+	uint8_t *ptr = (uint8_t *)data;
+
+	if (data == NULL) {
+		PEPPER_TRACE("[OUTPUT] update LED to empty\n");
+		HL_UI_LED_Clear_All(output->ui_led);
+		return;
+	}
+
+	for(i=0; i<output->num_led; i++) {
+		HL_UI_LED_Set_Pixel_RGB(output->ui_led, i, ptr[R_OFF_SET], ptr[G_OFF_SET], ptr[B_OFF_SET]);
+		ptr += 4;
+	}
+
+	HL_UI_LED_Refresh(output->ui_led);
 }
 
 static void
