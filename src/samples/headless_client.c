@@ -102,11 +102,18 @@ _update_window(app_data_t *client)
 
 	/*TODO : Update something*/
 	{
+		int i;
 		tbm_surface_info_s info;
 
 		tbm_surface_map(surface, TBM_SURF_OPTION_READ | TBM_SURF_OPTION_WRITE, &info);
-		snprintf((char *)info.planes[0].ptr,info.planes[0].size, "%s : %d", "DATA print", client->last_serial);
-		TRACE("[APP] %s\n", info.planes[0].ptr);
+
+		for(i = 0; i<12; i++) {
+			info.planes[0].ptr[4*i] = 0;
+			info.planes[0].ptr[4*i + 1] = (((client->last_serial%3) == 0) ? 0xFF:0); /*BLUE*/
+			info.planes[0].ptr[4*i + 2] = (((client->last_serial%3) == 1) ? 0xFF:0); /*GREEN*/
+			info.planes[0].ptr[4*i + 3] = (((client->last_serial%3) == 2) ? 0xFF:0); /*RED*/
+		}
+
 		tbm_surface_unmap(surface);
 		client->last_serial++;
 	}
