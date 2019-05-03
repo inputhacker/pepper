@@ -102,9 +102,9 @@ HL_UI_LED_Get_Pixel_RGB(HL_UI_LED *handle, uint32_t index, uint8_t *red, uint8_t
 {
 	if (index < handle->number) {
 		uint8_t *ptr = &(handle->pixels[index * 4]);
-		red = ptr + R_OFF_SET;
-		green = ptr + G_OFF_SET;
-		blue = ptr + B_OFF_SET;
+		*red = ptr[R_OFF_SET];
+		*green = ptr[G_OFF_SET];
+		*blue = ptr[B_OFF_SET];
 	}
 }
 
@@ -112,9 +112,10 @@ void
 HL_UI_LED_Set_Pixel_4byte(HL_UI_LED *handle, uint32_t index, uint32_t colour)
 {
 	uint8_t  r, g, b;
-	r = colour >> 16;
-	g = colour >> 8;
-	b = colour;
+	uint8_t *ptr = (uint8_t *)&colour;
+	r = ptr[R_OFF_SET];
+	g = ptr[G_OFF_SET];
+	b = ptr[B_OFF_SET];
 	HL_UI_LED_Set_Pixel_RGB(handle, index, r, g, b);
 }
 
@@ -123,10 +124,11 @@ HL_UI_LED_Get_Pixel_4byte(HL_UI_LED *handle, uint32_t index)
 {
 	uint8_t r=0, g=0, b=0;
 	uint32_t colour = 0;
+	uint8_t *ptr = (uint8_t *)&colour;
 	HL_UI_LED_Get_Pixel_RGB(handle, index, &r, &g, &b);
-	r <<= 16;
-	g <<= 8;
-	colour = r | g | b;
+	ptr[R_OFF_SET] = r;
+	ptr[G_OFF_SET] = g;
+	ptr[B_OFF_SET] = b;
 	return colour;
 }
 

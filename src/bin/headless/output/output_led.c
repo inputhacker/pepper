@@ -29,22 +29,7 @@
 #include <wayland-tbm-server.h>
 #include <pepper-output-backend.h>
 #include "HL_UI_LED.h"
-
-#define NUM_LED 12
-
-typedef struct {
-	pepper_compositor_t *compositor;
-	pepper_output_t   *output;
-	pepper_plane_t    *plane;
-
-	int num_led;
-	HL_UI_LED *ui_led;
-
-	struct wayland_tbm_server *tbm_server;
-	struct wl_event_source *frame_done;
-
-	pepper_view_t *top_view;
-}led_output_t;
+#include "output_internal.h"
 
 static const int KEY_OUTPUT;
 static void led_output_add_frame_done(led_output_t *output);
@@ -311,6 +296,8 @@ headless_output_init(pepper_compositor_t *compositor)
 	output->ui_led = HL_UI_LED_Init(output->num_led);
 	if (!output->ui_led)
 		PEPPER_ERROR("HL_UI_LED_Init() failed.\n");
+	else
+		boot_ani_start(output);
 
 	output->output = pepper_compositor_add_output(compositor,
 			&led_output_backend, "led_output",

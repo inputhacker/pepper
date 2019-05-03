@@ -9,4 +9,5 @@ headless_server_SOURCES = headless_server.c \
 			  input.c \
 			  output/output_led.c \
 			  output/HL_UI_LED_APA102.c \
+			  output/boot_anim.c \
 			  shell/shell.c
