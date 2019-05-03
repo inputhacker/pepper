@@ -37,6 +37,8 @@ typedef struct {
 	struct wl_event_source *source;
 	uint32_t serial;
 	int index;
+
+	pepper_event_listener_t *surface_add_listener;
 } boot_ani_t;
 
 #define ANI_INTERVAL	40	//20ms
@@ -68,6 +70,16 @@ boot_ani_timer_cb(void *data)
 	return 1;
 }
 
+static void
+boot_ani_surface_add_cb(pepper_event_listener_t *listener,
+										pepper_object_t *object,
+										uint32_t id, void *info, void *data)
+{
+	led_output_t *output = (led_output_t *)data;
+
+	boot_ani_stop(output);
+}
+
 void boot_ani_start(led_output_t *output)
 {
 	struct wl_event_loop *loop;
@@ -81,12 +93,16 @@ void boot_ani_start(led_output_t *output)
 
 	ani = (boot_ani_t *)calloc(sizeof(boot_ani_t), 1);
 	PEPPER_CHECK(ani, return, "failed to alloc\n");
-	
+
 	ani->source = wl_event_loop_add_timer(loop, boot_ani_timer_cb, ani);
 	PEPPER_CHECK(ani, goto err, "failed to wl_event_loop_add_timer()\n");
 
 	ret = wl_event_source_timer_update(ani->source, ANI_INTERVAL);
 	PEPPER_CHECK(!ret, goto err, "failed to wl_event_source_timer_update\n");
+
+	ani->surface_add_listener = pepper_object_add_event_listener((pepper_object_t *)output->compositor,
+																		PEPPER_EVENT_COMPOSITOR_SURFACE_ADD,
+																		0, boot_ani_surface_add_cb, output);
 
 	ani->led = output->ui_led;
 	output->boot_ani = ani;
@@ -111,6 +127,12 @@ void boot_ani_stop(led_output_t *output)
 
 	HL_UI_LED_Clear_All(ani->led);
 	wl_event_source_remove(ani->source);
+
+	if(ani->surface_add_listener) {
+		pepper_event_listener_remove(ani->surface_add_listener);
+		ani->surface_add_listener = NULL;
+	}
+
 	free(ani);
 
 	output->boot_ani = NULL;
