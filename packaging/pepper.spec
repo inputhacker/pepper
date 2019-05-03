@@ -297,25 +297,20 @@ make %{?_smp_mflags}
 
 # install system session services
 %__mkdir_p %{buildroot}%{_unitdir}
-install -m 644 data/doctor/units/display-manager.service %{buildroot}%{_unitdir}
-install -m 644 data/doctor/units/display-manager-ready.path %{buildroot}%{_unitdir}
-install -m 644 data/doctor/units/display-manager-ready.service %{buildroot}%{_unitdir}
-install -m 644 data/headless/units/display-manager.service %{buildroot}%{_unitdir}
-install -m 644 data/headless/units/display-manager-ready.path %{buildroot}%{_unitdir}
-install -m 644 data/headless/units/display-manager-ready.service %{buildroot}%{_unitdir}
+install -m 644 data/units/display-manager.service.doctor %{buildroot}%{_unitdir}
+install -m 644 data/units/display-manager.service.headless %{buildroot}%{_unitdir}
+install -m 644 data/units/display-manager-ready.path %{buildroot}%{_unitdir}
+install -m 644 data/units/display-manager-ready.service %{buildroot}%{_unitdir}
 
 # install user session service
 %__mkdir_p %{buildroot}%{_unitdir_user}
-install -m 644 data/doctor/units/display-user.service %{buildroot}%{_unitdir_user}
-install -m 644 data/headless/units/display-user.service %{buildroot}%{_unitdir_user}
+install -m 644 data/units/display-user.service %{buildroot}%{_unitdir_user}
 
 # install env file and scripts for service
 %__mkdir_p %{buildroot}%{_sysconfdir}/sysconfig
-install -m 0644 data/doctor/units/display-manager.env %{buildroot}%{_sysconfdir}/sysconfig
-install -m 0644 data/headless/units/display-manager.env %{buildroot}%{_sysconfdir}/sysconfig
+install -m 0644 data/units/display-manager.env %{buildroot}%{_sysconfdir}/sysconfig
 %__mkdir_p %{buildroot}%{_sysconfdir}/profile.d
-install -m 0644 data/doctor/units/display_env.sh %{buildroot}%{_sysconfdir}/profile.d
-install -m 0644 data/headless/units/display_env.sh %{buildroot}%{_sysconfdir}/profile.d
+install -m 0644 data/units/display_env.sh %{buildroot}%{_sysconfdir}/profile.d
 
 %post -n %{name} -p /sbin/ldconfig
 %postun -n %{name} -p /sbin/ldconfig
@@ -356,6 +351,14 @@ getent group %{display_group} >/dev/null || %{_sbindir}/groupadd -r -o %{display
 # create user 'display'
 getent passwd %{display_user} >/dev/null || %{_sbindir}/useradd -r -g %{display_group} -d /run/display -s /bin/false -c "Display" %{display_user}
 
+# create links within systemd's target(s)
+%__mkdir_p %{_unitdir}/graphical.target.wants/
+%__mkdir_p %{_unitdir_user}/basic.target.wants/
+mv -f %{_unitdir}/display-manager.service.doctor %{_unitdir}/display-manager.service
+ln -sf ../display-manager.service %{_unitdir}/graphical.target.wants/
+ln -sf ../display-manager-ready.service %{_unitdir}/graphical.target.wants/
+ln -sf ../display-user.service %{_unitdir_user}/basic.target.wants/
+
 %pre headless
 # create groups 'display'
 getent group %{display_group} >/dev/null || %{_sbindir}/groupadd -r -o %{display_group}
@@ -365,6 +368,7 @@ getent passwd %{display_user} >/dev/null || %{_sbindir}/useradd -r -g %{display_
 # create links within systemd's target(s)
 %__mkdir_p %{_unitdir}/graphical.target.wants/
 %__mkdir_p %{_unitdir_user}/basic.target.wants/
+mv -f %{_unitdir}/display-manager.service.headless %{_unitdir}/display-manager.service
 ln -sf ../display-manager.service %{_unitdir}/graphical.target.wants/
 ln -sf ../display-manager-ready.service %{_unitdir}/graphical.target.wants/
 ln -sf ../display-user.service %{_unitdir_user}/basic.target.wants/
@@ -567,7 +571,7 @@ rm -f %{_unitdir_user}/basic.target.wants/display-user.service
 %{_bindir}/doctor*
 %{_unitdir}/display-manager-ready.path
 %{_unitdir}/display-manager-ready.service
-%{_unitdir}//display-manager.service
+%{_unitdir}/display-manager.service.doctor
 %{_unitdir_user}/display-user.service
 %config %{_sysconfdir}/sysconfig/display-manager.env
 %config %{_sysconfdir}/profile.d/display_env.sh
@@ -579,7 +583,7 @@ rm -f %{_unitdir_user}/basic.target.wants/display-user.service
 %{_bindir}/headless*
 %{_unitdir}/display-manager-ready.path
 %{_unitdir}/display-manager-ready.service
-%{_unitdir}/display-manager.service
+%{_unitdir}/display-manager.service.headless
 %{_unitdir_user}/display-user.service
 %config %{_sysconfdir}/sysconfig/display-manager.env
 %config %{_sysconfdir}/profile.d/display_env.sh

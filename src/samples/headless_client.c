@@ -6,7 +6,6 @@
 #include <wayland-tbm-client.h>
 #include <tbm_surface_internal.h>
 
-#define DISPLAY_NAME "headless-0"
 #define MAX_STR 1024
 
 #define DEBUG
@@ -509,6 +508,7 @@ int main(int argc, char **argv)
 {
 	int x, y, w, h;
 	app_data_t *client = NULL;
+	const char *socket_name = NULL;
 	Eina_Bool focus_skip = EINA_FALSE;
 
 	setvbuf(stdout, NULL, _IONBF, 0);
@@ -516,6 +516,11 @@ int main(int argc, char **argv)
 	/* get skip focus */
 	if (getenv("HEADLESS_SKIP_FOCUS"))
 		focus_skip = EINA_TRUE;
+
+	socket_name = getenv("WAYLAND_DISPLAY");
+
+        if (!socket_name)
+                socket_name = "wayland-0";
 
 	client = (app_data_t *)calloc(1, sizeof(app_data_t));
 	ERROR_CHECK(client, goto shutdown, "Failed to allocate memory for app_data_t");
@@ -526,8 +531,8 @@ int main(int argc, char **argv)
 		goto shutdown;
 	}
 
-	client->ewd = ecore_wl2_display_connect(DISPLAY_NAME);
-	ERROR_CHECK(client->ewd, goto shutdown, "Failed to connect to wayland display %s", DISPLAY_NAME);
+	client->ewd = ecore_wl2_display_connect(socket_name);
+	ERROR_CHECK(client->ewd, goto shutdown, "Failed to connect to wayland display %s", socket_name);
 
 	client->wl_tbm_client = wayland_tbm_client_init(ecore_wl2_display_get(client->ewd));
 	ERROR_CHECK(client->wl_tbm_client, goto shutdown, "Failed to init wayland_tbm_client");

@@ -39,7 +39,7 @@ int main(int argc, char *argv[])
 	socket_name = getenv("WAYLAND_DISPLAY");
 
 	if (!socket_name)
-		socket_name = "headless-0";
+		socket_name = "wayland-0";
 
 	if (!getenv("XDG_RUNTIME_DIR"))
 		setenv("XDG_RUNTIME_DIR", "/run", 1);
