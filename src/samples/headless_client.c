@@ -5,6 +5,7 @@
 #include <Ecore_Input.h>
 #include <wayland-tbm-client.h>
 #include <tbm_surface_internal.h>
+#include <efl_util.h>
 
 #define MAX_STR 1024
 
@@ -32,6 +33,7 @@
 
 typedef struct app_data app_data_t;
 typedef enum keygrab_type keygrab_type_e;
+typedef enum key_type key_type_e;
 
 struct app_data
 {
@@ -41,6 +43,8 @@ struct app_data
 	struct wayland_tbm_client *wl_tbm_client;
 	tbm_surface_queue_h tbm_queue;
 	int last_serial;
+
+	efl_util_inputgen_h inputgen;
 };
 
 enum keygrab_type
@@ -50,6 +54,13 @@ enum keygrab_type
 	KEYGRAB_TYPE_TOPMOST,
 	KEYGRAB_TYPE_OREXCLUSIVE,
 	KEYGRAB_TYPE_EXCLUSIVE
+};
+
+enum key_type
+{
+   KEY_UP = 0,
+   KEY_DOWN,
+   KEY_ALL
 };
 
 static Eina_Array *_ecore_event_hdls;
@@ -86,6 +97,37 @@ buffer_release(void *data, struct wl_buffer *buffer)
 static const struct wl_buffer_listener buffer_listener = {
     buffer_release
 };
+
+static char *
+_eflutil_error_to_string(int type)
+{
+	switch (type) {
+		case EFL_UTIL_ERROR_NONE:
+			return "none";
+		case EFL_UTIL_ERROR_INVALID_PARAMETER:
+			return "invalid parameter";
+		case EFL_UTIL_ERROR_OUT_OF_MEMORY:
+			return "out of memory";
+		case EFL_UTIL_ERROR_PERMISSION_DENIED:
+			return "permission denied";
+		case EFL_UTIL_ERROR_NO_SUCH_DEVICE:
+			return "no such device";
+		case EFL_UTIL_ERROR_INVALID_OPERATION:
+			return "invalid operation";
+		case EFL_UTIL_ERROR_NOT_SUPPORTED:
+			return "not supported";
+		case EFL_UTIL_ERROR_NOT_SUPPORTED_WINDOW_TYPE:
+			return "not supported window type";
+		case EFL_UTIL_ERROR_SCREENSHOT_INIT_FAIL:
+			return "screenshot init fail";
+		case EFL_UTIL_ERROR_SCREENSHOT_EXECUTION_FAIL:
+			return "screenshot execution fail";
+		case EFL_UTIL_ERROR_NO_RESOURCE_AVAILABLE:
+			return "no resource available";
+		default:
+			return "Unknown";
+	}
+}
 
 static void
 _update_window(app_data_t *client)
@@ -348,15 +390,83 @@ _keyungrab(char *keyname)
 }
 
 static void
+_inputgen_init(app_data_t *client)
+{
+	int ret = EFL_UTIL_ERROR_NONE;
+
+	if (client->inputgen) {
+		printf("Input generator is already initialized\n");
+		return;
+	}
+
+	client->inputgen = efl_util_input_initialize_generator(EFL_UTIL_INPUT_DEVTYPE_KEYBOARD);
+	if (!client->inputgen) {
+		ret = get_last_result();
+		printf("Failed to initialize input generator.(result: %s)\n", _eflutil_error_to_string(ret));
+	}
+}
+
+static void
+_inputgen_deinit(app_data_t *client)
+{
+	int ret = EFL_UTIL_ERROR_NONE;
+
+	if (!client->inputgen) {
+		printf("Input generator is not initialized\n");
+		return;
+	}
+
+	ret = efl_util_input_deinitialize_generator(client->inputgen);
+	if (ret != EFL_UTIL_ERROR_NONE) {
+		printf("Failed to deinitialize input generator.(result: %s)\n", _eflutil_error_to_string(ret));
+		return;
+	}
+	client->inputgen = NULL;
+}
+
+static void
+_inputgen_key(app_data_t *client, char *name, int type)
+{
+	int ret = EFL_UTIL_ERROR_NONE;
+	ret =  efl_util_input_generate_key(client->inputgen, name, type);
+	if (ret != EFL_UTIL_ERROR_NONE) printf("Failed to generate key %s(result: %s)\n", type?"down":"up", _eflutil_error_to_string(ret));
+}
+
+
+static void
+_key_gen(app_data_t *client, char *name, int type)
+{
+	printf("name: %s, type: %d\n", name, type);
+
+	if (!client->inputgen) {
+		printf("Input generator is not initialized\n");
+		return;
+	}
+	if (!name) {
+		printf("Invalid key name\n");
+		return;
+	}
+
+	if (type == KEY_ALL) {
+		_inputgen_key(client, name, 1);
+		_inputgen_key(client, name, 0);
+	}
+	else {
+		_inputgen_key(client, name, !!type);
+	}
+}
+
+static void
 _usage(void)
 {
-	printf("  Supported commands:  grab  (Grab a key)\n");
-	printf("                    :  ungrab  (Ungrab a key)\n");
-	printf("                    :  hide  (Hide current window)\n");
-	printf("                    :  show  (Show current window)\n");
-	printf("                    :  help  (Print this help text)\n");
-	printf("                    :  update(update current window)\n");
-	printf("                    :  q/quit  (Quit program)\n");
+	printf("  Supported commands:  grab     (Grab a key)\n");
+	printf("                    :  ungrab   (Ungrab a key)\n");
+	printf("                    :  hide     (Hide current window)\n");
+	printf("                    :  show     (Show current window)\n");
+	printf("                    :  help     (Print this help text)\n");
+	printf("                    :  update   (update current window)\n");
+	printf("                    :  inputgen (input Generator)\n");
+	printf("                    :  q/quit   (Quit program)\n");
 	printf("grab [key_name] {grab_type}\n");
 	printf("  : grab_type:\n");
 	printf("    - default: shared\n");
@@ -367,6 +477,18 @@ _usage(void)
 	printf("  : ex> grab XF86Back / grab XF86Back 4\n");
 	printf("ungrab [key_name]\n");
 	printf("  : ex> ungrab XF86Back\n");
+	printf("\n");
+	printf("inputgen [options...]\n");
+	printf("  : options:\n");
+	printf("    - init: init generator\n");
+	printf("    - deinit: deinit generator\n");
+	printf("    - key: generate key event\n");
+	printf("      inputgen key [keyname] {type}\n");
+	printf("        - keyname: keyname (ex> XF86Back)\n");
+	printf("        - type: 1: press / 0: release (default: press/release)\n");
+	printf("  : ex> inputgen init\n");
+	printf("  : ex> inputgen key XF86Back / inputgen key XF86Back 1\n");
+	printf("  : ex> inputgen deinit\n");
 	printf("\n");
 
 	printf("* Actions *\n");
@@ -392,6 +514,7 @@ _stdin_cb(void *data, Ecore_Fd_Handler *handler EINA_UNUSED)
 	int count = 0;
 	char key_name[MAX_STR] = {0, };
 	int grab_mode = KEYGRAB_TYPE_SHARED;
+	int key_type = KEY_ALL;
 
 	while ((c = getchar()) != EOF) {
 		if (c == '\n') break;
@@ -462,6 +585,40 @@ _stdin_cb(void *data, Ecore_Fd_Handler *handler EINA_UNUSED)
 		_update_window(client);
 		printf("update window\n");
 	}
+	else if (!strncmp(tmp, "inputgen", sizeof("inputgen"))) {
+		tmp = strtok_r(NULL, " ", &buf_ptr);
+		if (tmp) {
+			if (!strncmp(tmp, "init", sizeof("init"))) {
+				_inputgen_init(client);
+			}
+			else if (!strncmp(tmp, "deinit", sizeof("deinit"))) {
+				_inputgen_deinit(client);
+			}
+			else if (!strncmp(tmp, "key", sizeof("key"))) {
+				while (tmp) {
+					tmp = strtok_r(NULL, " ", &buf_ptr);
+					if (tmp) {
+						switch (count) {
+							case 0:
+							strncpy(key_name, tmp, MAX_STR - 1);
+							break;
+						case 1:
+							key_type = atoi(tmp);
+							break;
+						default:
+							break;
+						}
+					}
+					count++;
+				}
+				_key_gen(client, key_name, key_type);
+			}
+			else {
+				printf("invalid arguments\n");
+				_usage();
+			}
+		}
+	}
 	else {
 		printf("Invalid arguments\n");
 		_usage();
@@ -519,8 +676,8 @@ int main(int argc, char **argv)
 
 	socket_name = getenv("WAYLAND_DISPLAY");
 
-        if (!socket_name)
-                socket_name = "wayland-0";
+	if (!socket_name)
+		socket_name = "wayland-0";
 
 	client = (app_data_t *)calloc(1, sizeof(app_data_t));
 	ERROR_CHECK(client, goto shutdown, "Failed to allocate memory for app_data_t");

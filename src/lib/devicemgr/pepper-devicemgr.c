@@ -24,9 +24,7 @@
 #include "pepper-devicemgr.h"
 #include "pepper-internal.h"
 #include <tizen-extension-server-protocol.h>
-#ifdef _F_DEVICEMGR_XKB
 #include <pepper-xkb.h>
-#endif
 
 #define MIN(a,b) ((a)<(b)?(a):(b))
 
@@ -37,17 +35,13 @@ struct pepper_devicemgr {
 	struct wl_display *display;
 	pepper_compositor_t *compositor;
 	pepper_seat_t *seat;
-#ifdef _F_DEVICEMGR_XKB
+	pepper_bool_t xkb_enabled;
 	pepper_xkb_info_t *xkb_info;
-#else
 	pepper_list_t *keymap_list;
-#endif
 
 	pepper_event_listener_t *listener_input_device_add;
-#ifdef _F_DEVICEMGR_XKB
 	pepper_event_listener_t *listener_seat_keyboard_add;
 	pepper_event_listener_t *listener_keyboard_keymap_update;
-#endif
 
 	pepper_list_t resources;
 
@@ -61,7 +55,6 @@ struct pepper_devicemgr_resource {
 	pepper_list_t link;
 };
 
-#ifdef _F_DEVICEMGR_XKB
 static void
 _pepper_devicemgr_handle_keyboard_keymap_update(pepper_event_listener_t *listener, pepper_object_t *object, uint32_t id, void *info, void *data)
 {
@@ -84,7 +77,6 @@ _pepper_devicemgr_handle_seat_keyboard_add(pepper_event_listener_t *listener, pe
 			PEPPER_EVENT_KEYBOARD_KEYMAP_UPDATE, 0,
 			_pepper_devicemgr_handle_keyboard_keymap_update, pepper_devicemgr);
 }
-#endif
 
 static void
 _pepper_devicemgr_handle_input_device_add(pepper_event_listener_t *listener, pepper_object_t *object, uint32_t id, void *info, void *data)
@@ -242,7 +234,7 @@ _pepper_devicemgr_keyname_to_keycode(pepper_list_t *list, const char *name)
 	if (!strncmp(name, "Keycode-", sizeof("Keycode-")-1)) {
 		return atoi(name + 8);
 	}
-	else if (!pepper_list_empty(list)) {
+	else if (list && !pepper_list_empty(list)) {
 		pepper_list_for_each(data, list, link) {
 			if (data) {
 				if (!strncmp(data->name, name, UINPUT_MAX_NAME_SIZE)) {
@@ -267,13 +259,11 @@ _pepper_devicemgr_cb_generate_key(struct wl_client *client, struct wl_resource *
 	PEPPER_CHECK(pepper_devicemgr, goto failed, "pepper_devicemgr is not set\n");
 	PEPPER_CHECK(pepper_devicemgr->devicemgr, goto failed, "devicemgr is not created\n");
 
-#ifdef _F_DEVICEMGR_XKB
 	if (pepper_devicemgr->xkb_info) {
 		keycode = pepper_xkb_info_keyname_to_keycode(pepper_devicemgr->xkb_info, keyname);
-	} else
-#else
-	keycode = _pepper_devicemgr_keyname_to_keycode(pepper_devicemgr->keymap_list, keyname);
-#endif
+	}
+	else
+		keycode = _pepper_devicemgr_keyname_to_keycode(pepper_devicemgr->keymap_list, keyname);
 
 	ret = devicemgr_input_generator_generate_key(pepper_devicemgr->devicemgr, keycode, pressed);
 	PEPPER_CHECK(ret == TIZEN_INPUT_DEVICE_MANAGER_ERROR_NONE, goto failed, "Failed to generate key(name: %s, code: %d), ret: %d\n", keyname, keycode, ret);
@@ -369,6 +359,17 @@ _pepper_devicemgr_cb_bind(struct wl_client *client, void *data, uint32_t version
 	                               pepper_devicemgr, _pepper_devicemgr_cb_unbind);
 }
 
+PEPPER_API void
+pepper_devicemgr_xkb_enable(pepper_devicemgr_t *pepper_devicemgr)
+{
+	if (pepper_devicemgr->xkb_enabled) return;
+
+	pepper_devicemgr->xkb_enabled = PEPPER_TRUE;
+	pepper_devicemgr->listener_seat_keyboard_add = pepper_object_add_event_listener((pepper_object_t *)pepper_devicemgr->seat,
+		PEPPER_EVENT_SEAT_KEYBOARD_ADD,
+		0, _pepper_devicemgr_handle_seat_keyboard_add, pepper_devicemgr);
+}
+
 PEPPER_API pepper_devicemgr_t *
 pepper_devicemgr_create(pepper_compositor_t *compositor, pepper_seat_t *seat)
 {
@@ -387,15 +388,12 @@ pepper_devicemgr_create(pepper_compositor_t *compositor, pepper_seat_t *seat)
 	pepper_devicemgr->compositor = compositor;
 	pepper_devicemgr->seat = seat;
 
+	pepper_devicemgr->xkb_enabled = PEPPER_FALSE;
+	pepper_devicemgr->xkb_info = NULL;
+
 	pepper_devicemgr->listener_input_device_add = pepper_object_add_event_listener((pepper_object_t *)pepper_devicemgr->compositor,
 		PEPPER_EVENT_COMPOSITOR_INPUT_DEVICE_ADD,
 		0, _pepper_devicemgr_handle_input_device_add, pepper_devicemgr);
-
-#ifdef _F_DEVICEMGR_XKB
-	pepper_devicemgr->listener_seat_keyboard_add = pepper_object_add_event_listener((pepper_object_t *)pepper_devicemgr->seat,
-		PEPPER_EVENT_SEAT_KEYBOARD_ADD,
-		0, _pepper_devicemgr_handle_seat_keyboard_add, pepper_devicemgr);
-#endif
 
 	pepper_list_init(&pepper_devicemgr->resources);
 

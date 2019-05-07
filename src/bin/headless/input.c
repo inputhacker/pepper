@@ -23,6 +23,7 @@
 #include <pepper-evdev.h>
 #include <pepper-input-backend.h>
 #include <pepper-keyrouter.h>
+#include <pepper-devicemgr.h>
 #include <pepper-xkb.h>
 
 typedef struct
@@ -36,6 +37,7 @@ typedef struct
 	pepper_view_t *top_view;
 
 	pepper_keyrouter_t *keyrouter;
+	pepper_devicemgr_t *devicemgr;
 	pepper_xkb_t *xkb;
 
 	pepper_event_listener_t *listener_seat_keyboard_key;
@@ -206,21 +208,7 @@ headless_input_init_input(headless_input_t *hi)
 {
 	uint32_t caps = 0;
 	uint32_t probed = 0;
-
-	const char *seat_name = NULL;
 	pepper_evdev_t *evdev = NULL;
-	pepper_seat_t *seat = NULL;
-
-	seat_name = getenv("XDG_SEAT");
-
-	if (!seat_name)
-		seat_name = "seat0";
-
-	/* create a default seat (seat0) */
-	seat = pepper_compositor_add_seat(hi->compositor, seat_name);
-	PEPPER_CHECK(seat, goto end, "Failed to add seat (%s)!\n", seat_name);
-
-	hi->seat = seat;
 
 	/* create pepper evdev */
 	evdev = pepper_evdev_create(hi->compositor);
@@ -242,8 +230,6 @@ headless_input_init_input(headless_input_t *hi)
 	return PEPPER_TRUE;
 
 end:
-	if (seat)
-		pepper_seat_destroy(seat);
 	pepper_evdev_destroy(evdev);
 
 	return PEPPER_FALSE;
@@ -252,10 +238,25 @@ end:
 static void
 headless_input_init_modules(headless_input_t *hi)
 {
+	const char *seat_name = NULL;
+	pepper_seat_t *seat = NULL;
+
 	pepper_keyrouter_t *keyrouter = NULL;
+	pepper_devicemgr_t *devicemgr = NULL;
 	pepper_xkb_t *xkb = NULL;
 
 	PEPPER_TRACE("[%s] ... begin\n", __FUNCTION__);
+
+	seat_name = getenv("XDG_SEAT");
+
+	if (!seat_name)
+		seat_name = "seat0";
+
+	/* create a default seat (seat0) */
+	seat = pepper_compositor_add_seat(hi->compositor, seat_name);
+	PEPPER_CHECK(seat, goto end, "Failed to add seat (%s)!\n", seat_name);
+
+	hi->seat = seat;
 
 	/* create pepper xkb */
 	xkb = pepper_xkb_create();
@@ -269,6 +270,13 @@ headless_input_init_modules(headless_input_t *hi)
 
 	hi->keyrouter = keyrouter;
 
+	/* create pepper devicemgr */
+	devicemgr = pepper_devicemgr_create(hi->compositor, hi->seat);
+	PEPPER_CHECK(devicemgr, goto end, "Failed to create devicemgr !\n");
+	pepper_devicemgr_xkb_enable(devicemgr);
+
+	hi->devicemgr = devicemgr;
+
 	PEPPER_TRACE("[%s] ... done\n", __FUNCTION__);
 
 	return;
@@ -277,9 +285,15 @@ end:
 		pepper_xkb_destroy(hi->xkb);
 	if (hi->keyrouter)
 		pepper_keyrouter_destroy(hi->keyrouter);
+	if (hi->devicemgr)
+		pepper_devicemgr_destroy(hi->devicemgr);
+	if (hi->seat)
+		pepper_seat_destroy(hi->seat);
 
 	hi->xkb = NULL;
 	hi->keyrouter = NULL;
+	hi->devicemgr = NULL;
+	hi->seat = NULL;
 }
 
 static void
@@ -289,9 +303,12 @@ headless_input_deinit_modules(headless_input_t *hi)
 		pepper_xkb_destroy(hi->xkb);
 	if (hi->keyrouter)
 		pepper_keyrouter_destroy(hi->keyrouter);
+	if (hi->devicemgr)
+		pepper_devicemgr_destroy(hi->devicemgr);
 
 	hi->xkb = NULL;
 	hi->keyrouter = NULL;
+	hi->devicemgr = NULL;
 }
 
 PEPPER_API void

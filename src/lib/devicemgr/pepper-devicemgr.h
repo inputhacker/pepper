@@ -38,3 +38,4 @@ PEPPER_API pepper_devicemgr_t *pepper_devicemgr_create(pepper_compositor_t *comp
 PEPPER_API void pepper_devicemgr_destroy(pepper_devicemgr_t *pepper_devicemgr);
 
 PEPPER_API void pepper_devicemgr_keymap_set(pepper_devicemgr_t *pepper_devicemgr, pepper_list_t *list);
+PEPPER_API void pepper_devicemgr_xkb_enable(pepper_devicemgr_t *pepper_devicemgr);
