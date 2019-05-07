@@ -248,10 +248,10 @@ led_output_cb_frame_done(void *data)
 {
 	led_output_t *output = (led_output_t *)data;
 
-	PEPPER_TRACE("[OUTPUT] frame_done\n");
+	PEPPER_TRACE("[OUTPUT] frame_done %p\n", output);
+	output->frame_done = NULL;
 
 	pepper_output_finish_frame(output->output, NULL);
-	output->frame_done = NULL;
 }
 
 static void
@@ -259,16 +259,18 @@ led_output_add_frame_done(led_output_t *output)
 {
 	struct wl_event_loop *loop;
 
-	PEPPER_TRACE("[OUTPUT] Add idle for frame(output:%p, frame:%p\n", output, output->frame_done);
+	PEPPER_TRACE("[OUTPUT] Add idle for frame(output:%p, frame_done:%p)\n", output, output->frame_done);
 
-	if (!output || output->frame_done)
+	if (!output || output->frame_done) {
+		PEPPER_TRACE("[OUTPUT] skip add frame_done\n");
 		return;
+	}
 
 	loop = wl_display_get_event_loop(pepper_compositor_get_display(output->compositor));
 	PEPPER_CHECK(loop, return, "[OUTPUT] fail to get event loop\n");
 
 	output->frame_done = wl_event_loop_add_idle(loop, led_output_cb_frame_done, output);
-	PEPPER_CHECK(output->frame_done, return, "fail to add idle\n");
+	PEPPER_CHECK(output->frame_done, return, "[OUTPUT] fail to add idle\n");
 }
 
 static void
@@ -354,6 +356,10 @@ headless_output_deinit(pepper_compositor_t *compositor)
 
 	if (output) {
 		pepper_object_set_user_data((pepper_object_t *)compositor, &KEY_OUTPUT, NULL, NULL);
+
+		if (output->boot_ani) {
+			boot_ani_stop(output);
+		}
 
 		pepper_output_destroy(output->output);
 		led_output_destroy(output);

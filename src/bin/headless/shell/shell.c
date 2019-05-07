@@ -26,6 +26,7 @@
 #include <unistd.h>
 
 #include <pepper.h>
+#include <pepper-output-backend.h>
 #include <xdg-shell-unstable-v6-server-protocol.h>
 #include <tizen-extension-server-protocol.h>
 
@@ -1031,9 +1032,18 @@ headless_shell_cb_idle(void *data)
 	}
 
 	if (top != hs_shell->top_mapped) {
+		const pepper_list_t *l;
+		pepper_list_t *ll;
+
 		PEPPER_TRACE("[SHELL] IDLE : top-view change: %p to %p\n", hs_shell->top_mapped , top);
 		hs_shell->top_mapped = top;
 		headless_input_set_top_view(hs_shell->compositor, hs_shell->top_mapped);
+
+		/*Force update the output*/
+		l = pepper_compositor_get_output_list(hs_shell->compositor);
+		pepper_list_for_each_list(ll, l) {
+			pepper_output_add_damage_region((pepper_output_t *)ll->item, NULL);
+		}
 	}
 
 	if (focus != hs_shell->focus) {
