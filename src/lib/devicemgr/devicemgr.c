@@ -82,6 +82,8 @@ _devicemgr_input_generator_keyboard_create(devicemgr_t *devicemgr, const char *n
 	devicemgr->keyboard->input_device = pepper_input_device_create(devicemgr->compositor, WL_SEAT_CAPABILITY_KEYBOARD, NULL, NULL);
 	PEPPER_CHECK(devicemgr->keyboard->input_device, return PEPPER_FALSE, "Failed to create input device !\n");
 
+	devicemgr->keyboard->created = PEPPER_TRUE;
+
 	return PEPPER_TRUE;
 }
 
@@ -106,6 +108,8 @@ _devicemgr_input_generator_keyboard_close(devicemgr_t *devicemgr)
 {
 	if (!devicemgr->keyboard->input_device) return;
 	pepper_input_device_destroy(devicemgr->keyboard->input_device);
+	devicemgr->keyboard->input_device = NULL;
+	devicemgr->keyboard->created = PEPPER_FALSE;
 }
 
 PEPPER_API int
@@ -115,7 +119,8 @@ devicemgr_input_generator_deinit(devicemgr_t *devicemgr)
 
 	if (!devicemgr->keyboard) return TIZEN_INPUT_DEVICE_MANAGER_ERROR_NONE;
 
-	_devicemgr_input_generator_keyboard_close(devicemgr);
+	if (devicemgr->keyboard->created)
+		_devicemgr_input_generator_keyboard_close(devicemgr);
 	memset(devicemgr->keyboard->name, 0, UINPUT_MAX_NAME_SIZE);
 
 	return TIZEN_INPUT_DEVICE_MANAGER_ERROR_NONE;
@@ -150,7 +155,9 @@ devicemgr_destroy(devicemgr_t *devicemgr)
 	PEPPER_CHECK(devicemgr, return, "Invalid devicemgr resource.\n");
 
 	if (devicemgr->keyboard) {
-		_devicemgr_input_generator_keyboard_close(devicemgr);
+		if (devicemgr->keyboard->created)
+			_devicemgr_input_generator_keyboard_close(devicemgr);
+
 		free(devicemgr->keyboard);
 		devicemgr->keyboard = NULL;
 	}
