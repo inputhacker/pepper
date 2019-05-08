@@ -119,6 +119,7 @@ This package includes evdev development module files.
 ###### xkb
 %package xkb
 Summary: xkb module for pepper package
+Requires: xkeyboard-config
 
 %description xkb
 This package includes xkb module files.
