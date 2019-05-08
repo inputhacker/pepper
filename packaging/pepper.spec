@@ -355,7 +355,6 @@ getent passwd %{display_user} >/dev/null || %{_sbindir}/useradd -r -g %{display_
 # create links within systemd's target(s)
 %__mkdir_p %{_unitdir}/graphical.target.wants/
 %__mkdir_p %{_unitdir_user}/basic.target.wants/
-mv -f %{_unitdir}/display-manager.service.doctor %{_unitdir}/display-manager.service
 ln -sf ../display-manager.service %{_unitdir}/graphical.target.wants/
 ln -sf ../display-manager-ready.service %{_unitdir}/graphical.target.wants/
 ln -sf ../display-user.service %{_unitdir_user}/basic.target.wants/
@@ -369,10 +368,15 @@ getent passwd %{display_user} >/dev/null || %{_sbindir}/useradd -r -g %{display_
 # create links within systemd's target(s)
 %__mkdir_p %{_unitdir}/graphical.target.wants/
 %__mkdir_p %{_unitdir_user}/basic.target.wants/
-mv -f %{_unitdir}/display-manager.service.headless %{_unitdir}/display-manager.service
 ln -sf ../display-manager.service %{_unitdir}/graphical.target.wants/
 ln -sf ../display-manager-ready.service %{_unitdir}/graphical.target.wants/
 ln -sf ../display-user.service %{_unitdir_user}/basic.target.wants/
+
+%post doctor
+mv -f %{_unitdir}/display-manager.service.doctor %{_unitdir}/display-manager.service
+
+%post headless
+mv -f %{_unitdir}/display-manager.service.headless %{_unitdir}/display-manager.service
 
 %postun doctor
 rm -f %{_unitdir}/graphical.target.wants/display-manager.service
