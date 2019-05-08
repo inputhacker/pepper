@@ -459,11 +459,19 @@ static void
 _pepper_devicemgr_cb_unbind(struct wl_resource *resource)
 {
 	pepper_devicemgr_t *pepper_devicemgr;
+	pepper_devicemgr_resource_t *rdata, *rtmp;
 
 	pepper_devicemgr = wl_resource_get_user_data(resource);
 	PEPPER_CHECK(pepper_devicemgr, return, "Invalid pepper_devicemgr_t\n");
 
 	_pepper_devicemgr_deinit_generator(pepper_devicemgr, resource);
+
+	pepper_list_for_each_safe(rdata, rtmp, &pepper_devicemgr->resources, link) {
+		if (rdata->resource == resource) {
+			pepper_list_remove(&rdata->link);
+			free(rdata);
+		}
+	}
 }
 
 static void
@@ -574,8 +582,6 @@ pepper_devicemgr_destroy(pepper_devicemgr_t *pepper_devicemgr)
 
 	pepper_list_for_each_safe(rdata, rtmp, &pepper_devicemgr->resources, link) {
 		wl_resource_destroy(rdata->resource);
-		pepper_list_remove(&rdata->link);
-		free(rdata);
 	}
 
 	if (pepper_devicemgr->devicemgr) {
