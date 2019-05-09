@@ -53,9 +53,11 @@ struct HEADLESS_SHELL{
 
 	pepper_view_t *focus;
 	pepper_view_t *top_mapped;
+	pepper_view_t *top_visible;
 
 	pepper_event_listener_t *surface_add_listener;
 	pepper_event_listener_t *surface_remove_listener;
+	pepper_event_listener_t *view_remove_listener;
 };
 
 struct HEADLESS_SHELL_SURFACE{
@@ -63,10 +65,12 @@ struct HEADLESS_SHELL_SURFACE{
 	pepper_surface_t *surface;
 	pepper_view_t *view;
 	uint32_t	updates;
+	uint8_t		visibility;
 
 	headless_surface_type_t surface_type;
 	struct wl_resource *zxdg_shell_surface;
 	struct wl_resource *zxdg_surface;	/*resource of toplevel, popup and etc*/
+	struct wl_resource *tizen_visibility;
 	uint32_t last_ack_configure;
 
 	pepper_bool_t skip_focus;
@@ -81,6 +85,9 @@ headless_shell_cb_surface_commit(pepper_event_listener_t *listener,
 static void
 headless_shell_add_idle(headless_shell_t *shell);
 
+
+static void
+headless_shell_send_visiblity(pepper_view_t *view, uint8_t visibility);
 
 const static int KEY_SHELL = 0;
 
@@ -276,6 +283,7 @@ zxdg_surface_cb_resource_destroy(struct wl_resource *resource)
 
 	hs_surface->zxdg_shell_surface = NULL;
 	hs_surface->skip_focus = PEPPER_FALSE;
+	hs_surface->visibility = TIZEN_VISIBILITY_VISIBILITY_FULLY_OBSCURED;
 
 	SET_UPDATE(hs_surface->updates, UPDATE_SURFACE_TYPE);
 	headless_shell_add_idle(hs_surface->hs_shell);
@@ -618,6 +626,10 @@ static const struct tizen_visibility_interface tizen_visibility =
 static void
 tizen_visibility_cb_vis_destroy(struct wl_resource *res_tzvis)
 {
+	headless_shell_surface_t *hs_surface = (headless_shell_surface_t *)wl_resource_get_user_data(res_tzvis);
+
+	PEPPER_CHECK(hs_surface, return, "[SHELL] cannot get headless_shell_surface_t\n");
+	hs_surface->tizen_visibility = NULL;
 }
 
 static void
@@ -645,7 +657,15 @@ tizen_position_cb_pos_destroy(struct wl_resource *res_tzpos)
 static void
 tizen_policy_cb_vis_get(struct wl_client *client, struct wl_resource *resource, uint32_t id, struct wl_resource *surf)
 {
+	pepper_surface_t *psurface;
+	headless_shell_surface_t *hs_surface;
 	struct wl_resource *new_res;
+
+	psurface = wl_resource_get_user_data(surf);
+	PEPPER_CHECK(psurface, return, "fail to get pepper_surface_t\n");
+
+	hs_surface = pepper_object_get_user_data((pepper_object_t *)psurface, surf);
+	PEPPER_CHECK(hs_surface, return, "fail to get headless_shell_surface\n");
 
 	new_res = wl_resource_create(client, &tizen_visibility_interface, 5, id);
 	if (!new_res) {
@@ -656,8 +676,13 @@ tizen_policy_cb_vis_get(struct wl_client *client, struct wl_resource *resource, 
 
 	wl_resource_set_implementation(new_res,
 			&tizen_visibility,
-			NULL,
+			hs_surface,
 			tizen_visibility_cb_vis_destroy);
+
+	hs_surface->tizen_visibility = new_res;
+
+	if (hs_surface->visibility != TIZEN_VISIBILITY_VISIBILITY_FULLY_OBSCURED)
+		tizen_visibility_send_notify(hs_surface->tizen_visibility, hs_surface->visibility);
 }
 
 static void
@@ -998,6 +1023,32 @@ tizen_policy_deinit(headless_shell_t *shell)
 }
 
 static void
+headless_shell_send_visiblity(pepper_view_t *view, uint8_t visibility)
+{
+	pepper_surface_t *surface;
+	headless_shell_surface_t *hs_surface;
+
+	if (view == NULL) return;
+
+	surface = pepper_view_get_surface(view);
+	PEPPER_CHECK(surface, return, "[SHELL] Invalid object surface:%p\n", surface);
+
+	hs_surface = pepper_object_get_user_data((pepper_object_t *)surface, pepper_surface_get_resource(surface));
+	PEPPER_CHECK(hs_surface, return, "[SHELL] Invalid object headless_surface:%p\n", hs_surface);
+
+	if (hs_surface->visibility == visibility) {
+		PEPPER_TRACE("[SHELL] Same Visibility hs_surface:%p, visibility:%d\n", hs_surface, visibility);
+		return;
+	}
+
+	if (hs_surface->tizen_visibility)
+		tizen_visibility_send_notify(hs_surface->tizen_visibility, visibility);
+
+	hs_surface->visibility = visibility;
+	PEPPER_TRACE("[SHELL] Set Visibility hs_surface:%p, visibility:%d\n", hs_surface, visibility);
+}
+
+static void
 headless_shell_cb_idle(void *data)
 {
 	headless_shell_t *hs_shell = (headless_shell_t *)data;
@@ -1007,27 +1058,36 @@ headless_shell_cb_idle(void *data)
 	pepper_surface_t *surface;
 	headless_shell_surface_t *hs_surface;
 
-	pepper_view_t *focus=NULL, *top=NULL;
+	pepper_view_t *focus = NULL, *top = NULL, *top_visible = NULL;
 
 	PEPPER_TRACE("[SHELL] Enter Idle\n");
 	list = pepper_compositor_get_view_list(hs_shell->compositor);
 
 	pepper_list_for_each_list(l,  list) {
 		view = (pepper_view_t *)l->item;
-		surface = pepper_view_get_surface(view);
+		PEPPER_CHECK(view, continue, "[SHELL] idle_cb, Invalid object view:%p\n", view);
 
-		PEPPER_CHECK(view && surface, continue, "[SHELL] idle_cb, Invalid object view:%p, surface:%p\n", view, surface);
-		if (!pepper_view_is_mapped(view)) continue;
+		surface = pepper_view_get_surface(view);
+		PEPPER_CHECK(surface, continue, "[SHELL] idle_cb, Invalid object surface:%p\n", surface);
+
+		hs_surface = pepper_object_get_user_data((pepper_object_t *)surface, pepper_surface_get_resource(surface));
+		PEPPER_CHECK(hs_surface, continue, "[SHELL] idle_cb, Invalid object headless_surface:%p\n", hs_surface);
+
+		if (!pepper_view_is_mapped(view)) {
+			headless_shell_send_visiblity(view, TIZEN_VISIBILITY_VISIBILITY_FULLY_OBSCURED);
+			continue;
+		}
 
 		if (!top)
 			top = view;
 
-		hs_surface = pepper_object_get_user_data((pepper_object_t *)surface, pepper_surface_get_resource(surface));
-
 		if (!focus && !hs_surface->skip_focus)
 			focus = view;
 
-		if (top && focus)
+		if (!top_visible && pepper_surface_get_buffer(surface))
+			top_visible = view;
+
+		if (top && focus && top_visible)
 			break;
 	}
 
@@ -1050,6 +1110,13 @@ headless_shell_cb_idle(void *data)
 		PEPPER_TRACE("[SHELL] IDLE : focus-view change: %p to %p\n", hs_shell->focus , focus);
 		hs_shell->focus = focus;
 		headless_input_set_focus_view(hs_shell->compositor, hs_shell->focus);
+	}
+
+	if (top_visible != hs_shell->top_visible) {
+		PEPPER_TRACE("[SHELL] IDLE : visible-view change: %p to %p\n", hs_shell->top_visible, top_visible);
+		headless_shell_send_visiblity(hs_shell->top_visible, TIZEN_VISIBILITY_VISIBILITY_FULLY_OBSCURED);
+		headless_shell_send_visiblity(top_visible, TIZEN_VISIBILITY_VISIBILITY_UNOBSCURED);
+		hs_shell->top_visible = top_visible;
 	}
 
 	hs_shell->cb_idle = NULL;
@@ -1089,6 +1156,7 @@ headless_shell_cb_surface_free(void *data)
 	PEPPER_TRACE("[SHELL] hs_surface free surface:%p, view:%p, zxdg_shell_surface:%p, zxdg_surface:%p\n",
 					surface->surface, surface->view,
 					surface->zxdg_shell_surface, surface->zxdg_surface);
+
 	free(surface);
 }
 
@@ -1105,6 +1173,8 @@ headless_shell_cb_surface_add(pepper_event_listener_t *listener,
 
 	hs_surface->hs_shell = (headless_shell_t *)data;
 	hs_surface->surface = (pepper_surface_t *)surface;
+	hs_surface->visibility = TIZEN_VISIBILITY_VISIBILITY_FULLY_OBSCURED;
+
 	pepper_object_set_user_data((pepper_object_t *)surface,
 								pepper_surface_get_resource(surface),
 								hs_surface,
@@ -1143,6 +1213,26 @@ headless_shell_cb_surface_remove(pepper_event_listener_t *listener,
 }
 
 static void
+headless_shell_cb_view_remove(pepper_event_listener_t *listener,
+										pepper_object_t *object,
+										uint32_t id, void *info, void *data)
+{
+	pepper_view_t *view = (pepper_view_t *)info;
+	headless_shell_t *shell = (headless_shell_t *)data;
+
+	if (view == shell->top_mapped)
+		shell->top_mapped = NULL;
+
+	if (view == shell->top_visible)
+		shell->top_visible = NULL;
+
+	if (view == shell->focus)
+		shell->focus = NULL;
+
+	headless_shell_add_idle(shell);
+}
+
+static void
 headless_shell_add_idle(headless_shell_t *shell)
 {
 	struct wl_event_loop *loop;
@@ -1167,6 +1257,10 @@ headless_shell_init_listeners(headless_shell_t *shell)
 	shell->surface_remove_listener = pepper_object_add_event_listener((pepper_object_t *)shell->compositor,
 																		PEPPER_EVENT_COMPOSITOR_SURFACE_REMOVE,
 																		0, headless_shell_cb_surface_remove, shell);
+
+	shell->view_remove_listener = pepper_object_add_event_listener((pepper_object_t *)shell->compositor,
+																		PEPPER_EVENT_COMPOSITOR_VIEW_REMOVE,
+																		0, headless_shell_cb_view_remove, shell);
 }
 
 static void
@@ -1174,6 +1268,7 @@ headless_shell_deinit_listeners(headless_shell_t *shell)
 {
 	pepper_event_listener_remove(shell->surface_add_listener);
 	pepper_event_listener_remove(shell->surface_remove_listener);
+	pepper_event_listener_remove(shell->view_remove_listener);
 }
 
 static void
