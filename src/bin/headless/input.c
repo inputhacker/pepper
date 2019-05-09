@@ -32,6 +32,7 @@ typedef struct
 	pepper_seat_t *seat;
 	pepper_evdev_t *evdev;
 	pepper_keyboard_t *keyboard;
+	pepper_input_device_t *default_device;
 
 	pepper_view_t *focus_view;
 	pepper_view_t *top_view;
@@ -193,6 +194,12 @@ headless_input_deinit_event_listeners(headless_input_t *hi)
 static void
 headless_input_deinit_input(headless_input_t *hi)
 {
+	if (hi->default_device)
+	{
+		pepper_input_device_destroy(hi->default_device);
+		hi->default_device = NULL;
+	}
+
 	pepper_evdev_destroy(hi->evdev);
 
 	if (hi->seat)
@@ -204,10 +211,24 @@ headless_input_deinit_input(headless_input_t *hi)
 }
 
 static pepper_bool_t
+headless_input_create_input_device(headless_input_t *hi, uint32_t caps)
+{
+	pepper_input_device_t *input_device = NULL;
+
+	/* create a default pepper input device */
+	input_device = pepper_input_device_create(hi->compositor, caps, NULL, hi);
+	PEPPER_CHECK(input_device, return PEPPER_FALSE, "Failed to create a keyboard device !\n");
+
+	hi->default_device = input_device;
+	return PEPPER_TRUE;
+}
+
+static pepper_bool_t
 headless_input_init_input(headless_input_t *hi)
 {
 	uint32_t caps = 0;
 	uint32_t probed = 0;
+	pepper_bool_t res = PEPPER_FALSE;
 	pepper_evdev_t *evdev = NULL;
 
 	/* create pepper evdev */
@@ -221,11 +242,18 @@ headless_input_init_input(headless_input_t *hi)
 	probed = pepper_evdev_device_probe(evdev, caps);
 
 	if (!probed)
-		PEPPER_TRACE("No evdev devices have been probed.\n");
-	else
-		PEPPER_TRACE("%d evdev device(s) has been probed.\n", probed);
+	{
+		PEPPER_TRACE("No evdev device has been probed. A default key device will be created.\n");
+
+		res = headless_input_create_input_device(hi, caps);
+		PEPPER_CHECK(res,  goto end, "Failed to create any input device(s) !\n");
+
+		probed++;
+	}
 
 	hi->ndevices = probed;
+
+	PEPPER_TRACE("%d evdev device(s) has been found.\n", probed);
 
 	return PEPPER_TRUE;
 
