@@ -1088,9 +1088,9 @@ struct pepper_keyboard_grab {
 	 * @param key       key code
 	 * @param state     state flag (ex. WL_KEYBOARD_KEY_STATE_PRESSED)
 	 **/
-	void (*key)(pepper_keyboard_t *keyboard, void *data, uint32_t time,
-				uint32_t key,
-				uint32_t state);
+	pepper_bool_t (*key)(pepper_keyboard_t *keyboard, void *data, uint32_t time,
+						 uint32_t key,
+						 uint32_t state);
 
 	/**
 	 * Handler for keyboard modifier event
@@ -1102,9 +1102,9 @@ struct pepper_keyboard_grab {
 	 * @param mods_locked       locked mods
 	 * @param group             (none)
 	 **/
-	void (*modifiers)(pepper_keyboard_t *keyboard, void *data,
-					  uint32_t mods_depressed,
-					  uint32_t mods_latched, uint32_t mods_locked, uint32_t group);
+	pepper_bool_t (*modifiers)(pepper_keyboard_t *keyboard, void *data,
+							   uint32_t mods_depressed,
+							   uint32_t mods_latched, uint32_t mods_locked, uint32_t group);
 
 	/**
 	 * Handler for grab cancel
@@ -1112,7 +1112,7 @@ struct pepper_keyboard_grab {
 	 * @param keyboard  keyboard object
 	 * @param data      data registered for the grab (@see pepper_keyboard_set_grab)
 	 **/
-	void (*cancel)(pepper_keyboard_t *keyboard, void *data);
+	pepper_bool_t (*cancel)(pepper_keyboard_t *keyboard, void *data);
 };
 
 PEPPER_API struct wl_list *

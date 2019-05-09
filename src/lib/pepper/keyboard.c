@@ -48,6 +48,8 @@ static const struct wl_keyboard_interface keyboard_impl = {
 static void
 update_modifiers(pepper_keyboard_t *keyboard)
 {
+	pepper_bool_t res = PEPPER_TRUE;
+
 	if ((keyboard->pending.mods_depressed != keyboard->mods_depressed) ||
 		(keyboard->pending.mods_latched != keyboard->mods_latched) ||
 		(keyboard->pending.mods_locked != keyboard->mods_locked) ||
@@ -58,11 +60,13 @@ update_modifiers(pepper_keyboard_t *keyboard)
 		keyboard->mods_locked = keyboard->pending.mods_locked;
 		keyboard->group = keyboard->pending.group;
 
-		keyboard->grab->modifiers(keyboard,
-								  keyboard->data,
-								  keyboard->mods_depressed,
-								  keyboard->mods_latched,
-								  keyboard->mods_locked, keyboard->group);
+		res = keyboard->grab->modifiers(keyboard,
+										keyboard->data,
+										keyboard->mods_depressed,
+										keyboard->mods_latched,
+										keyboard->mods_locked, keyboard->group);
+
+		if (!res) return;
 	}
 }
 
@@ -106,6 +110,7 @@ pepper_keyboard_handle_event(pepper_keyboard_t *keyboard, uint32_t id,
 	uint32_t *keys = keyboard->keys.data;
 	unsigned int num_keys = keyboard->keys.size / sizeof(uint32_t);
 	unsigned int i;
+	pepper_bool_t res = PEPPER_TRUE;
 
 	if (id != PEPPER_EVENT_INPUT_DEVICE_KEYBOARD_KEY)
 		return;
@@ -123,9 +128,11 @@ pepper_keyboard_handle_event(pepper_keyboard_t *keyboard, uint32_t id,
 	if (event->state == PEPPER_KEY_STATE_PRESSED)
 		*(uint32_t *) wl_array_add(&keyboard->keys, sizeof(uint32_t)) = event->key;
 
-	if (keyboard->grab)
-		keyboard->grab->key(keyboard, keyboard->data, event->time, event->key,
-							event->state);
+	if (keyboard->grab) {
+		res = keyboard->grab->key(keyboard, keyboard->data, event->time, event->key,
+								  event->state);
+		if (!res) return;
+	}
 
 	if (keyboard->need_update_keymap && keyboard->keys.size == 0) {
 		pepper_object_emit_event(&keyboard->base,

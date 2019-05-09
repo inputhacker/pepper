@@ -209,27 +209,32 @@ pointer_remove_callback(pepper_event_listener_t *listener,
 	/* Nothing to do. */
 }
 
-static void
+static pepper_bool_t
 default_keyboard_grab_key(pepper_keyboard_t *keyboard, void *data,
 						  uint32_t time, uint32_t key, uint32_t state)
 {
 	pepper_keyboard_send_key(keyboard, pepper_keyboard_get_focus(keyboard), time,
 							 key, state);
+
+	return PEPPER_TRUE;
 }
 
-static void
+static pepper_bool_t
 default_keyboard_grab_modifiers(pepper_keyboard_t *keyboard, void *data,
 								uint32_t mods_depressed,
 								uint32_t mods_latched, uint32_t mods_locked, uint32_t group)
 {
 	pepper_keyboard_send_modifiers(keyboard, pepper_keyboard_get_focus(keyboard),
 								   mods_depressed, mods_latched, mods_locked, group);
+
+	return PEPPER_TRUE;
 }
 
-static void
+static pepper_bool_t
 default_keyboard_grab_cancel(pepper_keyboard_t *keyboard, void *data)
 {
 	/* Nothing to do. */
+	return PEPPER_TRUE;
 }
 
 static const pepper_keyboard_grab_t default_keyboard_grab = {
