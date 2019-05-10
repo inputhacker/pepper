@@ -25,6 +25,7 @@
 #include <pepper-keyrouter.h>
 #include <pepper-devicemgr.h>
 #include <pepper-xkb.h>
+#include <pepper-inotify.h>
 
 typedef struct
 {
@@ -33,6 +34,7 @@ typedef struct
 	pepper_evdev_t *evdev;
 	pepper_keyboard_t *keyboard;
 	pepper_input_device_t *default_device;
+	pepper_inotify_t *inotify;
 
 	pepper_view_t *focus_view;
 	pepper_view_t *top_view;
@@ -119,6 +121,30 @@ end:
 	headless_input_deinit_event_listeners(hi);
 }
 
+static void
+_cb_handle_inotify_event(uint32_t type, pepper_inotify_event_t *ev, void *data)
+{
+	headless_input_t *hi = data;
+
+	PEPPER_CHECK(hi, return, "Invalid headless input\n");
+
+	switch (type)
+	{
+		case PEPPER_INOTIFY_EVENT_TYPE_CREATE:
+			pepper_evdev_device_path_add(hi->evdev, pepper_inotify_event_name_get(ev));
+			break;
+		case PEPPER_INOTIFY_EVENT_TYPE_REMOVE:
+			pepper_evdev_device_path_remove(hi->evdev, pepper_inotify_event_name_get(ev));
+			break;
+		case PEPPER_INOTIFY_EVENT_TYPE_MODIFY:
+			pepper_evdev_device_path_remove(hi->evdev, pepper_inotify_event_name_get(ev));
+			pepper_evdev_device_path_add(hi->evdev, pepper_inotify_event_name_get(ev));
+			break;
+		default:
+			break;
+	}
+}
+
 void
 headless_input_set_focus_view(pepper_compositor_t *compositor, pepper_view_t *focus_view)
 {
@@ -194,6 +220,12 @@ headless_input_deinit_event_listeners(headless_input_t *hi)
 static void
 headless_input_deinit_input(headless_input_t *hi)
 {
+	if (hi->inotify)
+	{
+		pepper_inotify_destroy(hi->inotify);
+		hi->inotify = NULL;
+	}
+
 	if (hi->default_device)
 	{
 		pepper_input_device_destroy(hi->default_device);
@@ -230,6 +262,7 @@ headless_input_init_input(headless_input_t *hi)
 	uint32_t probed = 0;
 	pepper_bool_t res = PEPPER_FALSE;
 	pepper_evdev_t *evdev = NULL;
+	pepper_inotify_t *inotify = NULL;
 
 	/* create pepper evdev */
 	evdev = pepper_evdev_create(hi->compositor);
@@ -254,6 +287,13 @@ headless_input_init_input(headless_input_t *hi)
 	hi->ndevices = probed;
 
 	PEPPER_TRACE("%d evdev device(s) has been found.\n", probed);
+
+	inotify = pepper_inotify_create(hi->compositor, _cb_handle_inotify_event, hi);
+	PEPPER_CHECK(inotify, goto end, "Failed to create inotify\n");
+
+	pepper_inotify_add(inotify, "/dev/input/");
+
+	hi->inotify = inotify;
 
 	return PEPPER_TRUE;
 
