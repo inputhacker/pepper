@@ -17,6 +17,7 @@ BuildRequires:	libtool >= 2.2
 BuildRequires:	pkgconfig
 BuildRequires:	xz
 BuildRequires:	pkgconfig(wayland-server)
+BuildRequires:	pkgconfig(wayland-client)
 BuildRequires:	pkgconfig(pixman-1)
 BuildRequires:	pkgconfig(libinput)
 BuildRequires:	pkgconfig(libdrm)
@@ -25,13 +26,10 @@ BuildRequires:	pkgconfig(egl)
 BuildRequires:	pkgconfig(glesv2)
 BuildRequires:  pkgconfig(xkbcommon)
 BuildRequires:	doxygen
-BuildRequires:	pkgconfig(wayland-tbm-client)
 BuildRequires:  pkgconfig(wayland-tbm-server)
-BuildRequires:  pkgconfig(libtbm)
+#BuildRequires:  pkgconfig(libtbm)
 BuildRequires:  pkgconfig(tizen-extension-server)
 BuildRequires:  pkgconfig(tizen-extension-client)
-BuildRequires:  pkgconfig(ecore-wl2)
-BuildRequires:  pkgconfig(capi-ui-efl-util)
 %if "%{ENABLE_TDM}" == "1"
 BuildRequires:  pkgconfig(libtdm)
 %endif
@@ -598,4 +596,3 @@ rm -f %{_unitdir_user}/basic.target.wants/display-user.service
 %defattr(-,root,root,-)
 %{_bindir}/*-backend
 %{_bindir}/sample-*
-%{_bindir}/headless*

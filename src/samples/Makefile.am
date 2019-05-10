@@ -55,10 +55,3 @@ sample_client_CFLAGS = $(SAMPLE_CLIENT_CFLAGS)
 sample_client_LDADD = $(SAMPLE_CLIENT_LIBS)
 
 sample_client_SOURCES = sample-client.c xdg-shell-client-protocol.h xdg-shell-protocol.c
-
-bin_PROGRAMS += headless_client
-
-headless_client_CFLAGS = $(HEADLESS_CLIENT_CFLAGS)
-headless_client_LDADD = $(HEADLESS_CLIENT_LIBS)
-
-headless_client_SOURCES = headless_client.c
