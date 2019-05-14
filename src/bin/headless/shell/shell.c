@@ -27,10 +27,12 @@
 
 #include <pepper.h>
 #include <xdg-shell-unstable-v6-server-protocol.h>
+#include <tizen-extension-server-protocol.h>
 
 typedef struct {
 	pepper_compositor_t *compositor;
 	struct wl_global *zxdg_shell;
+	struct wl_global *tizen_policy;
 
 	pepper_seat_t *seat;
 	pepper_event_listener_t *seat_add_listener;
@@ -38,6 +40,7 @@ typedef struct {
 }headless_shell_t;
 
 typedef struct {
+	pepper_surface_t *surface;
 	pepper_view_t *view;
 	struct wl_resource *zxdg_shell_surface;
 	uint32_t last_ack_configure;
@@ -200,8 +203,6 @@ zxdg_surface_cb_resource_destroy(struct wl_resource *resource)
 
 	hs_surface->zxdg_shell_surface = NULL;
 	pepper_view_destroy(hs_surface->view);
-
-	free(hs_surface);
 }
 
 static void
@@ -378,9 +379,12 @@ zxdg_shell_cb_surface_get(struct wl_client *client, struct wl_resource *resource
 		return;
 	}
 
-	hs_surface = (headless_shell_surface_t *)calloc(sizeof(headless_shell_surface_t), 1);
+	psurface = wl_resource_get_user_data(wsurface);
+	PEPPER_CHECK(psurface, goto error, "faile to get pepper_surface\n");
+
+	hs_surface = (headless_shell_surface_t *)pepper_object_get_user_data((pepper_object_t *)psurface, wsurface);
 	if (!hs_surface) {
-		PEPPER_ERROR("fail to alloc for headless_shell_surface_t\n");
+		PEPPER_ERROR("fail to get headless_shell_surface_t: %p key:%p\n", psurface, wsurface);
 		wl_resource_post_no_memory(resource);
 		return;
 	}
@@ -396,10 +400,6 @@ zxdg_shell_cb_surface_get(struct wl_client *client, struct wl_resource *resource
 			&zxdg_surface_interface,
 			hs_surface,
 			zxdg_surface_cb_resource_destroy);
-
-
-	psurface = wl_resource_get_user_data(wsurface);
-	PEPPER_CHECK(psurface, goto error, "faile to get pepper_surface\n");
 
 	hs_surface->view = pepper_compositor_add_view(hs->compositor);
 	if (!hs_surface->view) {
@@ -453,8 +453,6 @@ error:
 
 		if (hs_surface->zxdg_shell_surface)
 			wl_resource_destroy(hs_surface->zxdg_shell_surface);
-		else
-			free(hs_surface);
 	}
 }
 
@@ -516,6 +514,413 @@ zxdg_deinit(headless_shell_t *shell)
 }
 
 static void
+tizen_visibility_cb_destroy(struct wl_client *client, struct wl_resource *res_tzvis)
+{
+	wl_resource_destroy(res_tzvis);
+}
+
+static const struct tizen_visibility_interface tizen_visibility =
+{
+	tizen_visibility_cb_destroy
+};
+
+static void
+tizen_visibility_cb_vis_destroy(struct wl_resource *res_tzvis)
+{
+}
+
+static void
+tizen_position_cb_destroy(struct wl_client *client, struct wl_resource *res_tzpos)
+{
+   wl_resource_destroy(res_tzpos);
+}
+
+static void
+tizen_position_cb_set(struct wl_client *client, struct wl_resource *res_tzpos, int32_t x, int32_t y)
+{
+}
+
+static const struct tizen_position_interface tizen_position =
+{
+   tizen_position_cb_destroy,
+   tizen_position_cb_set,
+};
+
+static void
+tizen_position_cb_pos_destroy(struct wl_resource *res_tzpos)
+{
+}
+
+static void
+tizen_policy_cb_vis_get(struct wl_client *client, struct wl_resource *resource, uint32_t id, struct wl_resource *surf)
+{
+	struct wl_resource *new_res;
+
+	new_res = wl_resource_create(client, &tizen_visibility_interface, 5, id);
+	if (!new_res) {
+		PEPPER_ERROR("fail to create tizen_visibility");
+		wl_resource_post_no_memory(resource);
+		return;
+	}
+
+	wl_resource_set_implementation(new_res,
+			&tizen_visibility,
+			NULL,
+			tizen_visibility_cb_vis_destroy);
+}
+
+static void
+tizen_policy_cb_pos_get(struct wl_client *client, struct wl_resource *resource, uint32_t id, struct wl_resource *surf)
+{
+	struct wl_resource *new_res;
+
+	new_res = wl_resource_create(client, &tizen_position_interface, 1, id);
+	if (!new_res) {
+		PEPPER_ERROR("fail to create tizen_visibility");
+		wl_resource_post_no_memory(resource);
+		return;
+	}
+
+	wl_resource_set_implementation(new_res,
+			&tizen_position,
+			NULL,
+			tizen_position_cb_pos_destroy);
+}
+
+static void
+tizen_policy_cb_activate(struct wl_client *client, struct wl_resource *resource, struct wl_resource *surf)
+{
+	pepper_surface_t *psurface;
+	headless_shell_surface_t *hs_surface;
+
+	psurface = wl_resource_get_user_data(surf);
+	PEPPER_CHECK(psurface, return, "fail to get pepper_surface_t\n");
+
+	hs_surface = pepper_object_get_user_data((pepper_object_t *)psurface, surf);
+	PEPPER_CHECK(hs_surface, return, "fail to get headless_shell_surface\n");
+
+	pepper_view_stack_top(hs_surface->view, PEPPER_TRUE);
+}
+
+static void
+tizen_policy_cb_activate_below_by_res_id(struct wl_client *client, struct wl_resource *resource,  uint32_t res_id, uint32_t below_res_id)
+{
+}
+
+static void
+tizen_policy_cb_raise(struct wl_client *client, struct wl_resource *resource, struct wl_resource *surf)
+{
+}
+
+static void
+tizen_policy_cb_lower(struct wl_client *client, struct wl_resource *resource, struct wl_resource *surf)
+{
+}
+
+static void
+tizen_policy_cb_lower_by_res_id(struct wl_client *client, struct wl_resource *resource,  uint32_t res_id)
+{
+}
+
+static void
+tizen_policy_cb_focus_skip_set(struct wl_client *client, struct wl_resource *resource, struct wl_resource *surf)
+{
+}
+
+static void
+tizen_policy_cb_focus_skip_unset(struct wl_client *client, struct wl_resource *resource, struct wl_resource *surf)
+{
+}
+
+static void
+tizen_policy_cb_role_set(struct wl_client *client, struct wl_resource *resource, struct wl_resource *surf, const char *role)
+{
+}
+
+static void
+tizen_policy_cb_type_set(struct wl_client *client, struct wl_resource *resource, struct wl_resource *surf, uint32_t type)
+{
+}
+
+static void
+tizen_policy_cb_conformant_set(struct wl_client *client, struct wl_resource *resource, struct wl_resource *surf)
+{
+}
+
+static void
+tizen_policy_cb_conformant_unset(struct wl_client *client, struct wl_resource *resource, struct wl_resource *surf)
+{
+}
+
+static void
+tizen_policy_cb_conformant_get(struct wl_client *client, struct wl_resource *resource, struct wl_resource *surf)
+{
+   tizen_policy_send_conformant(resource, surf, 0);
+}
+
+static void
+tizen_policy_cb_notilv_set(struct wl_client *client, struct wl_resource *resource, struct wl_resource *surf, int32_t lv)
+{
+}
+
+static void
+tizen_policy_cb_transient_for_set(struct wl_client *client, struct wl_resource *resource, uint32_t child_id, uint32_t parent_id)
+{
+}
+
+static void
+tizen_policy_cb_transient_for_unset(struct wl_client *client, struct wl_resource *resource, uint32_t child_id)
+{
+   tizen_policy_send_transient_for_done(resource, child_id);
+}
+
+static void
+tizen_policy_cb_win_scrmode_set(struct wl_client *client, struct wl_resource *resource, struct wl_resource *surf, uint32_t mode)
+{
+   tizen_policy_send_window_screen_mode_done
+     (resource, surf, mode, TIZEN_POLICY_ERROR_STATE_NONE);
+}
+
+static void
+tizen_policy_cb_subsurf_place_below_parent(struct wl_client *client, struct wl_resource *resource, struct wl_resource *subsurf)
+{
+}
+
+static void
+tizen_policy_cb_subsurf_stand_alone_set(struct wl_client *client, struct wl_resource *resource, struct wl_resource *subsurf)
+{
+}
+
+static void
+tizen_policy_cb_subsurface_get(struct wl_client *client, struct wl_resource *resource, uint32_t id, struct wl_resource *surface, uint32_t parent_id)
+{
+	wl_client_post_implementation_error(client, "Headless server not support tizen_subsurface\n");
+}
+
+static void
+tizen_policy_cb_opaque_state_set(struct wl_client *client, struct wl_resource *resource, struct wl_resource *surface, int32_t state)
+{
+}
+
+static void
+tizen_policy_cb_iconify(struct wl_client *client, struct wl_resource *resource, struct wl_resource *surf)
+{
+}
+
+static void
+tizen_policy_cb_uniconify(struct wl_client *client, struct wl_resource *resource, struct wl_resource *surf)
+{
+}
+
+static void
+tizen_policy_cb_aux_hint_add(struct wl_client *client, struct wl_resource *resource, struct wl_resource *surf, int32_t id, const char *name, const char *value)
+{
+}
+
+static void
+tizen_policy_cb_aux_hint_change(struct wl_client *client, struct wl_resource *resource, struct wl_resource *surf, int32_t id, const char *value)
+{
+}
+
+static void
+tizen_policy_cb_aux_hint_del(struct wl_client *client, struct wl_resource *resource, struct wl_resource *surf, int32_t id)
+{
+}
+
+static void
+tizen_policy_cb_supported_aux_hints_get(struct wl_client *client, struct wl_resource *resource, struct wl_resource *surf)
+{
+}
+
+static void
+tizen_policy_cb_background_state_set(struct wl_client *client, struct wl_resource *resource, uint32_t pid)
+{
+}
+
+static void
+tizen_policy_cb_background_state_unset(struct wl_client *client, struct wl_resource *resource, uint32_t pid)
+{
+}
+
+static void
+tizen_policy_cb_floating_mode_set(struct wl_client *client, struct wl_resource *resource, struct wl_resource *surf)
+{
+}
+
+static void
+tizen_policy_cb_floating_mode_unset(struct wl_client *client, struct wl_resource *resource, struct wl_resource *surf)
+{
+}
+
+static void
+tizen_policy_cb_stack_mode_set(struct wl_client *client, struct wl_resource *resource, struct wl_resource *surf, uint32_t mode)
+{
+}
+
+static void
+tizen_policy_cb_activate_above_by_res_id(struct wl_client *client, struct wl_resource *resource,  uint32_t res_id, uint32_t above_res_id)
+{
+}
+
+static void
+tizen_policy_cb_subsurf_watcher_get(struct wl_client *client, struct wl_resource *resource, uint32_t id, struct wl_resource *surface)
+{
+	wl_client_post_implementation_error(client, "Headless server not support tizen_subsurface\n");
+}
+
+static void
+tizen_policy_cb_parent_set(struct wl_client *client, struct wl_resource *resource, struct wl_resource *child, struct wl_resource *parent)
+{
+}
+
+static void
+tizen_policy_cb_ack_conformant_region(struct wl_client *client, struct wl_resource *resource, struct wl_resource *surface, uint32_t serial)
+{
+}
+
+static void
+tizen_policy_cb_destroy(struct wl_client *client, struct wl_resource *resource)
+{
+   wl_resource_destroy(resource);
+}
+
+static void
+tizen_policy_cb_has_video(struct wl_client *client, struct wl_resource *resource, struct wl_resource *surface, uint32_t has)
+{
+}
+
+static const struct tizen_policy_interface tizen_policy_iface =
+{
+   tizen_policy_cb_vis_get,
+   tizen_policy_cb_pos_get,
+   tizen_policy_cb_activate,
+   tizen_policy_cb_activate_below_by_res_id,
+   tizen_policy_cb_raise,
+   tizen_policy_cb_lower,
+   tizen_policy_cb_lower_by_res_id,
+   tizen_policy_cb_focus_skip_set,
+   tizen_policy_cb_focus_skip_unset,
+   tizen_policy_cb_role_set,
+   tizen_policy_cb_type_set,
+   tizen_policy_cb_conformant_set,
+   tizen_policy_cb_conformant_unset,
+   tizen_policy_cb_conformant_get,
+   tizen_policy_cb_notilv_set,
+   tizen_policy_cb_transient_for_set,
+   tizen_policy_cb_transient_for_unset,
+   tizen_policy_cb_win_scrmode_set,
+   tizen_policy_cb_subsurf_place_below_parent,
+   tizen_policy_cb_subsurf_stand_alone_set,
+   tizen_policy_cb_subsurface_get,
+   tizen_policy_cb_opaque_state_set,
+   tizen_policy_cb_iconify,
+   tizen_policy_cb_uniconify,
+   tizen_policy_cb_aux_hint_add,
+   tizen_policy_cb_aux_hint_change,
+   tizen_policy_cb_aux_hint_del,
+   tizen_policy_cb_supported_aux_hints_get,
+   tizen_policy_cb_background_state_set,
+   tizen_policy_cb_background_state_unset,
+   tizen_policy_cb_floating_mode_set,
+   tizen_policy_cb_floating_mode_unset,
+   tizen_policy_cb_stack_mode_set,
+   tizen_policy_cb_activate_above_by_res_id,
+   tizen_policy_cb_subsurf_watcher_get,
+   tizen_policy_cb_parent_set,
+   tizen_policy_cb_ack_conformant_region,
+   tizen_policy_cb_destroy,
+   tizen_policy_cb_has_video,
+};
+
+static void
+tizen_policy_cb_unbind(struct wl_resource *resource)
+{
+}
+
+static void
+tizen_policy_cb_bind(struct wl_client *client, void *data, uint32_t ver, uint32_t id)
+{
+	headless_shell_t *shell = (headless_shell_t *)data;
+	struct wl_resource *resource;
+
+	PEPPER_CHECK(shell, goto err, "data is NULL\n");
+
+	resource = wl_resource_create(client,
+									&tizen_policy_interface,
+									ver,
+									id);
+	PEPPER_CHECK(resource, goto err, "fail to create tizen_policy\n");
+
+	wl_resource_set_implementation(resource,
+									&tizen_policy_iface,
+									shell,
+									tizen_policy_cb_unbind);
+	return;
+
+err:
+	wl_client_post_no_memory(client);
+}
+
+static pepper_bool_t
+tizen_policy_init(headless_shell_t *shell)
+{
+	struct wl_display *display;
+
+	display = pepper_compositor_get_display(shell->compositor);
+
+	shell->tizen_policy = wl_global_create(display, &tizen_policy_interface, 7, shell, tizen_policy_cb_bind);
+	PEPPER_CHECK(shell->tizen_policy, return PEPPER_FALSE, "faile to create tizen_policy\n");
+
+	return PEPPER_TRUE;
+}
+
+void
+tizen_policy_deinit(headless_shell_t *shell)
+{
+	if (shell->zxdg_shell)
+		wl_global_destroy(shell->tizen_policy);
+}
+
+static void
+headless_shell_surface_free(void *data)
+{
+	headless_shell_surface_t *surface = (headless_shell_surface_t *)data;
+
+	free(surface);
+}
+
+static void
+headless_shell_cb_surface_add(pepper_event_listener_t *listener,
+										pepper_object_t *object,
+										uint32_t id, void *info, void *data)
+{
+	headless_shell_surface_t *hs_surface;
+	pepper_surface_t *surface = (pepper_surface_t *)info;
+
+	hs_surface = (headless_shell_surface_t*)calloc(sizeof(headless_shell_surface_t), 1);
+	PEPPER_CHECK(hs_surface, return, "fail to alloc for headless_shell_surface\n");
+
+	hs_surface->surface = (pepper_surface_t *)surface;
+	pepper_object_set_user_data((pepper_object_t *)surface,
+								pepper_surface_get_resource(surface),
+								hs_surface,
+								headless_shell_surface_free);
+	PEPPER_TRACE("Add headless_shell:%p to pepper_surface:%p\n", hs_surface, object);
+}
+
+static void
+headless_shell_cb_surface_remove(pepper_event_listener_t *listener,
+										pepper_object_t *object,
+										uint32_t id, void *info, void *data)
+{
+	headless_shell_surface_t *hs_surface;
+
+	hs_surface = (headless_shell_surface_t*)calloc(sizeof(headless_shell_surface_t), 1);
+	PEPPER_CHECK(hs_surface, return, "fail to alloc for headless_shell_surface\n");
+
+	hs_surface->surface = (pepper_surface_t *)info;
+}
+
 _seat_add_callback(pepper_event_listener_t    *listener,
 				  pepper_object_t            *object,
 				  uint32_t                    id,
@@ -575,6 +980,7 @@ headless_shell_deinit(void *data)
 
 	deinit_listeners(shell);
 	zxdg_deinit(shell);
+	tizen_policy_deinit(shell);
 
 	pepper_object_set_user_data((pepper_object_t *)shell->compositor, &KEY_SHELL, NULL, NULL);
 	free(shell);
@@ -591,9 +997,12 @@ headless_shell_init(pepper_compositor_t *compositor)
 
 	init_listeners(shell);
 	PEPPER_CHECK(zxdg_init(shell), goto error, "zxdg_init() failed\n");
+	PEPPER_CHECK(tizen_policy_init(shell), goto error, "tizen_policy_init() failed\n");
 
 	pepper_object_set_user_data((pepper_object_t *)compositor, &KEY_SHELL, NULL, headless_shell_deinit);
 
+	pepper_object_add_event_listener((pepper_object_t *)compositor, PEPPER_EVENT_COMPOSITOR_SURFACE_ADD, 0, headless_shell_cb_surface_add, shell);
+	pepper_object_add_event_listener((pepper_object_t *)compositor, PEPPER_EVENT_COMPOSITOR_SURFACE_REMOVE, 0, headless_shell_cb_surface_remove, shell);
 	return PEPPER_TRUE;
 error:
 	headless_shell_deinit(shell);
