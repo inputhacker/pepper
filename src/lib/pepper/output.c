@@ -125,7 +125,7 @@ output_update_planes(pepper_output_t *output)
 	pepper_region_init(&clip);
 
 	pepper_list_for_each_reverse(plane, &output->plane_list, link)
-	pepper_plane_update(plane, &output->view_list, &clip);
+		pepper_plane_update(plane, &output->view_list, &clip);
 
 	pepper_region_fini(&clip);
 }

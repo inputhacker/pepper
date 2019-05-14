@@ -35,8 +35,10 @@ pepper_view_mark_dirty(pepper_view_t *view, uint32_t flag)
 	pepper_view_t  *child;
 	int             i;
 
-	if (view->dirty & flag)
+	if (view->dirty & flag) {
+		PEPPER_TRACE("pepper_view_mark_dirty view:%p, dirty:%x, flag:%x\n", view, view->dirty, flag);
 		return;
+	}
 
 	view->dirty |= flag;
 
@@ -162,14 +164,18 @@ pepper_view_update(pepper_view_t *view)
 	if (view->active == active)
 		view->dirty &= ~PEPPER_VIEW_ACTIVE_DIRTY;
 
-	if (!view->dirty)
+	if (!view->dirty) {
+		PEPPER_TRACE("pepper_view_update view:%p not dirty\n", view);
 		return;
+	}
 
 	view->active = active;
 
 	/* Damage for the view unmap will be handled by assigning NULL plane. */
-	if (!view->active)
+	if (!view->active) {
+		PEPPER_TRACE("pepper_view_update view:%p not active\n", view);
 		return;
+	}
 
 	/* We treat the modification as unmapping and remapping the view. So,
 	 * damage for the unmap and damage for the remap.

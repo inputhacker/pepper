@@ -25,6 +25,8 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <tbm_bufmgr.h>
+#include <wayland-tbm-server.h>
 #include <pepper-output-backend.h>
 #include "HL_UI_LED.h"
 
@@ -37,9 +39,16 @@ typedef struct {
 
 	int num_led;
 	HL_UI_LED *ui_led;
+
+	struct wayland_tbm_server *tbm_server;
+	struct wl_event_source *frame_done;
+
+	pepper_view_t *top_view;
 }led_output_t;
 
 static const int KEY_OUTPUT;
+static void led_output_add_frame_done(led_output_t *output);
+static void led_output_update(led_output_t *output);
 
 static void
 led_output_destroy(void *o)
@@ -50,34 +59,33 @@ led_output_destroy(void *o)
 	if (output->ui_led)
 		HL_UI_LED_Close(output->ui_led);
 
+	if (output->tbm_server)
+		wayland_tbm_server_deinit(output->tbm_server);
+
 	free(output);
 }
 
 static int32_t
 led_output_get_subpixel_order(void *o)
 {
-	PEPPER_TRACE("[OUTPUT]\n");
 	return 0;
 }
 
 static const char *
 led_output_get_maker_name(void *o)
 {
-	PEPPER_TRACE("[OUTPUT]\n");
 	return "PePPer LED";
 }
 
 static const char *
 led_output_get_model_name(void *o)
 {
-	PEPPER_TRACE("[OUTPUT]\n");
 	return "PePPer LED";
 }
 
 static int
 led_output_get_mode_count(void *o)
 {
-	PEPPER_TRACE("[OUTPUT]\n");
 	return 1;
 }
 
@@ -108,14 +116,22 @@ led_output_assign_planes(void *o, const pepper_list_t *view_list)
 {
 	led_output_t *output = (led_output_t *)o;
 	pepper_list_t *l;
-	pepper_view_t *view;
+	pepper_view_t *view, *top_view = NULL;
 
 	PEPPER_TRACE("[OUTPUT] Assign plane\n");
 	pepper_list_for_each_list(l, view_list) {
 		view = (pepper_view_t*)l->item;
-		pepper_view_assign_plane(view, output->output, output->plane);
-		PEPPER_TRACE("\t view(%p) assign to output:%p plane:%p\n", view, output->output, output->plane);
+
+		if (pepper_view_is_mapped(view) && pepper_view_is_visible(view)) {
+			top_view = view;
+			break;
+		}
 	}
+
+	if (output->top_view != top_view)
+		PEPPER_TRACE("\tTop-View is changed(%p -> %p)\n", output->top_view, top_view);
+
+	output->top_view = top_view;
 }
 
 static void
@@ -133,20 +149,18 @@ static void
 led_output_repaint(void *o, const pepper_list_t *plane_list)
 {
 	pepper_list_t *l;
-	pepper_list_t *rl;
 	pepper_plane_t *plane;
-	pepper_render_item_t *ritem;
+	led_output_t *output = (led_output_t *)o;
 
 	PEPPER_TRACE("[OUTPUT] Repaint\n");
+
 	pepper_list_for_each_list(l, plane_list) {
 		plane = (pepper_plane_t *)l->item;
-		PEPPER_TRACE("\t plane:%p\n", plane);
-
-		pepper_list_for_each_list(rl, pepper_plane_get_render_list(plane)) {
-			ritem = (pepper_render_item_t *)rl->item;
-			PEPPER_TRACE("\t\t render item: view:%p\n", ritem->view);
-		}
+		pepper_plane_clear_damage_region(plane);
 	}
+
+	led_output_update(output);
+	led_output_add_frame_done(output);
 }
 
 static void
@@ -154,14 +168,14 @@ led_output_attach_surface(void *o, pepper_surface_t *surface, int *w, int *h)
 {
 	*w = 10;
 	*h = 10;
-	PEPPER_TRACE("[OUTPUT] surface:%p\n", surface);
+	PEPPER_TRACE("[OUTPUT] attach surface:%p\n", surface);
 }
 
 static void
 led_output_flush_surface_damage(void *o, pepper_surface_t *surface, pepper_bool_t *keep_buffer)
 {
-	*keep_buffer = PEPPER_FALSE;
-	PEPPER_TRACE("[OUTPUT] surface:%p\n", surface);
+	*keep_buffer = PEPPER_TRUE;
+	PEPPER_TRACE("[OUTPUT] flush_surface_damage surface:%p\n", surface);
 }
 
 struct pepper_output_backend led_output_backend = {
@@ -182,6 +196,97 @@ struct pepper_output_backend led_output_backend = {
 	led_output_flush_surface_damage,
 };
 
+static void
+led_output_update_led(led_output_t *output, unsigned char *data)
+{
+}
+
+static void
+led_output_update(led_output_t *output)
+{
+	pepper_buffer_t *buf;
+	pepper_surface_t *surface;
+	struct wl_resource *buf_res;
+	tbm_surface_h tbm_surface;
+	tbm_surface_info_s info;
+	int ret;
+
+	if (!output->top_view) {
+		if (!output->ui_led)
+			PEPPER_TRACE("[UPDATE LED] Empty Display\n");
+		else
+			led_output_update_led(output, NULL);
+
+		return;
+	}
+
+	surface = pepper_view_get_surface(output->top_view);
+	PEPPER_CHECK(surface, return, "fail to get a surafce from a view(%p)\n", output->top_view);
+
+	buf = pepper_surface_get_buffer(surface);
+	PEPPER_CHECK(buf, return, "fail to get a pepper_buffer from a surface(%p)\n", surface);
+
+	buf_res = pepper_buffer_get_resource(buf);
+	tbm_surface = wayland_tbm_server_get_surface(NULL, buf_res);
+	PEPPER_CHECK(tbm_surface, return, "fail to get a tbm_surface from a pepper_buffer(%p)\n", buf);
+
+	ret = tbm_surface_map(tbm_surface, TBM_SURF_OPTION_READ, &info);
+	PEPPER_CHECK(ret == TBM_SURFACE_ERROR_NONE, return, "fail to map the tbm_surface\n");
+
+	if (!output->ui_led)
+		PEPPER_TRACE("[UPDATE LED] %s\n", (char*)info.planes[0].ptr);
+	else
+		led_output_update_led(output, info.planes[0].ptr);
+
+	tbm_surface_unmap(tbm_surface);
+}
+
+static void
+led_output_cb_frame_done(void *data)
+{
+	led_output_t *output = (led_output_t *)data;
+
+	PEPPER_TRACE("[OUTPUT] frame_done\n");
+
+	pepper_output_finish_frame(output->output, NULL);
+	output->frame_done = NULL;
+}
+
+static void
+led_output_add_frame_done(led_output_t *output)
+{
+	struct wl_event_loop *loop;
+
+	PEPPER_TRACE("[OUTPUT] Add idle for frame(output:%p, frame:%p\n", output, output->frame_done);
+
+	if (!output || output->frame_done)
+		return;
+
+	loop = wl_display_get_event_loop(pepper_compositor_get_display(output->compositor));
+	PEPPER_CHECK(loop, return, "[OUTPUT] fail to get event loop\n");
+
+	output->frame_done = wl_event_loop_add_idle(loop, led_output_cb_frame_done, output);
+	PEPPER_CHECK(output->frame_done, return, "fail to add idle\n");
+}
+
+static void
+pepper_output_bind_display(led_output_t *output)
+{
+	tbm_bufmgr bufmgr = NULL;
+
+	PEPPER_CHECK(getenv("TBM_DISPLAY_SERVER"), return, "[TBM] run the subcompoitor mode\n");
+
+	bufmgr = wayland_tbm_server_get_bufmgr(output->tbm_server);
+	PEPPER_CHECK(bufmgr, return, "fail to get tbm_bufmgr\n");
+
+	if (!tbm_bufmgr_bind_native_display(bufmgr, (void *)pepper_compositor_get_display(output->compositor)))
+	{
+		PEPPER_CHECK(0, return, "fail to tbm_bufmgr_bind_native_display\n");
+	}
+
+	return;
+}
+
 pepper_bool_t
 pepper_output_led_init(pepper_compositor_t *compositor)
 {
@@ -194,12 +299,17 @@ pepper_output_led_init(pepper_compositor_t *compositor)
 		goto error;
 	}
 
+	output->compositor = compositor;
+	output->tbm_server = wayland_tbm_server_init(pepper_compositor_get_display(compositor), NULL, -1, 0);
+	PEPPER_CHECK(output->tbm_server, goto error, "failed to wayland_tbm_server_init.\n");
+
+	pepper_output_bind_display(output);
+
 	output->num_led = NUM_LED;
 	output->ui_led = HL_UI_LED_Init(output->num_led);
 	if (!output->ui_led)
 		PEPPER_ERROR("HL_UI_LED_Init() failed.\n");
 
-	output->compositor = compositor;
 	output->output = pepper_compositor_add_output(compositor,
 			&led_output_backend, "led_output",
 			output,  WL_OUTPUT_TRANSFORM_NORMAL, 1);
@@ -218,6 +328,9 @@ pepper_output_led_init(pepper_compositor_t *compositor)
 error:
 	if (output->ui_led)
 		HL_UI_LED_Close(output->ui_led);
+
+	if (output->tbm_server)
+		wayland_tbm_server_deinit(output->tbm_server);
 
 	if (output->output)
 		pepper_output_destroy(output->output);

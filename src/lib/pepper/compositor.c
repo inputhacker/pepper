@@ -185,7 +185,7 @@ pepper_compositor_schedule_repaint(pepper_compositor_t *compositor)
 	pepper_output_t *output;
 
 	pepper_list_for_each(output, &compositor->output_list, link)
-	pepper_output_schedule_repaint(output);
+		pepper_output_schedule_repaint(output);
 }
 
 /**

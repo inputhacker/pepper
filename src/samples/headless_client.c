@@ -3,6 +3,8 @@
 #include <unistd.h>
 #include <Ecore_Wl2.h>
 #include <Ecore_Input.h>
+#include <wayland-tbm-client.h>
+#include <tbm_surface_internal.h>
 
 #define DISPLAY_NAME "headless-0"
 
@@ -33,9 +35,80 @@ struct app_data
 {
 	Ecore_Wl2_Display *ewd;
 	Ecore_Wl2_Window *win;
+
+	struct wayland_tbm_client *wl_tbm_client;
+	tbm_surface_queue_h tbm_queue;
+	int last_serial;
 };
 
 static Eina_Array *_ecore_event_hdls;
+
+static int KEY_WL_BUFFER = 0;
+static int KEY_CLIENT = 0;
+
+static void
+buffer_release(void *data, struct wl_buffer *buffer)
+{
+	tbm_surface_h surface = (tbm_surface_h)data;
+	app_data_t *client;
+
+	tbm_surface_internal_get_user_data(surface, (unsigned long)&KEY_CLIENT, (void **)&client);
+	tbm_surface_queue_release(client->tbm_queue, surface);
+
+	//TRACE("[UPDATE] release wl_buffer:%p, surface:%p\n", buffer, surface);
+}
+
+static const struct wl_buffer_listener buffer_listener = {
+    buffer_release
+};
+
+static void
+_update_window(app_data_t *client)
+{
+	struct wl_buffer *wl_buffer = NULL;
+	tbm_surface_h surface;
+	tbm_surface_error_e ret;
+
+	ERROR_CHECK(tbm_surface_queue_can_dequeue(client->tbm_queue, 0), return, "[UPDATE] Cannot dequeue\n");
+
+	ret = tbm_surface_queue_dequeue(client->tbm_queue, &surface);
+	ERROR_CHECK(ret == TBM_SURFACE_ERROR_NONE, return, "[UPDATE] dequeue err:%d\n", ret);
+
+	/*TODO : Update something*/
+	{
+		tbm_surface_info_s info;
+
+		tbm_surface_map(surface, TBM_SURF_OPTION_READ | TBM_SURF_OPTION_WRITE, &info);
+		snprintf((char *)info.planes[0].ptr,info.planes[0].size, "%s : %d", "DATA print", client->last_serial);
+		TRACE("[APP] %s\n", info.planes[0].ptr);
+		tbm_surface_unmap(surface);
+		client->last_serial++;
+	}
+
+	ret = tbm_surface_queue_enqueue(client->tbm_queue, surface);
+	ERROR_CHECK(ret == TBM_SURFACE_ERROR_NONE, return, "[UPDATE] enqueue err:%d\n", ret);
+
+	ret = tbm_surface_queue_acquire(client->tbm_queue, &surface);
+	ERROR_CHECK(ret == TBM_SURFACE_ERROR_NONE, return, "[UPDATE] acquire err:%d\n", ret);
+
+	if (!tbm_surface_internal_get_user_data(surface, (unsigned long)&KEY_WL_BUFFER, (void **)&wl_buffer)) {
+		wl_buffer = wayland_tbm_client_create_buffer(client->wl_tbm_client, surface);
+		ERROR_CHECK(wl_buffer, return, "[UPDATE] failed to create wl_buffer tbm_surface:%p\n", surface);
+
+		wl_buffer_add_listener(wl_buffer, &buffer_listener, surface);
+
+		tbm_surface_internal_add_user_data(surface, (unsigned long)&KEY_WL_BUFFER, NULL);
+		tbm_surface_internal_set_user_data(surface, (unsigned long)&KEY_WL_BUFFER, wl_buffer);
+		tbm_surface_internal_add_user_data(surface, (unsigned long)&KEY_CLIENT, NULL);
+		tbm_surface_internal_set_user_data(surface, (unsigned long)&KEY_CLIENT, client);
+	}
+	ERROR_CHECK(wl_buffer, return, "[UPDATE] dequeue err:%d\n", ret);
+
+	ecore_wl2_window_buffer_attach(client->win, wl_buffer, 0, 0, 0);
+	ecore_wl2_window_damage(client->win, NULL, 0);
+	ecore_wl2_window_commit(client->win, EINA_TRUE);
+	//TRACE("[UPDATE] commit wl_buffer:%p, surface:%p\n", wl_buffer, surface);
+}
 
 static uint32_t _getpid()
 {
@@ -194,11 +267,7 @@ _cb_key_up(void *data EINA_UNUSED, int type EINA_UNUSED, void *event)
 	app_data_t *client =  (app_data_t *)data;
 	Ecore_Event_Key *ev = event;
 
-	TRACE("\n");
-
-	/* TODO */
-	(void) client;
-	(void) ev;
+	TRACE("KEY: name:%s, sym:%s, code:%d\n", ev->keyname, ev->key, ev->keycode);
 
 	do_action(client, ev->keyname);
 
@@ -276,23 +345,44 @@ int main(int argc, char **argv)
 	client->ewd = ecore_wl2_display_connect(DISPLAY_NAME);
 	ERROR_CHECK(client->ewd, goto shutdown, "Failed to connect to wayland display %s", DISPLAY_NAME);
 
+	client->wl_tbm_client = wayland_tbm_client_init(ecore_wl2_display_get(client->ewd));
+	ERROR_CHECK(client->wl_tbm_client, goto shutdown, "Failed to init wayland_tbm_client");
+
 	_event_handlers_init(client);
 
+	/*Create Sample Window*/
 	x = y = 0;
 	w = h = 1;
 	client->win = ecore_wl2_window_new(client->ewd, NULL, x, y, w, h);
+	ecore_wl2_window_alpha_set(client->win, EINA_FALSE);
 	ecore_wl2_window_show(client->win);
 	ecore_wl2_window_activate(client->win);
 	ecore_wl2_window_commit(client->win, EINA_TRUE);
 
+	client->tbm_queue = wayland_tbm_client_create_surface_queue(client->wl_tbm_client,
+												ecore_wl2_window_surface_get(client->win),
+												2,
+												100, 100,
+												TBM_FORMAT_ABGR8888);
+	ERROR_CHECK(client->tbm_queue, goto shutdown, "Failed to create tbm_surface_queue");
+
 	usage();
 
-	/* TODO */
+	/*Start Loop*/
 	ecore_main_loop_begin();
 
-	return EXIT_SUCCESS;
-
 shutdown:
-	return EXIT_FAILURE;
+	if (client) {
+		if (client->tbm_queue)
+			tbm_surface_queue_destroy(client->tbm_queue);
+
+		if (client->wl_tbm_client)
+			wayland_tbm_client_deinit(client->wl_tbm_client);
+
+		ecore_wl2_shutdown();
+		free(client);
+	}
+
+	return EXIT_SUCCESS;
 }
 

@@ -923,6 +923,9 @@ static const struct tizen_policy_interface tizen_policy_iface =
 static void
 tizen_policy_cb_unbind(struct wl_resource *resource)
 {
+	headless_shell_t *shell = (headless_shell_t *)wl_resource_get_user_data(resource);
+
+	shell->tizen_policy = NULL;
 }
 
 static void
@@ -965,7 +968,7 @@ tizen_policy_init(headless_shell_t *shell)
 void
 tizen_policy_deinit(headless_shell_t *shell)
 {
-	if (shell->zxdg_shell)
+	if (shell->tizen_policy)
 		wl_global_destroy(shell->tizen_policy);
 }
 
@@ -1087,7 +1090,7 @@ headless_shell_add_idle(headless_shell_t *shell)
 {
 	struct wl_event_loop *loop;
 
-	if (shell->cb_idle)
+	if (!shell || shell->cb_idle)
 		return;
 
 	loop = wl_display_get_event_loop(pepper_compositor_get_display(shell->compositor));
