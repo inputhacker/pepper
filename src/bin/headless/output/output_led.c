@@ -311,6 +311,8 @@ headless_output_init(pepper_compositor_t *compositor)
 
 	output->num_led = NUM_LED;
 	output->ui_led = HL_UI_LED_Init(output->num_led);
+	HL_UI_LED_Change_Brightness(output->ui_led, 0x1);
+
 	if (!output->ui_led)
 		PEPPER_ERROR("HL_UI_LED_Init() failed.\n");
 	else
