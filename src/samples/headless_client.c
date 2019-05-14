@@ -130,11 +130,15 @@ _eflutil_error_to_string(int type)
 }
 
 static void
-_update_window(app_data_t *client)
+_update_window(app_data_t *client, const char *color)
 {
 	struct wl_buffer *wl_buffer = NULL;
 	tbm_surface_h surface;
 	tbm_surface_error_e ret;
+
+	if (color && !strncmp(color, "null", strlen("null"))) {
+		goto end;
+	}
 
 	ERROR_CHECK(tbm_surface_queue_can_dequeue(client->tbm_queue, 0), return, "[UPDATE] Cannot dequeue\n");
 
@@ -178,6 +182,7 @@ _update_window(app_data_t *client)
 	}
 	ERROR_CHECK(wl_buffer, return, "[UPDATE] dequeue err:%d\n", ret);
 
+end:
 	ecore_wl2_window_buffer_attach(client->win, wl_buffer, 0, 0, 0);
 	ecore_wl2_window_damage(client->win, NULL, 0);
 	ecore_wl2_window_commit(client->win, EINA_TRUE);
@@ -198,6 +203,10 @@ do_action(app_data_t *client, const char *keyname)
 	else if (!strncmp("XF86AudioLowerVolume", keyname, 20))
 	{
 		ecore_wl2_window_focus_skip_set(client->win, EINA_TRUE);
+	}
+	else if (!strncmp("XF86Menu", keyname, 20))
+	{
+		_update_window(client, NULL);
 	}
 }
 
@@ -582,8 +591,9 @@ _stdin_cb(void *data, Ecore_Fd_Handler *handler EINA_UNUSED)
 		printf("show window\n");
 	}
 	else if (!strncmp(tmp, "update", sizeof("update"))) {
-		_update_window(client);
-		printf("update window\n");
+		tmp = strtok_r(NULL, " ", &buf_ptr);
+		_update_window(client, tmp);
+		printf("update window : %s\n", tmp);
 	}
 	else if (!strncmp(tmp, "inputgen", sizeof("inputgen"))) {
 		tmp = strtok_r(NULL, " ", &buf_ptr);
