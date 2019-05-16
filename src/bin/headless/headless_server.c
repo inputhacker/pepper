@@ -36,6 +36,10 @@ int main(int argc, char *argv[])
 	pepper_compositor_t *compositor = NULL;
 	pepper_bool_t ret;
 
+	/* set STDOUT/STDERR bufferless */
+	setvbuf(stdout, NULL, _IONBF, 0);
+	setvbuf(stderr, NULL, _IONBF, 0);
+
 	socket_name = getenv("WAYLAND_DISPLAY");
 
 	if (!socket_name)
