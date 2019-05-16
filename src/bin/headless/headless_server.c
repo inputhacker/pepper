@@ -40,6 +40,11 @@ int main(int argc, char *argv[])
 	setvbuf(stdout, NULL, _IONBF, 0);
 	setvbuf(stderr, NULL, _IONBF, 0);
 
+	if (getenv("PEPPER_DLOG_ENABLE")) {
+		PEPPER_TRACE("pepper log will be written to dlog !\n");
+		pepper_log_dlog_enable(1);
+	}
+
 	socket_name = getenv("WAYLAND_DISPLAY");
 
 	if (!socket_name)
