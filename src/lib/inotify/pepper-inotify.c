@@ -39,18 +39,19 @@
 #include <pepper-inotify-internal.h>
 
 static void
-_inotify_event_post(pepper_inotify_t *inotify, pepper_inotify_event_type_t type, const char *name, pepper_bool_t is_dir)
+_inotify_event_post(pepper_inotify_watch_t *watch, pepper_inotify_event_type_t type, const char *name, pepper_bool_t is_dir)
 {
 	pepper_inotify_event_t ev;
 
-	PEPPER_CHECK(inotify->callback.cb, return, "Current inotify has no callback");
+	PEPPER_CHECK(watch->inotify->callback.cb, return, "Current inotify has no callback");
 
-	ev.inotify = inotify;
+	ev.inotify = watch->inotify;
 
 	ev.name = (char *)name;
 	ev.is_dir = is_dir;
+	ev.path = watch->path;
 
-	inotify->callback.cb(type, &ev, inotify->callback.data);
+	watch->inotify->callback.cb(type, &ev, watch->inotify->callback.data);
 }
 
 static void
@@ -59,15 +60,15 @@ _inotify_event_process(struct inotify_event *ev, pepper_inotify_watch_t *watch)
 	if (!ev->len) return;
 
 	if (ev->mask & IN_CREATE) {
-		_inotify_event_post(watch->inotify, PEPPER_INOTIFY_EVENT_TYPE_CREATE,
+		_inotify_event_post(watch, PEPPER_INOTIFY_EVENT_TYPE_CREATE,
 					ev->name, (ev->mask & IN_ISDIR) ? PEPPER_TRUE : PEPPER_FALSE);
 	}
 	else if (ev->mask & IN_DELETE) {
-		_inotify_event_post(watch->inotify, PEPPER_INOTIFY_EVENT_TYPE_REMOVE,
+		_inotify_event_post(watch, PEPPER_INOTIFY_EVENT_TYPE_REMOVE,
 					ev->name, (ev->mask & IN_ISDIR) ? PEPPER_TRUE : PEPPER_FALSE);
 	}
 	else if (ev->mask & IN_MODIFY) {
-		_inotify_event_post(watch->inotify, PEPPER_INOTIFY_EVENT_TYPE_MODIFY,
+		_inotify_event_post(watch, PEPPER_INOTIFY_EVENT_TYPE_MODIFY,
 					ev->name, (ev->mask & IN_ISDIR) ? PEPPER_TRUE : PEPPER_FALSE);
 	}
 }
@@ -109,6 +110,15 @@ pepper_inotify_event_name_get(pepper_inotify_event_t *ev)
 			"Invalid inotify event\n");
 
 	return ev->name;
+}
+
+PEPPER_API char *
+pepper_inotify_event_path_get(pepper_inotify_event_t *ev)
+{
+	PEPPER_CHECK(ev, return PEPPER_INOTIFY_EVENT_TYPE_NONE,
+			"Invalid inotify event\n");
+
+	return ev->path;
 }
 
 PEPPER_API pepper_bool_t

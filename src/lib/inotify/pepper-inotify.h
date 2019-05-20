@@ -62,6 +62,9 @@ pepper_inotify_event_type_get(pepper_inotify_event_t *ev);
 PEPPER_API char *
 pepper_inotify_event_name_get(pepper_inotify_event_t *ev);
 
+PEPPER_API char *
+pepper_inotify_event_path_get(pepper_inotify_event_t *ev);
+
 PEPPER_API pepper_bool_t
 pepper_inotify_event_is_directory(pepper_inotify_event_t *ev);
 

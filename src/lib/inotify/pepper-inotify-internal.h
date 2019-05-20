@@ -34,6 +34,7 @@ struct pepper_inotify_event
 	pepper_inotify_t *inotify;
 
 	char *name;
+	char *path;
 	pepper_bool_t is_dir;
 };
 
