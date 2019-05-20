@@ -106,7 +106,7 @@ _inotify_fd_read(int fd, uint32_t mask, void *data)
 PEPPER_API char *
 pepper_inotify_event_name_get(pepper_inotify_event_t *ev)
 {
-	PEPPER_CHECK(ev, return PEPPER_INOTIFY_EVENT_TYPE_NONE,
+	PEPPER_CHECK(ev, return NULL,
 			"Invalid inotify event\n");
 
 	return ev->name;
@@ -115,7 +115,7 @@ pepper_inotify_event_name_get(pepper_inotify_event_t *ev)
 PEPPER_API char *
 pepper_inotify_event_path_get(pepper_inotify_event_t *ev)
 {
-	PEPPER_CHECK(ev, return PEPPER_INOTIFY_EVENT_TYPE_NONE,
+	PEPPER_CHECK(ev, return NULL,
 			"Invalid inotify event\n");
 
 	return ev->path;
@@ -124,7 +124,7 @@ pepper_inotify_event_path_get(pepper_inotify_event_t *ev)
 PEPPER_API pepper_bool_t
 pepper_inotify_event_is_directory(pepper_inotify_event_t *ev)
 {
-	PEPPER_CHECK(ev, return PEPPER_INOTIFY_EVENT_TYPE_NONE,
+	PEPPER_CHECK(ev, return PEPPER_FALSE,
 			"Invalid inotify event\n");
 
 	return ev->is_dir;
