@@ -57,6 +57,10 @@ int main(int argc, char *argv[])
 	compositor = pepper_compositor_create(socket_name);
 	PEPPER_CHECK(compositor, return EXIT_FAILURE, "Failed to create compositor !");
 
+	/* Init event trace */
+	ret = headless_debug_init(compositor);
+	PEPPER_CHECK(ret, goto end, "headless_debug_init() failed\n");
+
 	/* Init input for headless */
 	ret = headless_input_init(compositor);
 	PEPPER_CHECK(ret, goto end, "headless_input_init() failed\n");
@@ -80,6 +84,7 @@ end:
 	headless_shell_deinit(compositor);
 	headless_input_deinit(compositor);
 	headless_output_deinit(compositor);
+	headless_debug_deinit(compositor);
 	pepper_compositor_destroy(compositor);
 
 	return EXIT_SUCCESS;
