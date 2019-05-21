@@ -110,10 +110,8 @@ _headless_debug_redir_stdout(headless_debug_t *hdebug, void *data)
 	(void) hdebug;
 	(void) data;
 
-	static int fd = -1;
-
-	if (fd >= 0)
-		close(fd);
+	int fd = -1;
+	int ret = 0;
 
 	fd = open("/run/pepper/stdout.txt", O_CREAT | O_WRONLY | O_APPEND, S_IWUSR | S_IWGRP);
 
@@ -122,7 +120,10 @@ _headless_debug_redir_stdout(headless_debug_t *hdebug, void *data)
 		return;
 	}
 
-	dup2(fd, 1);
+	ret = dup2(fd, 1);
+	close(fd);
+	PEPPER_CHECK(ret >= 0, return, "Failed to redirect STDOUT.\n");
+
 	PEPPER_TRACE("STDOUT has been redirected to stdout.txt.\n");
 }
 
@@ -132,10 +133,8 @@ _headless_debug_redir_stderr(headless_debug_t *hdebug, void *data)
 	(void) hdebug;
 	(void) data;
 
-	static int fd = -1;
-
-	if (fd >= 0)
-		close(fd);
+	int fd = -1;
+	int ret = 0;
 
 	fd = open("/run/pepper/stderr.txt", O_CREAT | O_WRONLY | O_APPEND, S_IWUSR | S_IWGRP);
 
@@ -144,7 +143,10 @@ _headless_debug_redir_stderr(headless_debug_t *hdebug, void *data)
 		return;
 	}
 
-	dup2(fd, 2);
+	ret = dup2(fd, 2);
+	close(fd);
+	PEPPER_CHECK(ret >= 0, return, "Failed to redirect STDERR.\n");
+
 	PEPPER_TRACE("STDERR has been redirected to stderr.txt.\n");
 
 }
@@ -242,6 +244,7 @@ headless_debug_deinit(pepper_compositor_t * compositor)
 pepper_bool_t
 headless_debug_init(pepper_compositor_t *compositor)
 {
+	int n_actions;
 	headless_debug_t *hdebug = NULL;
 	pepper_inotify_t *inotify = NULL;
 	pepper_bool_t res = PEPPER_FALSE;
@@ -259,8 +262,9 @@ headless_debug_init(pepper_compositor_t *compositor)
 	PEPPER_CHECK(res, goto error, "Failed on pepper_inotify_add()\n");
 
 	hdebug->inotify = inotify;
+	n_actions = sizeof(debug_actions)/sizeof(debug_actions[0]);
 
-	PEPPER_TRACE("[%s] ... done\n", __FUNCTION__);
+	PEPPER_TRACE("[%s] Done (%d actions have been defined.)\n", __FUNCTION__, n_actions);
 
 	pepper_object_set_user_data((pepper_object_t *)compositor, &KEY_DEBUG, hdebug, NULL);
 	return PEPPER_TRUE;
