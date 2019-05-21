@@ -31,16 +31,14 @@
 
 #define MAX_CMDS	256
 
-#define STDOUT_REDIR		"stdout"
+#define STDOUT_REDIR			"stdout"
 #define STDERR_REDIR			"stderr"
-#define EVENT_TRACE_ON		"event_trace_on"
+#define EVENT_TRACE_ON			"event_trace_on"
 #define EVENT_TRACE_OFF		"event_trace_off"
-#define KEYGRAB_STATUS		"keygrab_status"
+#define KEYGRAB_STATUS			"keygrab_status"
 #define TOPVWINS			"topvwins"
 #define CONNECT_CLIENTS		"connect_clients"
 #define HELP_MSG			"help"
-
-extern void wl_debug_server_enable(int enable);
 
 typedef struct
 {
@@ -50,7 +48,7 @@ typedef struct
 
 typedef void (*headless_debug_action_cb_t)(headless_debug_t *hd, void *data);
 
-typedef struct 
+typedef struct
 {
    const char *cmds;
    headless_debug_action_cb_t cb;
@@ -58,6 +56,7 @@ typedef struct
 } headless_debug_action_t;
 
 const static int KEY_DEBUG = 0xdeaddeb0;
+extern void wl_debug_server_enable(int enable);
 
 static void
 _headless_debug_usage()
@@ -150,7 +149,7 @@ _headless_debug_redir_stderr(headless_debug_t *hdebug, void *data)
 
 }
 
-static const headless_debug_action_t debug_actions[] = 
+static const headless_debug_action_t debug_actions[] =
 {
 	{ STDOUT_REDIR,  _headless_debug_redir_stdout, NULL },
 	{ STDERR_REDIR,  _headless_debug_redir_stderr, NULL },
@@ -174,7 +173,7 @@ _headless_debug_enable_action(headless_debug_t *hdebug, char *cmds)
 
 			break;
 		}
-	}	
+	}
 }
 
 static void
