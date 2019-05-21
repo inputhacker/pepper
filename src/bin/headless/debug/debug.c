@@ -27,6 +27,7 @@
 
 #include <pepper.h>
 #include <wayland-server.h>
+#include <wayland-util.h>
 #include <pepper-inotify.h>
 
 #define MAX_CMDS	256
@@ -37,7 +38,8 @@
 #define EVENT_TRACE_OFF		"event_trace_off"
 #define KEYGRAB_STATUS			"keygrab_status"
 #define TOPVWINS			"topvwins"
-#define CONNECT_CLIENTS		"connect_clients"
+#define CONNECTED_CLIENTS		"connected_clients"
+#define CLIENT_RESOURCES		"reslist"
 #define HELP_MSG			"help"
 
 typedef struct
@@ -68,16 +70,21 @@ _headless_debug_usage()
 	fprintf(stdout, "\t %s\n", STDERR_REDIR);
 	fprintf(stdout, "\t %s\n", KEYGRAB_STATUS);
 	fprintf(stdout, "\t %s\n", TOPVWINS);
-	fprintf(stdout, "\t %s\n", CONNECT_CLIENTS);
+	fprintf(stdout, "\t %s\n", CONNECTED_CLIENTS);
+	fprintf(stdout, "\t %s\n", CLIENT_RESOURCES);
 	fprintf(stdout, "\t %s\n", HELP_MSG);
 
 	fprintf(stdout, "\nTo execute commands, just create/remove/update a file with the commands above.\n");
 	fprintf(stdout, "Please refer to the following examples.\n\n");
-	fprintf(stdout, "\t touch %s to enable event trace\n", EVENT_TRACE_ON);
-	fprintf(stdout, "\t rm -f %s to disable event trace\n", EVENT_TRACE_ON);
-	fprintf(stdout, "\t touch %s to disable event trace\n", EVENT_TRACE_OFF);
-	fprintf(stdout, "\t touch stdout to redirect STDOUT to stdout.txt\n");
-	fprintf(stdout, "\t touch stderr to redirect STDERR to stderr.txt\n");
+	fprintf(stdout, "\t touch %s (to enable event trace)\n", EVENT_TRACE_ON);
+	fprintf(stdout, "\t rm -f %s (to disable event trace)\n", EVENT_TRACE_ON);
+	fprintf(stdout, "\t touch %s (to disable event trace)\n", EVENT_TRACE_OFF);
+	fprintf(stdout, "\t touch stdout (to redirect STDOUT to stdout.txt)\n");
+	fprintf(stdout, "\t touch stderr (to redirect STDERR to stderr.txt)\n");
+	fprintf(stdout, "\t touch connected_clients (to display connected clients information)\n");
+	fprintf(stdout, "\t echo 1 > connected_clients (to display connected clients information)\n");
+	fprintf(stdout, "\t touch reslist (to display resources information of the each connected client)\n");
+	fprintf(stdout, "\t echo 1 > reslist (to display resources information of the each connected client)\n");
 }
 
 static void
@@ -102,6 +109,65 @@ _headless_debug_dummy(headless_debug_t *hdebug, void *data)
 	(void) hdebug;
 	(void) data;
 	_headless_debug_usage();
+}
+
+static enum wl_iterator_result
+_client_get_resource_itr(struct wl_resource *resource, void *data)
+{
+	int *n_resources = (int *)data;
+
+	PEPPER_TRACE("\t\t [resource][%d] class=%s, id=%u\n", ++(*n_resources), wl_resource_get_class(resource), wl_resource_get_id(resource));
+
+	return WL_ITERATOR_CONTINUE;
+}
+
+static void
+_headless_debug_connected_clients(headless_debug_t *hdebug, void *data)
+{
+	pid_t pid;
+	uid_t uid;
+	gid_t gid;
+
+	int client_fd = -1;
+	uint32_t n_clients = 0;
+	int n_resources = 0;
+
+	struct wl_list *clist = NULL;
+	struct wl_client *client_itr = NULL;
+	pepper_bool_t need_reslist = PEPPER_FALSE;
+
+	const char *cmds = (const char *)data;
+
+	/* check if reslist feature is required */
+	if (cmds && !strncmp(cmds, CLIENT_RESOURCES, MAX_CMDS)) {
+		need_reslist = PEPPER_TRUE;
+	}
+
+	/* get client list which bound wl_compositor global */
+	clist = wl_display_get_client_list(pepper_compositor_get_display(hdebug->compositor));
+	PEPPER_CHECK(clist, return, "Failed to get client list from compositor->display.\n");
+
+	PEPPER_TRACE("========= [Connected clients information] =========\n");
+	wl_client_for_each(client_itr, clist) {
+		n_clients++;
+		client_fd = wl_client_get_fd(client_itr);
+		wl_client_get_credentials(client_itr, &pid, &uid, &gid);
+		PEPPER_TRACE("\t client[%d]: pid=%d, user=%d, group=%d, socket_fd=%d", n_clients, pid, uid, gid, client_fd);
+
+		if (PEPPER_FALSE == need_reslist) {
+			PEPPER_TRACE("\n");
+			continue;
+		}
+
+		PEPPER_TRACE("\n");
+		wl_client_for_each_resource(client_itr, _client_get_resource_itr, &n_resources);
+		PEPPER_TRACE("\t\t number of resources = %d\n", n_resources);
+
+		n_resources = 0;
+	}
+
+	if (!n_clients)
+		PEPPER_TRACE("============ [No connected clients] ===========\n\n");
 }
 
 static void
@@ -159,7 +225,8 @@ static const headless_debug_action_t debug_actions[] =
 	{ EVENT_TRACE_OFF, _headless_debug_event_trace_off, NULL },
 	{ KEYGRAB_STATUS, _headless_debug_dummy, NULL },
 	{ TOPVWINS, _headless_debug_dummy, NULL },
-	{ CONNECT_CLIENTS, _headless_debug_dummy, NULL },
+	{ CONNECTED_CLIENTS, _headless_debug_connected_clients, NULL },
+	{ CLIENT_RESOURCES, _headless_debug_connected_clients, NULL },
 	{ HELP_MSG, _headless_debug_dummy, NULL },
 };
 
@@ -170,8 +237,8 @@ _headless_debug_enable_action(headless_debug_t *hdebug, char *cmds)
 
 	for(int n=0 ; n < n_actions ; n++) {
 		if (!strncmp(cmds, debug_actions[n].cmds, MAX_CMDS)) {
-			debug_actions[n].cb(hdebug, (void *)debug_actions[n].cmds);
 			PEPPER_TRACE("[%s : %s]\n", __FUNCTION__, debug_actions[n].cmds);
+			debug_actions[n].cb(hdebug, (void *)debug_actions[n].cmds);
 
 			break;
 		}
@@ -186,8 +253,8 @@ _headless_debug_disable_action(headless_debug_t *hdebug, char *cmds)
 	for(int n=0 ; n < n_actions ; n++) {
 		if (!strncmp(cmds, debug_actions[n].cmds, MAX_CMDS)) {
 			if (debug_actions[n].disable_cb) {
-				debug_actions[n].disable_cb(hdebug, (void *)debug_actions[n].cmds);
 				PEPPER_TRACE("[%s : %s]\n", __FUNCTION__, debug_actions[n].cmds);
+				debug_actions[n].disable_cb(hdebug, (void *)debug_actions[n].cmds);
 			}
 
 			break;
@@ -212,9 +279,7 @@ _trace_cb_handle_inotify_event(uint32_t type, pepper_inotify_event_t *ev, void *
 			_headless_debug_disable_action(hdebug, file_name);
 			break;
 		case PEPPER_INOTIFY_EVENT_TYPE_MODIFY:
-			_headless_debug_enable_action(hdebug, file_name);
 			break;
-
 		default:
 			PEPPER_TRACE("[%s] Unhandled event type (%d)\n", __FUNCTION__, type);
 			break;
