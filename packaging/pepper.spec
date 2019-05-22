@@ -298,6 +298,7 @@ make %{?_smp_mflags}
 %__mkdir_p %{buildroot}%{_unitdir}
 install -m 644 data/units/display-manager.service.doctor %{buildroot}%{_unitdir}
 install -m 644 data/units/display-manager.service.headless %{buildroot}%{_unitdir}
+install -m 550 data/scripts/* %{buildroot}%{_bindir}
 install -m 644 data/units/display-manager-ready.path %{buildroot}%{_unitdir}
 install -m 644 data/units/display-manager-ready.service %{buildroot}%{_unitdir}
 
@@ -584,6 +585,7 @@ rm -f %{_unitdir_user}/basic.target.wants/display-user.service
 %defattr(-,root,root,-)
 %license COPYING
 %{_bindir}/headless*
+%{_bindir}/winfo
 %{_unitdir}/display-manager-ready.path
 %{_unitdir}/display-manager-ready.service
 %{_unitdir}/display-manager.service.headless

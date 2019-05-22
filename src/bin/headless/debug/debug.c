@@ -34,8 +34,8 @@
 
 #define STDOUT_REDIR			"stdout"
 #define STDERR_REDIR			"stderr"
-#define EVENT_TRACE_ON			"event_trace_on"
-#define EVENT_TRACE_OFF		"event_trace_off"
+#define PROTOCOL_TRACE_ON		"protocol_trace_on"
+#define PROTOCOL_TRACE_OFF		"protocol_trace_off"
 #define KEYGRAB_STATUS			"keygrab_status"
 #define TOPVWINS			"topvwins"
 #define CONNECTED_CLIENTS		"connected_clients"
@@ -63,9 +63,9 @@ extern void wl_debug_server_enable(int enable);
 static void
 _headless_debug_usage()
 {
-	fprintf(stdout, "Commands:\n\n");
-	fprintf(stdout, "\t %s\n", EVENT_TRACE_ON);
-	fprintf(stdout, "\t %s\n", EVENT_TRACE_OFF);
+	fprintf(stdout, "Supported commands:\n\n");
+	fprintf(stdout, "\t %s\n", PROTOCOL_TRACE_ON);
+	fprintf(stdout, "\t %s\n", PROTOCOL_TRACE_OFF);
 	fprintf(stdout, "\t %s\n", STDOUT_REDIR);
 	fprintf(stdout, "\t %s\n", STDERR_REDIR);
 	fprintf(stdout, "\t %s\n", KEYGRAB_STATUS);
@@ -76,19 +76,19 @@ _headless_debug_usage()
 
 	fprintf(stdout, "\nTo execute commands, just create/remove/update a file with the commands above.\n");
 	fprintf(stdout, "Please refer to the following examples.\n\n");
-	fprintf(stdout, "\t touch %s (to enable event trace)\n", EVENT_TRACE_ON);
-	fprintf(stdout, "\t rm -f %s (to disable event trace)\n", EVENT_TRACE_ON);
-	fprintf(stdout, "\t touch %s (to disable event trace)\n", EVENT_TRACE_OFF);
-	fprintf(stdout, "\t touch stdout (to redirect STDOUT to stdout.txt)\n");
-	fprintf(stdout, "\t touch stderr (to redirect STDERR to stderr.txt)\n");
-	fprintf(stdout, "\t touch connected_clients (to display connected clients information)\n");
-	fprintf(stdout, "\t echo 1 > connected_clients (to display connected clients information)\n");
-	fprintf(stdout, "\t touch reslist (to display resources information of the each connected client)\n");
-	fprintf(stdout, "\t echo 1 > reslist (to display resources information of the each connected client)\n");
+	fprintf(stdout, "\t # winfo protocol_trace_on\t : enable event trace\n");
+	fprintf(stdout, "\t # winfo event_trace_off\t : disable event trace\n");
+	fprintf(stdout, "\t # winfo stdout\t\t\t : redirect STDOUT\n");
+	fprintf(stdout, "\t # winfo stderr\t\t\t : redirect STDERR\n");
+	fprintf(stdout, "\t # winfo keygrab_status\t\t : display keygrab status\n");
+	fprintf(stdout, "\t # winfo topvwins\t\t : display top/visible window stack\n");
+	fprintf(stdout, "\t # winfo connected_clients\t : display connected clients information\n");
+	fprintf(stdout, "\t # winfo reslist\t\t : display each resources information of connected clients\n");
+	fprintf(stdout, "\t # winfo help\t\t\t : display this help message\n");
 }
 
 static void
-_headless_debug_event_trace_on(headless_debug_t *hdebug, void *data)
+_headless_debug_protocol_trace_on(headless_debug_t *hdebug, void *data)
 {
 	(void) hdebug;
 	(void) data;
@@ -96,7 +96,7 @@ _headless_debug_event_trace_on(headless_debug_t *hdebug, void *data)
 }
 
 static void
-_headless_debug_event_trace_off(headless_debug_t *hdebug, void *data)
+_headless_debug_protocol_trace_off(headless_debug_t *hdebug, void *data)
 {
 	(void) hdebug;
 	(void) data;
@@ -217,14 +217,23 @@ _headless_debug_redir_stderr(headless_debug_t *hdebug, void *data)
 
 }
 
+static void
+_headless_debug_NOT_supported(headless_debug_t *hdebug, void *data)
+{
+	(void) hdebug;
+	(void) data;
+
+	PEPPER_TRACE("NOT SUPPORTED. WILL BE IMPLEMENTED SOON.\n");
+}
+
 static const headless_debug_action_t debug_actions[] =
 {
 	{ STDOUT_REDIR,  _headless_debug_redir_stdout, NULL },
 	{ STDERR_REDIR,  _headless_debug_redir_stderr, NULL },
-	{ EVENT_TRACE_ON,  _headless_debug_event_trace_on, _headless_debug_event_trace_off },
-	{ EVENT_TRACE_OFF, _headless_debug_event_trace_off, NULL },
-	{ KEYGRAB_STATUS, _headless_debug_dummy, NULL },
-	{ TOPVWINS, _headless_debug_dummy, NULL },
+	{ PROTOCOL_TRACE_ON,  _headless_debug_protocol_trace_on, _headless_debug_protocol_trace_off },
+	{ PROTOCOL_TRACE_OFF, _headless_debug_protocol_trace_off, NULL },
+	{ KEYGRAB_STATUS, _headless_debug_NOT_supported, NULL },
+	{ TOPVWINS, _headless_debug_NOT_supported, NULL },
 	{ CONNECTED_CLIENTS, _headless_debug_connected_clients, NULL },
 	{ CLIENT_RESOURCES, _headless_debug_connected_clients, NULL },
 	{ HELP_MSG, _headless_debug_dummy, NULL },
