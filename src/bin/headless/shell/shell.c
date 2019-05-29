@@ -1098,6 +1098,7 @@ headless_shell_cb_idle(void *data)
 		PEPPER_TRACE("[SHELL] IDLE : top-view change: %p to %p\n", hs_shell->top_mapped , top);
 		hs_shell->top_mapped = top;
 		headless_input_set_top_view(hs_shell->compositor, hs_shell->top_mapped);
+		headless_debug_set_top_view(hs_shell->compositor, hs_shell->top_mapped);
 
 		/*Force update the output*/
 		l = pepper_compositor_get_output_list(hs_shell->compositor);
@@ -1110,6 +1111,7 @@ headless_shell_cb_idle(void *data)
 		PEPPER_TRACE("[SHELL] IDLE : focus-view change: %p to %p\n", hs_shell->focus , focus);
 		hs_shell->focus = focus;
 		headless_input_set_focus_view(hs_shell->compositor, hs_shell->focus);
+		headless_debug_set_focus_view(hs_shell->compositor, hs_shell->focus);
 	}
 
 	if (top_visible != hs_shell->top_visible) {

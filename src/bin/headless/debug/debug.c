@@ -46,6 +46,9 @@ typedef struct
 {
 	pepper_compositor_t *compositor;
 	pepper_inotify_t *inotify;
+
+	pepper_view_t *top_mapped;
+	pepper_view_t *focus;
 } headless_debug_t;
 
 typedef void (*headless_debug_action_cb_t)(headless_debug_t *hd, void *data);
@@ -226,6 +229,55 @@ _headless_debug_NOT_supported(headless_debug_t *hdebug, void *data)
 	PEPPER_TRACE("NOT SUPPORTED. WILL BE IMPLEMENTED SOON.\n");
 }
 
+static void
+_headless_debug_topvwins(headless_debug_t *hdebug, void *data)
+{
+	(void) data;
+
+	int cnt = 0;
+	int w, h;
+	double x, y;
+	pid_t pid;
+
+	pepper_list_t *l;
+	const pepper_list_t *list;
+	pepper_view_t *view;
+	pepper_surface_t *surface;
+	pepper_view_t *top_visible = NULL;
+
+	PEPPER_CHECK(hdebug, return, "[%s] Invalid headless debug !\n", __FUNCTION__);
+
+	PEPPER_TRACE("No. WinID      RscID       PID     w    h    x    y   Mapped Visible Top Top_Visible Focus\n");
+	PEPPER_TRACE("==========================================================================================\n");
+
+	list = pepper_compositor_get_view_list(hdebug->compositor);
+
+	pepper_list_for_each_list(l,  list) {
+		view = (pepper_view_t *)l->item;
+		PEPPER_CHECK(view, continue, "[%s] Invalid object view:%p\n", __FUNCTION__, view);
+
+		surface = pepper_view_get_surface(view);
+		PEPPER_CHECK(surface, continue, "[%s] Invalid object surface:%p\n", __FUNCTION__, surface);
+
+		cnt++;
+		pepper_view_get_position(view, &x, &y);
+		pepper_view_get_size(view, &w, &h);
+		wl_client_get_credentials(wl_resource_get_client(pepper_surface_get_resource(surface)), &pid, NULL, NULL);
+		if (!top_visible && pepper_surface_get_buffer(surface))
+			top_visible = view;
+
+		pepper_log("DEBUG", PEPPER_LOG_LEVEL_DEBUG, "%3d 0x%08x 0x%08x %5d %4d %4d %4.0f %4.0f     %s       %s     %s       %s       %s\n",
+					cnt, surface, pepper_surface_get_resource(surface), pid, w, h, x, y,
+					pepper_view_is_mapped(view) ? "O" : "X",
+					pepper_view_is_visible(view) ? "O" : "X",
+					(hdebug->top_mapped == view) ? "O" : "X",
+					(top_visible == view) ? "O" : "X",
+					(hdebug->focus == view) ? "O" : "X");
+	}
+
+	PEPPER_TRACE("==========================================================================================\n");
+}
+
 static const headless_debug_action_t debug_actions[] =
 {
 	{ STDOUT_REDIR,  _headless_debug_redir_stdout, NULL },
@@ -233,7 +285,7 @@ static const headless_debug_action_t debug_actions[] =
 	{ PROTOCOL_TRACE_ON,  _headless_debug_protocol_trace_on, _headless_debug_protocol_trace_off },
 	{ PROTOCOL_TRACE_OFF, _headless_debug_protocol_trace_off, NULL },
 	{ KEYGRAB_STATUS, _headless_debug_NOT_supported, NULL },
-	{ TOPVWINS, _headless_debug_NOT_supported, NULL },
+	{ TOPVWINS, _headless_debug_topvwins, NULL },
 	{ CONNECTED_CLIENTS, _headless_debug_connected_clients, NULL },
 	{ CLIENT_RESOURCES, _headless_debug_connected_clients, NULL },
 	{ HELP_MSG, _headless_debug_dummy, NULL },
@@ -292,6 +344,34 @@ _trace_cb_handle_inotify_event(uint32_t type, pepper_inotify_event_t *ev, void *
 		default:
 			PEPPER_TRACE("[%s] Unhandled event type (%d)\n", __FUNCTION__, type);
 			break;
+	}
+}
+
+PEPPER_API void
+headless_debug_set_focus_view(pepper_compositor_t *compositor, pepper_view_t *focus_view)
+{
+	headless_debug_t *hdebug = NULL;
+
+	hdebug = (headless_debug_t *)pepper_object_get_user_data((pepper_object_t *) compositor, &KEY_DEBUG);
+	PEPPER_CHECK(hdebug, return, "Invalid headless debug.\n");
+
+	if (hdebug->focus != focus_view) {
+		PEPPER_TRACE("[DEBUG] Focus view has been changed to 0x%x (from 0x%x)\n", focus_view, hdebug->focus);
+		hdebug->focus = focus_view;
+	}
+}
+
+PEPPER_API void
+headless_debug_set_top_view(void *compositor, pepper_view_t *top_view)
+{
+	headless_debug_t *hdebug = NULL;
+
+	hdebug = (headless_debug_t *)pepper_object_get_user_data((pepper_object_t *) compositor, &KEY_DEBUG);
+	PEPPER_CHECK(hdebug, return, "Invalid headless debug.\n");
+
+	if (hdebug->top_mapped != top_view) {
+		PEPPER_TRACE("[DEBUG] Top view has been changed to 0x%x (from 0x%x)\n", top_view, hdebug->top_mapped);
+		hdebug->top_mapped = top_view;
 	}
 }
 
