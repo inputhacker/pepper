@@ -29,6 +29,7 @@
 #include <wayland-server.h>
 #include <wayland-util.h>
 #include <pepper-inotify.h>
+#include <pepper-keyrouter.h>
 
 #define MAX_CMDS	256
 
@@ -278,13 +279,22 @@ _headless_debug_topvwins(headless_debug_t *hdebug, void *data)
 	PEPPER_TRACE("==========================================================================================\n");
 }
 
+static void
+_headless_debug_keygrab_status(headless_debug_t *hdebug, void *data)
+{
+	pepper_keyrouter_t *keyrouter;
+
+	keyrouter = headless_input_get_keyrouter(hdebug->compositor);
+	pepper_keyrouter_debug_keygrab_status_print(keyrouter);
+}
+
 static const headless_debug_action_t debug_actions[] =
 {
 	{ STDOUT_REDIR,  _headless_debug_redir_stdout, NULL },
 	{ STDERR_REDIR,  _headless_debug_redir_stderr, NULL },
 	{ PROTOCOL_TRACE_ON,  _headless_debug_protocol_trace_on, _headless_debug_protocol_trace_off },
 	{ PROTOCOL_TRACE_OFF, _headless_debug_protocol_trace_off, NULL },
-	{ KEYGRAB_STATUS, _headless_debug_NOT_supported, NULL },
+	{ KEYGRAB_STATUS, _headless_debug_keygrab_status, NULL },
 	{ TOPVWINS, _headless_debug_topvwins, NULL },
 	{ CONNECTED_CLIENTS, _headless_debug_connected_clients, NULL },
 	{ CLIENT_RESOURCES, _headless_debug_connected_clients, NULL },

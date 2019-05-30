@@ -34,3 +34,5 @@ PEPPER_API void pepper_keyrouter_set_focus_view(pepper_keyrouter_t *pepper_keyro
 PEPPER_API void pepper_keyrouter_set_top_view(pepper_keyrouter_t *pepper_keyrouter, pepper_view_t *top_view);
 PEPPER_API void pepper_keyrouter_key_process(pepper_keyrouter_t *pepper_keyrouter, unsigned int key, unsigned int state, unsigned int time);
 PEPPER_API void pepper_keyrouter_event_handler(pepper_event_listener_t *listener, pepper_object_t *object, uint32_t id, void *info, void *data);
+
+PEPPER_API void pepper_keyrouter_debug_keygrab_status_print(pepper_keyrouter_t *pepper_keyrouter);

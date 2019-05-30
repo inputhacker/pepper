@@ -24,8 +24,8 @@
 #include "keyrouter-internal.h"
 #include <tizen-extension-server-protocol.h>
 
-static pepper_list_t *
-_keyrouter_grabbed_list_get(keyrouter_t *keyrouter,
+PEPPER_API pepper_list_t *
+keyrouter_grabbed_list_get(keyrouter_t *keyrouter,
                                    int type,
                                    int keycode)
 {
@@ -43,6 +43,28 @@ _keyrouter_grabbed_list_get(keyrouter_t *keyrouter,
 		default:
 			return NULL;
 	}
+}
+
+PEPPER_API pepper_bool_t
+keyrouter_is_grabbed_key(keyrouter_t *keyrouter, int keycode)
+{
+	pepper_list_t *list;
+
+	PEPPER_CHECK(keyrouter, return PEPPER_FALSE, "keyrouter is invalid.\n");
+
+	list = keyrouter_grabbed_list_get(keyrouter, TIZEN_KEYROUTER_MODE_EXCLUSIVE, keycode);
+	if (list && !pepper_list_empty(list)) return PEPPER_TRUE;
+
+	list = keyrouter_grabbed_list_get(keyrouter, TIZEN_KEYROUTER_MODE_OVERRIDABLE_EXCLUSIVE, keycode);
+	if (list && !pepper_list_empty(list)) return PEPPER_TRUE;
+
+	list = keyrouter_grabbed_list_get(keyrouter, TIZEN_KEYROUTER_MODE_TOPMOST, keycode);
+	if (list && !pepper_list_empty(list)) return PEPPER_TRUE;
+
+	list = keyrouter_grabbed_list_get(keyrouter, TIZEN_KEYROUTER_MODE_SHARED, keycode);
+	if (list && !pepper_list_empty(list)) return PEPPER_TRUE;
+
+	return PEPPER_FALSE;
 }
 
 static pepper_bool_t
@@ -68,7 +90,7 @@ _keyrouter_grabbed_check(keyrouter_t *keyrouter,
 	pepper_list_t *list = NULL;
 	pepper_bool_t res = PEPPER_FALSE;
 
-	list = _keyrouter_grabbed_list_get(keyrouter, type, keycode);
+	list = keyrouter_grabbed_list_get(keyrouter, type, keycode);
 	PEPPER_CHECK(list, return PEPPER_FALSE, "keycode(%d) had no list for type(%d)\n", keycode, type);
 
 	switch(type)	{
@@ -211,7 +233,7 @@ keyrouter_grab_key(keyrouter_t *keyrouter,
 	info->data = data;
 	pepper_list_init(&info->link);
 
-	list = _keyrouter_grabbed_list_get(keyrouter, type, keycode);
+	list = keyrouter_grabbed_list_get(keyrouter, type, keycode);
 
 	if (!keyrouter->hard_keys[keycode].keycode)
 		keyrouter->hard_keys[keycode].keycode = keycode;
@@ -249,7 +271,7 @@ keyrouter_ungrab_key(keyrouter_t *keyrouter,
 
 	if (!keyrouter->hard_keys[keycode].keycode) return;
 
-	list = _keyrouter_grabbed_list_get(keyrouter, type, keycode);
+	list = keyrouter_grabbed_list_get(keyrouter, type, keycode);
 	PEPPER_CHECK(list, return, "keycode(%d) had no list for type(%d)\n", keycode, type);
 
 	_keyrouter_list_remove_data(list, data);

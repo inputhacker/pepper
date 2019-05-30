@@ -49,6 +49,9 @@ PEPPER_API int keyrouter_key_process(keyrouter_t *keyrouter, int keycode, int pr
 PEPPER_API void keyrouter_set_focus_client(keyrouter_t *keyrouter, void *focus_client);
 PEPPER_API void keyrouter_set_top_client(keyrouter_t *keyrouter, void *top_client);
 
+PEPPER_API pepper_list_t * keyrouter_grabbed_list_get(keyrouter_t *keyrouter, int keycode, int grab_mode);
+PEPPER_API pepper_bool_t keyrouter_is_grabbed_key(keyrouter_t *keyrouter, int keycode);
+
 #ifdef __cplusplus
 }
 #endif

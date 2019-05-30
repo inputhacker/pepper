@@ -212,6 +212,17 @@ _pepper_keyrouter_get_client_from_view(pepper_view_t *view)
 	return NULL;
 }
 
+static int
+_pepper_keyrouter_get_pid(struct wl_client *client)
+{
+	pid_t pid = 0;
+	uid_t uid = 0;
+	gid_t gid = 0;
+
+	wl_client_get_credentials(client, &pid, &uid, &gid);
+
+	return pid;
+}
 
 PEPPER_API void
 pepper_keyrouter_set_seat(pepper_keyrouter_t *pepper_keyrouter, pepper_seat_t *seat)
@@ -254,6 +265,54 @@ pepper_keyrouter_set_top_view(pepper_keyrouter_t *pk, pepper_view_t *top_view)
 		client = _pepper_keyrouter_get_client_from_view(top_view);
 
 	keyrouter_set_top_client(pk->keyrouter, client);
+}
+
+PEPPER_API void
+pepper_keyrouter_debug_keygrab_status_print(pepper_keyrouter_t *pepper_keyrouter)
+{
+	pepper_list_t *list;
+	int i;
+	keyrouter_key_info_t *grab_data;
+
+	PEPPER_CHECK(pepper_keyrouter, return, "pepper_keyrouter is invalid.\n");
+	PEPPER_CHECK(pepper_keyrouter->keyrouter, return, "keyrouter is invalid.\n");
+
+	for (i = 0; i < KEYROUTER_MAX_KEYS; i++) {
+		if (keyrouter_is_grabbed_key(pepper_keyrouter->keyrouter, i)) {
+			PEPPER_TRACE("\t[ Keycode: %d ]\n", i);
+			list = keyrouter_grabbed_list_get(pepper_keyrouter->keyrouter, TIZEN_KEYROUTER_MODE_EXCLUSIVE, i);
+			if (list && !pepper_list_empty(list)) {
+				PEPPER_TRACE("\t  == Exclusive Grab ==\n");
+				pepper_list_for_each(grab_data, list, link) {
+					PEPPER_TRACE("\t    client: %p (pid: %d)\n", grab_data->data, _pepper_keyrouter_get_pid(grab_data->data));
+				}
+			}
+
+			list = keyrouter_grabbed_list_get(pepper_keyrouter->keyrouter, TIZEN_KEYROUTER_MODE_OVERRIDABLE_EXCLUSIVE, i);
+			if (list && !pepper_list_empty(list)) {
+				PEPPER_TRACE("\t  == OR_Exclusive Grab ==\n");
+				pepper_list_for_each(grab_data, list, link) {
+					PEPPER_TRACE("\t    client: %p (pid: %d)\n", grab_data->data, _pepper_keyrouter_get_pid(grab_data->data));
+				}
+			}
+
+			list = keyrouter_grabbed_list_get(pepper_keyrouter->keyrouter, TIZEN_KEYROUTER_MODE_TOPMOST, i);
+			if (list && !pepper_list_empty(list)) {
+				PEPPER_TRACE("\t  == Top Position Grab ==\n");
+				pepper_list_for_each(grab_data, list, link) {
+					PEPPER_TRACE("\t    client: %p (pid: %d)\n", grab_data->data, _pepper_keyrouter_get_pid(grab_data->data));
+				}
+			}
+
+			list = keyrouter_grabbed_list_get(pepper_keyrouter->keyrouter, TIZEN_KEYROUTER_MODE_SHARED, i);
+			if (list && !pepper_list_empty(list)) {
+				PEPPER_TRACE("\t  == Shared Grab ==\n");
+				pepper_list_for_each(grab_data, list, link) {
+					PEPPER_TRACE("\t    client: %p (pid: %d)\n", grab_data->data, _pepper_keyrouter_get_pid(grab_data->data));
+				}
+			}
+		}
+	}
 }
 
 static void

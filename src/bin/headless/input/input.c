@@ -145,6 +145,16 @@ _cb_handle_inotify_event(uint32_t type, pepper_inotify_event_t *ev, void *data)
 	}
 }
 
+PEPPER_API void *
+headless_input_get_keyrouter(pepper_compositor_t *compositor)
+{
+	headless_input_t *hi;
+	hi = pepper_object_get_user_data((pepper_object_t *)compositor, &KEY_INPUT);
+	PEPPER_CHECK(hi, return NULL, "input system is not initialized\n");
+
+	return hi->keyrouter;
+}
+
 void
 headless_input_set_focus_view(pepper_compositor_t *compositor, pepper_view_t *focus_view)
 {
