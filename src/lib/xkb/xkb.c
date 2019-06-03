@@ -325,6 +325,33 @@ pepper_xkb_set_keyboard(pepper_xkb_t *xkb, pepper_xkb_info_t *info,
 	return;
 }
 
+PEPPER_API struct xkb_keymap *
+pepper_xkb_get_keymap(pepper_xkb_t *xkb)
+{
+	PEPPER_CHECK(xkb, return NULL, "invalid xkb!\n");
+	PEPPER_CHECK(xkb->info, return NULL, "keymap is not ready\n");
+
+	return xkb->info->keymap;
+}
+
+PEPPER_API struct xkb_context *
+pepper_xkb_get_context(pepper_xkb_t *xkb)
+{
+	PEPPER_CHECK(xkb, return NULL, "invalid xkb!\n");
+	PEPPER_CHECK(xkb->info, return NULL, "keymap is not ready\n");
+
+	return xkb->info->context;
+}
+
+PEPPER_API struct xkb_state *
+pepper_xkb_get_state(pepper_xkb_t *xkb)
+{
+	PEPPER_CHECK(xkb, return NULL, "invalid xkb!\n");
+	PEPPER_CHECK(xkb->info, return NULL, "keymap is not ready\n");
+
+	return xkb->info->state;
+}
+
 PEPPER_API void
 pepper_xkb_keyboard_set_keymap(pepper_xkb_t *xkb,
 										pepper_keyboard_t *keyboard,
@@ -342,6 +369,7 @@ pepper_xkb_keyboard_set_keymap(pepper_xkb_t *xkb,
 	pending_xkb_info = pepper_xkb_info_create_with_names(names);
 	pepper_keyboard_set_pending_xkb_info(keyboard, pending_xkb_info);
 	pepper_xkb_set_keyboard(xkb, pending_xkb_info, keyboard);
+	xkb->info = pending_xkb_info;
 }
 
 PEPPER_API pepper_xkb_t *

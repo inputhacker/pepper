@@ -155,6 +155,16 @@ headless_input_get_keyrouter(pepper_compositor_t *compositor)
 	return hi->keyrouter;
 }
 
+PEPPER_API void *
+headless_input_get_xkb(pepper_compositor_t *compositor)
+{
+	headless_input_t *hi;
+	hi = pepper_object_get_user_data((pepper_object_t *)compositor, &KEY_INPUT);
+	PEPPER_CHECK(hi, return NULL, "input system is not initialized\n");
+
+	return hi->xkb;
+}
+
 void
 headless_input_set_focus_view(pepper_compositor_t *compositor, pepper_view_t *focus_view)
 {

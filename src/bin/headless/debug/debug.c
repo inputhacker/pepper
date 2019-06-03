@@ -30,6 +30,8 @@
 #include <wayland-util.h>
 #include <pepper-inotify.h>
 #include <pepper-keyrouter.h>
+#include <pepper-xkb.h>
+#include <headless_server.h>
 
 #define MAX_CMDS	256
 
@@ -41,6 +43,7 @@
 #define TOPVWINS			"topvwins"
 #define CONNECTED_CLIENTS		"connected_clients"
 #define CLIENT_RESOURCES		"reslist"
+#define KEYMAP				"keymap"
 #define HELP_MSG			"help"
 
 typedef struct
@@ -76,6 +79,7 @@ _headless_debug_usage()
 	fprintf(stdout, "\t %s\n", TOPVWINS);
 	fprintf(stdout, "\t %s\n", CONNECTED_CLIENTS);
 	fprintf(stdout, "\t %s\n", CLIENT_RESOURCES);
+	fprintf(stdout, "\t %s\n", KEYMAP);
 	fprintf(stdout, "\t %s\n", HELP_MSG);
 
 	fprintf(stdout, "\nTo execute commands, just create/remove/update a file with the commands above.\n");
@@ -88,6 +92,7 @@ _headless_debug_usage()
 	fprintf(stdout, "\t # winfo topvwins\t\t : display top/visible window stack\n");
 	fprintf(stdout, "\t # winfo connected_clients\t : display connected clients information\n");
 	fprintf(stdout, "\t # winfo reslist\t\t : display each resources information of connected clients\n");
+	fprintf(stdout, "\t # winfo keymap\t\t : display current xkb keymap\n");
 	fprintf(stdout, "\t # winfo help\t\t\t : display this help message\n");
 }
 
@@ -222,15 +227,6 @@ _headless_debug_redir_stderr(headless_debug_t *hdebug, void *data)
 }
 
 static void
-_headless_debug_NOT_supported(headless_debug_t *hdebug, void *data)
-{
-	(void) hdebug;
-	(void) data;
-
-	PEPPER_TRACE("NOT SUPPORTED. WILL BE IMPLEMENTED SOON.\n");
-}
-
-static void
 _headless_debug_topvwins(headless_debug_t *hdebug, void *data)
 {
 	(void) data;
@@ -288,6 +284,59 @@ _headless_debug_keygrab_status(headless_debug_t *hdebug, void *data)
 	pepper_keyrouter_debug_keygrab_status_print(keyrouter);
 }
 
+static void
+_headless_debug_keymap(headless_debug_t *hdebug, void *data)
+{
+	pepper_xkb_t *xkb;
+
+	int i;
+	int min_keycode, max_keycode, num_mods, num_groups;
+	struct xkb_context *context = NULL;
+	struct xkb_keymap *keymap = NULL;
+	struct xkb_state *state = NULL;
+	xkb_keysym_t sym = XKB_KEY_NoSymbol;
+	char keyname[256] = {0, };
+
+	xkb = headless_input_get_xkb(hdebug->compositor);
+	PEPPER_CHECK(xkb, return, "xkb is not set\n");
+
+	context = pepper_xkb_get_context(xkb);
+	PEPPER_CHECK(context, return, "Current pepper_xkb has no context.\n");
+	keymap = pepper_xkb_get_keymap(xkb);
+	PEPPER_CHECK(keymap, return, "Current pepper_xkb has no keymap.\n");
+	state = pepper_xkb_get_state(xkb);
+	PEPPER_CHECK(state, return, "Current pepper_xkb has no state.\n");
+
+	min_keycode = xkb_keymap_min_keycode(keymap);
+	max_keycode = xkb_keymap_max_keycode(keymap);
+	num_groups = xkb_map_num_groups(keymap);
+	num_mods = xkb_keymap_num_mods(keymap);
+
+	printf("\n");
+	printf("    min keycode: %d\n", min_keycode);
+	printf("    max keycode: %d\n", max_keycode);
+	printf("    num_groups : %d\n", num_groups);
+	printf("    num_mods   : %d\n", num_mods);
+	for (i = 0; i < num_mods; i++) {
+		printf("        [%2d] mod: %s\n", i, xkb_keymap_mod_get_name(keymap, i));
+	}
+
+	printf("\n\n\tkeycode\t\tkeyname\t\t  keysym\t    repeat\n");
+	printf("    ----------------------------------------------------------------------\n");
+
+	for (i = min_keycode; i < (max_keycode + 1); i++) {
+		sym = xkb_state_key_get_one_sym(state, i);
+
+		memset(keyname, 0, sizeof(keyname));
+		xkb_keysym_get_name(sym, keyname, sizeof(keyname));
+
+		if (!strncmp(keyname, "NoSymbol", sizeof("NoSymbol")) && sym == 0x0)
+			continue;
+
+		printf("\t%4d%-5s%-25s%-20x%-5d\n", i, "", keyname, sym, xkb_keymap_key_repeats(keymap, i));
+	}
+}
+
 static const headless_debug_action_t debug_actions[] =
 {
 	{ STDOUT_REDIR,  _headless_debug_redir_stdout, NULL },
@@ -298,6 +347,7 @@ static const headless_debug_action_t debug_actions[] =
 	{ TOPVWINS, _headless_debug_topvwins, NULL },
 	{ CONNECTED_CLIENTS, _headless_debug_connected_clients, NULL },
 	{ CLIENT_RESOURCES, _headless_debug_connected_clients, NULL },
+	{ KEYMAP, _headless_debug_keymap, NULL },
 	{ HELP_MSG, _headless_debug_dummy, NULL },
 };
 
@@ -372,7 +422,7 @@ headless_debug_set_focus_view(pepper_compositor_t *compositor, pepper_view_t *fo
 }
 
 PEPPER_API void
-headless_debug_set_top_view(void *compositor, pepper_view_t *top_view)
+headless_debug_set_top_view(pepper_compositor_t *compositor, pepper_view_t *top_view)
 {
 	headless_debug_t *hdebug = NULL;
 

@@ -36,6 +36,10 @@ typedef pepper_xkb_rule_names pepper_xkb_rule_names_t;
 typedef struct pepper_xkb_info pepper_xkb_info_t;
 typedef struct pepper_xkb pepper_xkb_t;
 
+PEPPER_API struct xkb_keymap *pepper_xkb_get_keymap(pepper_xkb_t *xkb);
+PEPPER_API struct xkb_context *pepper_xkb_get_context(pepper_xkb_t *xkb);
+PEPPER_API struct xkb_state *pepper_xkb_get_state(pepper_xkb_t *xkb);
+
 PEPPER_API void
 pepper_xkb_keyboard_set_keymap(pepper_xkb_t *xkb,
 										pepper_keyboard_t *keyboard,
