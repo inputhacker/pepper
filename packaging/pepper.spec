@@ -252,6 +252,7 @@ Summary: Headless server for pepper package
 Requires: pepper pepper-keyrouter pepper-devicemgr pepper-evdev
 Requires: pepper-xkb xkeyboard-config xkb-tizen-data
 Requires: libtbm
+Requires: capi-system-peripheral-io
 Conflicts: pepper-doctor
 
 %description headless
