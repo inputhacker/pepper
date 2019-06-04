@@ -33,6 +33,11 @@
 #include <pepper-input-backend.h>
 #include "devicemgr.h"
 
+typedef struct devicemgr_key {
+	int keycode;
+	pepper_list_t link;
+} devicemgr_key_t;
+
 struct devicemgr_device {
 	char name[UINPUT_MAX_NAME_SIZE + 1];
 	pepper_input_device_t *input_device;
@@ -43,6 +48,8 @@ struct devicemgr {
 	pepper_compositor_t *compositor;
 	pepper_seat_t *seat;
 	devicemgr_device_t *keyboard;
+
+	pepper_list_t pressed_keys;
 };
 
 #endif /* DEVICEMGR_INTERNAL_H */

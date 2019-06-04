@@ -42,6 +42,42 @@ _devicemgr_generate_key(pepper_input_device_t *device, int keycode, int pressed)
 		PEPPER_EVENT_INPUT_DEVICE_KEYBOARD_KEY, &event);
 }
 
+static void
+_devicemgr_update_pressed_keys(devicemgr_t *devicemgr, int keycode, pepper_bool_t pressed)
+{
+	devicemgr_key_t *keydata, *tmp;
+
+	if (pressed) {
+		keydata = (devicemgr_key_t *)calloc(sizeof(devicemgr_key_t), 1);
+		PEPPER_CHECK(keydata, return, "Failed to alloc keydata memory.\n");
+		keydata->keycode = keycode;
+		pepper_list_init(&keydata->link);
+		pepper_list_insert(&devicemgr->pressed_keys, &keydata->link);
+	}
+	else {
+		pepper_list_for_each_safe(keydata, tmp, &devicemgr->pressed_keys, link) {
+			if (keydata->keycode == keycode) {
+				pepper_list_remove(&keydata->link);
+				free(keydata);
+				break;
+			}
+		}
+	}
+}
+
+static void
+_devicemgr_cleanup_pressed_keys(devicemgr_t *devicemgr)
+{
+	devicemgr_key_t *keydata, *tmp_keydata;
+
+	pepper_list_for_each_safe(keydata, tmp_keydata, &devicemgr->pressed_keys, link) {
+		if (devicemgr->keyboard)
+			_devicemgr_generate_key(devicemgr->keyboard->input_device, keydata->keycode, PEPPER_FALSE);
+		pepper_list_remove(&keydata->link);
+		free(keydata);
+	}
+}
+
 PEPPER_API int
 devicemgr_input_generator_generate_key(devicemgr_t *devicemgr, int keycode, pepper_bool_t pressed)
 {
@@ -53,6 +89,7 @@ devicemgr_input_generator_generate_key(devicemgr_t *devicemgr, int keycode, pepp
 		"Keyboard device is not initialized\n");
 
 	_devicemgr_generate_key(devicemgr->keyboard->input_device, keycode, pressed);
+	_devicemgr_update_pressed_keys(devicemgr, keycode, pressed);
 
 	return TIZEN_INPUT_DEVICE_MANAGER_ERROR_NONE;
 }
@@ -117,6 +154,8 @@ devicemgr_input_generator_deinit(devicemgr_t *devicemgr)
 {
 	PEPPER_CHECK(devicemgr, return TIZEN_INPUT_DEVICE_MANAGER_ERROR_NO_SYSTEM_RESOURCES, "Invalid devicemgr structure.\n");
 
+	_devicemgr_cleanup_pressed_keys(devicemgr);
+
 	if (!devicemgr->keyboard) return TIZEN_INPUT_DEVICE_MANAGER_ERROR_NONE;
 
 	if (devicemgr->keyboard->created)
@@ -142,6 +181,8 @@ devicemgr_create(pepper_compositor_t *compositor, pepper_seat_t *seat)
 	devicemgr->compositor = compositor;
 	devicemgr->seat = seat;
 
+	pepper_list_init(&devicemgr->pressed_keys);
+
 	return devicemgr;
 
 failed:
@@ -153,6 +194,8 @@ PEPPER_API void
 devicemgr_destroy(devicemgr_t *devicemgr)
 {
 	PEPPER_CHECK(devicemgr, return, "Invalid devicemgr resource.\n");
+
+	_devicemgr_cleanup_pressed_keys(devicemgr);
 
 	if (devicemgr->keyboard) {
 		if (devicemgr->keyboard->created)
