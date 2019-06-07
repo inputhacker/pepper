@@ -32,6 +32,12 @@ extern "C" {
 
 typedef struct devicemgr devicemgr_t;
 typedef struct devicemgr_device devicemgr_device_t;
+typedef struct devicemgr_key devicemgr_key_t;
+
+struct devicemgr_key {
+	int keycode;
+	pepper_list_t link;
+};
 
 PEPPER_API devicemgr_t *devicemgr_create(pepper_compositor_t *compositor, pepper_seat_t *seat);
 PEPPER_API void devicemgr_destroy(devicemgr_t *devicemgr);

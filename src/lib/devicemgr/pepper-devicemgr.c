@@ -52,6 +52,7 @@ struct pepper_devicemgr {
 	pepper_event_listener_t *listener_keyboard_keymap_update;
 
 	pepper_list_t resources;
+	pepper_list_t blocked_keys;
 
 	struct wl_resource *block_resource;
 	struct wl_event_source *timer;
@@ -72,6 +73,8 @@ struct pepper_devicemgr_resource {
 	pepper_bool_t init;
 	pepper_list_t link;
 };
+
+static void _pepper_devicemgr_ungrab_keyboard(pepper_devicemgr_t *pepper_devicemgr);
 
 #ifdef HAVE_CYNARA
 static void
@@ -197,9 +200,60 @@ static pepper_bool_t
 _pepper_devicemgr_keyboard_grab_key(pepper_keyboard_t *keyboard, void *data,
 						  uint32_t time, uint32_t key, uint32_t state)
 {
-	PEPPER_TRACE("blocked key event: key: %d, state: %d\n", key, state);
+	pepper_devicemgr_t *pepper_devicemgr = (pepper_devicemgr_t *)data;
+	devicemgr_key_t *keydata, *tmp_keydata;
+	pepper_bool_t ret = PEPPER_TRUE, blocked_key = PEPPER_FALSE;
 
-	return PEPPER_FALSE;
+	if (!pepper_devicemgr->block_resource) {
+		if (state == PEPPER_KEY_STATE_PRESSED) {
+			ret = PEPPER_TRUE;
+			goto finish;
+		}
+		else {
+			pepper_list_for_each_safe(keydata, tmp_keydata, &pepper_devicemgr->blocked_keys, link) {
+				if (keydata->keycode == (int)key) {
+					pepper_list_remove(&keydata->link);
+					free(keydata);
+					blocked_key = PEPPER_TRUE;
+					break;
+				}
+			}
+			if (pepper_list_empty(&pepper_devicemgr->blocked_keys)) {
+				_pepper_devicemgr_ungrab_keyboard(pepper_devicemgr);
+			}
+			if (blocked_key) {
+				ret = PEPPER_FALSE;
+				goto finish;
+			}
+		}
+	}
+
+	if (state == PEPPER_KEY_STATE_PRESSED) {
+		keydata = (devicemgr_key_t *)calloc(sizeof(devicemgr_key_t), 1);
+		PEPPER_CHECK(keydata, ret = PEPPER_FALSE; goto finish, "Failed to alloc keydata memory.\n");
+		keydata->keycode = key;
+		pepper_list_init(&keydata->link);
+		pepper_list_insert(&pepper_devicemgr->blocked_keys, &keydata->link);
+
+		ret = PEPPER_FALSE;
+	}
+	else {
+		if (!pepper_list_empty(&pepper_devicemgr->blocked_keys)) {
+			pepper_list_for_each_safe(keydata, tmp_keydata, &pepper_devicemgr->blocked_keys, link) {
+				if (keydata->keycode == (int)key) {
+					pepper_list_remove(&keydata->link);
+					free(keydata);
+
+					ret = PEPPER_FALSE;
+				}
+			}
+		}
+	}
+
+finish:
+	if (!ret)
+		PEPPER_TRACE("block key event: (%d %s)\n", key, (state ? "press" : "release"));
+	return ret;
 }
 
 static pepper_bool_t
@@ -256,6 +310,15 @@ _pepper_devicemgr_ungrab_keyboard(pepper_devicemgr_t *pepper_devicemgr)
 }
 
 static void
+_pepper_devicemgr_ungrab_keyboard_check(pepper_devicemgr_t *pepper_devicemgr)
+{
+	if (pepper_list_empty(&pepper_devicemgr->blocked_keys))
+		_pepper_devicemgr_ungrab_keyboard(pepper_devicemgr);
+
+	pepper_devicemgr->block_resource = NULL;
+}
+
+static void
 _pepper_devicemgr_handle_seat_keyboard_add(pepper_event_listener_t *listener, pepper_object_t *object, uint32_t id, void *info, void *data)
 {
 	pepper_keyboard_t *keyboard = (pepper_keyboard_t *)info;
@@ -298,13 +361,12 @@ _pepper_devicemgr_block_timer(void *data)
 {
 	pepper_devicemgr_t *pepper_devicemgr = data;
 
-	_pepper_devicemgr_ungrab_keyboard(pepper_devicemgr);
+	tizen_input_device_manager_send_block_expired(pepper_devicemgr->block_resource);
+
+	_pepper_devicemgr_ungrab_keyboard_check(pepper_devicemgr);
 
 	wl_event_source_remove(pepper_devicemgr->timer);
 	pepper_devicemgr->timer = NULL;
-
-	tizen_input_device_manager_send_block_expired(pepper_devicemgr->block_resource);
-	pepper_devicemgr->block_resource = NULL;
 
 	return 1;
 }
@@ -361,8 +423,7 @@ _pepper_devicemgr_cb_unblock_events(struct wl_client *client, struct wl_resource
 	ret = TIZEN_INPUT_DEVICE_MANAGER_ERROR_BLOCKED_ALREADY;
 	PEPPER_CHECK(pepper_devicemgr->block_resource == resource, goto finish, "currently the input system is blocked by another resource\n");
 
-	_pepper_devicemgr_ungrab_keyboard(pepper_devicemgr);
-	pepper_devicemgr->block_resource = NULL;
+	_pepper_devicemgr_ungrab_keyboard_check(pepper_devicemgr);
 
 	if (pepper_devicemgr->timer) {
 		wl_event_source_remove(pepper_devicemgr->timer);
@@ -618,8 +679,7 @@ _pepper_devicemgr_cb_unbind(struct wl_resource *resource)
 	_pepper_devicemgr_deinit_generator(pepper_devicemgr, resource);
 
 	if (resource == pepper_devicemgr->block_resource) {
-		_pepper_devicemgr_ungrab_keyboard(pepper_devicemgr);
-		pepper_devicemgr->block_resource = NULL;
+		_pepper_devicemgr_ungrab_keyboard_check(pepper_devicemgr);
 		if (pepper_devicemgr->timer) {
 			wl_event_source_remove(pepper_devicemgr->timer);
 			pepper_devicemgr->timer = NULL;
@@ -707,6 +767,7 @@ pepper_devicemgr_create(pepper_compositor_t *compositor, pepper_seat_t *seat)
 		0, _pepper_devicemgr_handle_input_device_add, pepper_devicemgr);
 
 	pepper_list_init(&pepper_devicemgr->resources);
+	pepper_list_init(&pepper_devicemgr->blocked_keys);
 
 	global = wl_global_create(display, &tizen_input_device_manager_interface, 2, pepper_devicemgr, _pepper_devicemgr_cb_bind);
 	PEPPER_CHECK(global, goto failed, "Failed to create wl_global for tizen_devicemgr\n");
@@ -743,6 +804,9 @@ pepper_devicemgr_destroy(pepper_devicemgr_t *pepper_devicemgr)
 	pepper_list_for_each_safe(rdata, rtmp, &pepper_devicemgr->resources, link) {
 		wl_resource_destroy(rdata->resource);
 	}
+
+	if (pepper_devicemgr->old_grab.grab)
+		_pepper_devicemgr_ungrab_keyboard(pepper_devicemgr);
 
 	if (pepper_devicemgr->devicemgr) {
 		devicemgr_destroy(pepper_devicemgr->devicemgr);
