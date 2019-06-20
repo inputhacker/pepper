@@ -126,6 +126,7 @@ This package includes xkb module files.
 %package xkb-devel
 Summary: XKB development module for pepper package
 Requires: pepper-xkb = %{version}-%{release}
+Requires: pkgconfig(xkbcommon)
 
 %description xkb-devel
 This package includes xkb development module files.
