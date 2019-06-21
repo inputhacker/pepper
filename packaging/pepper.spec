@@ -27,18 +27,17 @@ BuildRequires:	pkgconfig(glesv2)
 BuildRequires:  pkgconfig(xkbcommon)
 BuildRequires:	doxygen
 BuildRequires:  pkgconfig(wayland-tbm-server)
-#BuildRequires:  pkgconfig(libtbm)
 BuildRequires:  pkgconfig(tizen-extension-server)
 BuildRequires:  pkgconfig(tizen-extension-client)
 %if "%{ENABLE_TDM}" == "1"
 BuildRequires:  pkgconfig(libtdm)
 %endif
 BuildRequires:  pkgconfig(dlog)
-%if "%{HEADLESS_SERVER}" == "1"
-BuildRequires:  pkgconfig(capi-system-peripheral-io)
-BuildRequires:	pkgconfig(xdg-shell-unstable-v6-server)
-BuildRequires:	pkgconfig(tizen-extension-server)
-%endif
+#%if "%{HEADLESS_SERVER}" == "1"
+#BuildRequires:  pkgconfig(capi-system-peripheral-io)
+#BuildRequires:	pkgconfig(xdg-shell-unstable-v6-server)
+#BuildRequires:	pkgconfig(tizen-extension-server)
+#%endif
 BuildRequires:  pkgconfig(cynara-client)
 BuildRequires:  pkgconfig(cynara-creds-socket)
 BuildRequires:  pkgconfig(libsmack)
@@ -242,22 +241,9 @@ This package includes wayland backend development module files.
 Summary: Doctor server for pepper package
 Requires: pepper pepper-keyrouter pepper-devicemgr pepper-evdev
 Requires: libtbm
-Conflicts: pepper-headless
 
 %description doctor
 This package includes doctor server files.
-
-###### headless server
-%package headless
-Summary: Headless server for pepper package
-Requires: pepper pepper-keyrouter pepper-devicemgr pepper-evdev
-Requires: pepper-xkb xkeyboard-config xkb-tizen-data
-Requires: libtbm
-Requires: capi-system-peripheral-io
-Conflicts: pepper-doctor
-
-%description headless
-This package includes headless server files.
 
 ###### samples
 %package samples
@@ -298,9 +284,7 @@ make %{?_smp_mflags}
 
 # install system session services
 %__mkdir_p %{buildroot}%{_unitdir}
-install -m 644 data/units/display-manager.service.doctor %{buildroot}%{_unitdir}
-install -m 644 data/units/display-manager.service.headless %{buildroot}%{_unitdir}
-install -m 550 data/scripts/* %{buildroot}%{_bindir}
+install -m 644 data/units/display-manager.service %{buildroot}%{_unitdir}
 install -m 644 data/units/display-manager-ready.path %{buildroot}%{_unitdir}
 install -m 644 data/units/display-manager-ready.service %{buildroot}%{_unitdir}
 
@@ -360,31 +344,7 @@ ln -sf ../display-manager.service %{_unitdir}/graphical.target.wants/
 ln -sf ../display-manager-ready.service %{_unitdir}/graphical.target.wants/
 ln -sf ../display-user.service %{_unitdir_user}/basic.target.wants/
 
-%pre headless
-# create groups 'display'
-getent group %{display_group} >/dev/null || %{_sbindir}/groupadd -r -o %{display_group}
-# create user 'display'
-getent passwd %{display_user} >/dev/null || %{_sbindir}/useradd -r -g %{display_group} -d /run/display -s /bin/false -c "Display" %{display_user}
-
-# create links within systemd's target(s)
-%__mkdir_p %{_unitdir}/graphical.target.wants/
-%__mkdir_p %{_unitdir_user}/basic.target.wants/
-ln -sf ../display-manager.service %{_unitdir}/graphical.target.wants/
-ln -sf ../display-manager-ready.service %{_unitdir}/graphical.target.wants/
-ln -sf ../display-user.service %{_unitdir_user}/basic.target.wants/
-
-%post doctor
-mv -f %{_unitdir}/display-manager.service.doctor %{_unitdir}/display-manager.service
-
-%post headless
-mv -f %{_unitdir}/display-manager.service.headless %{_unitdir}/display-manager.service
-
 %postun doctor
-rm -f %{_unitdir}/graphical.target.wants/display-manager.service
-rm -f %{_unitdir}/graphical.target.wants/display-manager-ready.service
-rm -f %{_unitdir_user}/basic.target.wants/display-user.service
-
-%postun headless
 rm -f %{_unitdir}/graphical.target.wants/display-manager.service
 rm -f %{_unitdir}/graphical.target.wants/display-manager-ready.service
 rm -f %{_unitdir_user}/basic.target.wants/display-user.service
@@ -577,20 +537,7 @@ rm -f %{_unitdir_user}/basic.target.wants/display-user.service
 %{_bindir}/doctor*
 %{_unitdir}/display-manager-ready.path
 %{_unitdir}/display-manager-ready.service
-%{_unitdir}/display-manager.service.doctor
-%{_unitdir_user}/display-user.service
-%config %{_sysconfdir}/sysconfig/display-manager.env
-%config %{_sysconfdir}/profile.d/display_env.sh
-
-%files headless
-%manifest %{name}.manifest
-%defattr(-,root,root,-)
-%license COPYING
-%{_bindir}/headless*
-%{_bindir}/winfo
-%{_unitdir}/display-manager-ready.path
-%{_unitdir}/display-manager-ready.service
-%{_unitdir}/display-manager.service.headless
+%{_unitdir}/display-manager.service
 %{_unitdir_user}/display-user.service
 %config %{_sysconfdir}/sysconfig/display-manager.env
 %config %{_sysconfdir}/profile.d/display_env.sh
