@@ -33,11 +33,6 @@ BuildRequires:  pkgconfig(tizen-extension-client)
 BuildRequires:  pkgconfig(libtdm)
 %endif
 BuildRequires:  pkgconfig(dlog)
-#%if "%{HEADLESS_SERVER}" == "1"
-#BuildRequires:  pkgconfig(capi-system-peripheral-io)
-#BuildRequires:	pkgconfig(xdg-shell-unstable-v6-server)
-#BuildRequires:	pkgconfig(tizen-extension-server)
-#%endif
 BuildRequires:  pkgconfig(cynara-client)
 BuildRequires:  pkgconfig(cynara-creds-socket)
 BuildRequires:  pkgconfig(libsmack)
