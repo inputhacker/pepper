@@ -974,6 +974,15 @@ PEPPER_API void
 pepper_region_clear(pepper_region_t *region);
 PEPPER_API int
 pepper_region_print(pepper_region_t *region);
+
+PEPPER_API int
+pepper_security_init(void);
+
+PEPPER_API int
+pepper_security_deinit(void);
+
+PEPPER_API pepper_bool_t
+pepper_security_privilege_check(pid_t pid, uid_t uid, const char *privilege);
 #ifdef __cplusplus
 }
 #endif

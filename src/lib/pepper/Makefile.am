@@ -33,6 +33,7 @@ libpepper_la_SOURCES = pepper.h                 \
                        utils-log.c              \
                        utils-vt.c               \
                        utils-region.c           \
+                       utils-security.c           \
                        subcompositor.c          \
                        subsurface.c             \
                        misc.c
