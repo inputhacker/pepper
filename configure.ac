@@ -50,6 +50,8 @@ PKG_CHECK_MODULES(CYNARA, [cynara-client, cynara-creds-socket, cynara-session, l
 if test "x${have_cynara}" = "xyes"; then
 	AC_DEFINE([HAVE_CYNARA], [1], [Define to 1 if you have cynara])
 	PEPPER_REQUIRES="$PEPPER_REQUIRES cynara-client cynara-creds-socket cynara-session libsmack"
+	PEPPER_CFLAGS+="$CYNARA_CFLAGS -DHAVE_CYNARA=1 "
+	PEPPER_LIBS+="$CYNARA_LIBS "
 fi
 AM_CONDITIONAL([HAVE_CYNARA], [test "x${have_cynara}" = "xyes"])
 

@@ -33,9 +33,11 @@
 #include <cynara-client.h>
 #include <cynara-creds-socket.h>
 #include <sys/smack.h>
-#endif
+#include <stdarg.h>
+#include <stdio.h>
 
-#ifdef HAVE_CYNARA
+#define CYNARA_BUFSIZE 128
+
 static cynara *g_cynara = NULL;
 static int g_cynara_refcount = 0;
 static int g_cynara_init_count = 0;
@@ -46,7 +48,6 @@ _pepper_security_log_print(int err, const char *fmt, ...)
 	int ret;
 	va_list args;
 
-	const int CYNARA_BUFSIZE = 128;
 	char buf[CYNARA_BUFSIZE] = "\0", tmp[CYNARA_BUFSIZE + CYNARA_BUFSIZE] = "\0";
 
 	if (fmt)	{
@@ -93,7 +94,7 @@ pepper_security_privilege_check(pid_t pid, uid_t uid, const char *privilege)
 	snprintf(uid_str, 15, "%d", (int)uid);
 
 	client_session = cynara_session_from_pid(pid);
-	PEPPER_CHECK(client_session, finish, "");
+	PEPPER_CHECK(client_session, goto finish, "");
 
 	ret = cynara_check(g_cynara,
 	                  client_smack,
@@ -104,7 +105,7 @@ pepper_security_privilege_check(pid_t pid, uid_t uid, const char *privilege)
 	if (ret == CYNARA_API_ACCESS_ALLOWED)
 		res = PEPPER_TRUE;
 	else
-		_pepper_security_log_print(ret, "rule: %s, client_smack: %s, pid: %d", rule, client_smack, pid);
+		_pepper_security_log_print(ret, "privilege: %s, client_smack: %s, pid: %d", privilege, client_smack, pid);
 
 finish:
 	PEPPER_TRACE("Privilege Check For '%s' %s pid:%u uid:%u client_smack:%s(len:%d) client_session:%s ret:%d",
@@ -127,7 +128,7 @@ PEPPER_API int
 pepper_security_init(void)
 {
 #ifdef HAVE_CYNARA
-	int ret;
+	int ret = CYNARA_API_SUCCESS;
 	int retry_cnt = 0;
 	static pepper_bool_t retried = PEPPER_FALSE;
 
@@ -168,7 +169,7 @@ pepper_security_deinit(void)
 #ifdef HAVE_CYNARA
 	if (g_cynara_refcount < 1)
 	{
-		PEPPER_ERROR("%s called without pepper_security_init");
+		PEPPER_ERROR("%s called without pepper_security_init\n", __FUNCTION__);
 		return 0;
 	}
 
@@ -180,6 +181,7 @@ pepper_security_deinit(void)
 		g_cynara = NULL;
 	}
 #endif
+
 	return 1;
 }
 

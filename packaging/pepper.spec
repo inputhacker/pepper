@@ -9,7 +9,6 @@ Source:		%{name}-%{version}.tar.xz
 source1001:     %name.manifest
 
 %define ENABLE_TDM	1
-%define HEADLESS_SERVER 1
 
 BuildRequires:	autoconf > 2.64
 BuildRequires:	automake >= 1.11
