@@ -25,9 +25,12 @@
 #include "pepper-internal.h"
 #include <tizen-extension-server-protocol.h>
 #include <pepper-utils.h>
+#include <unistd.h>
+#include <stdio.h>
 
 #define MIN(a,b) ((a)<(b)?(a):(b))
 
+typedef struct key_options key_options_t;
 typedef struct resources_data resources_data_t;
 typedef struct clients_data clients_data_t;
 typedef struct grab_list_data grab_list_data_t;
@@ -48,6 +51,12 @@ struct pepper_keyrouter {
 	pepper_view_t *focus_view;
 	pepper_view_t *top_view;
 	pepper_bool_t pepper_security_init_done;
+	key_options_t *opts;
+};
+
+struct key_options {
+	pepper_bool_t enabled;
+	pepper_bool_t no_privilege;
 };
 
 struct resources_data {
@@ -83,6 +92,11 @@ _pepper_keyrouter_util_do_privilege_check(pepper_keyrouter_t *pepper_keyrouter, 
 	/* Top position grab is always allowed. This mode do not need privilege.*/
 	if (mode == TIZEN_KEYROUTER_MODE_TOPMOST) return PEPPER_TRUE;
 	if (!client) return PEPPER_FALSE;
+
+	if (pepper_keyrouter->opts) {
+		if (pepper_keyrouter->opts[keycode].no_privilege)
+			return PEPPER_TRUE;
+	}
 
 	pepper_list_for_each(cdata, &pepper_keyrouter->grabbed_clients, link)	{
 		if (cdata->client == client) return PEPPER_TRUE;
@@ -648,6 +662,48 @@ pepper_keyrouter_event_handler(pepper_event_listener_t *listener,
 	pepper_keyrouter_key_process(pepper_keyrouter, event->key, event->state, event->time);
 }
 
+static void
+_pepper_keyrouter_options_set(pepper_keyrouter_t *pepper_keyrouter)
+{
+	FILE *file;
+	int keycode;
+	char *ret, *tmp, *buf_ptr, buf[1024] = {0,};
+
+	pepper_keyrouter->opts = (key_options_t *)calloc(KEYROUTER_MAX_KEYS, sizeof(key_options_t));
+	PEPPER_CHECK(pepper_keyrouter->opts, return, "Failed to alloc memory for options\n") ;
+
+	if (access(KEYLAYOUT_DIR, R_OK) != 0) {
+		PEPPER_ERROR("Failed to access key layout file(%s)\n", KEYLAYOUT_DIR);
+		goto finish;
+	}
+
+	file = fopen(KEYLAYOUT_DIR, "r");
+	PEPPER_CHECK(file, goto finish, "Failed to open key layout file(%s)\n", KEYLAYOUT_DIR);
+
+	while (!feof(file)) {
+		ret = fgets(buf, 1024, file);
+		if (!ret) continue;
+
+		tmp = strtok_r(buf, " ", &buf_ptr);
+		tmp = strtok_r(NULL, " ", &buf_ptr);
+		if (!tmp) continue;
+		keycode = atoi(tmp);
+		PEPPER_CHECK(keycode < KEYROUTER_MAX_KEYS, continue, "Currently %d key is too big to support\n", keycode);
+
+		pepper_keyrouter->opts[keycode].enabled = PEPPER_TRUE;
+
+		if (strstr(buf_ptr, "no_priv") != NULL) {
+			pepper_keyrouter->opts[keycode].no_privilege = PEPPER_TRUE;
+		}
+    }
+
+    return;
+
+finish:
+	free(pepper_keyrouter->opts);
+	pepper_keyrouter->opts = NULL;
+}
+
 PEPPER_API pepper_keyrouter_t *
 pepper_keyrouter_create(pepper_compositor_t *compositor)
 {
@@ -665,6 +721,8 @@ pepper_keyrouter_create(pepper_compositor_t *compositor)
 	PEPPER_CHECK(pepper_keyrouter, return PEPPER_FALSE, "Failed to allocate memory for keyrouter\n");
 	pepper_keyrouter->display = display;
 	pepper_keyrouter->compositor = compositor;
+
+	_pepper_keyrouter_options_set(pepper_keyrouter);
 
 	pepper_list_init(&pepper_keyrouter->resources);
 	pepper_list_init(&pepper_keyrouter->grabbed_clients);
@@ -684,6 +742,11 @@ pepper_keyrouter_create(pepper_compositor_t *compositor)
 
 failed:
 	if (pepper_keyrouter) {
+		if (pepper_keyrouter->opts) {
+			free(pepper_keyrouter->opts);
+			pepper_keyrouter->opts = NULL;
+		}
+
 		if (pepper_keyrouter->keyrouter) {
 			keyrouter_destroy(pepper_keyrouter->keyrouter);
 			pepper_keyrouter->keyrouter = NULL;
@@ -709,6 +772,11 @@ pepper_keyrouter_destroy(pepper_keyrouter_t *pepper_keyrouter)
 
 	pepper_list_for_each_safe(rdata, rtmp, &pepper_keyrouter->resources, link) {
 		wl_resource_destroy(rdata->resource);
+	}
+
+	if (pepper_keyrouter->opts) {
+		free(pepper_keyrouter->opts);
+		pepper_keyrouter->opts = NULL;
 	}
 
 	if (pepper_keyrouter->keyrouter) {
