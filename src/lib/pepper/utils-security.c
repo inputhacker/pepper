@@ -89,12 +89,15 @@ pepper_security_privilege_check(pid_t pid, uid_t uid, const char *privilege)
 	int ret = -1;
 
 	ret = smack_new_label_from_process((int)pid, &client_smack);
-	PEPPER_CHECK(ret > 0, goto finish, "");
+
+	if (ret <= 0)
+		goto finish;
 
 	snprintf(uid_str, 15, "%d", (int)uid);
 
 	client_session = cynara_session_from_pid(pid);
-	PEPPER_CHECK(client_session, goto finish, "");
+	if (!client_session)
+		goto finish;
 
 	ret = cynara_check(g_cynara,
 	                  client_smack,
@@ -109,7 +112,7 @@ pepper_security_privilege_check(pid_t pid, uid_t uid, const char *privilege)
 
 finish:
 	PEPPER_TRACE("Privilege Check For '%s' %s pid:%u uid:%u client_smack:%s(len:%d) client_session:%s ret:%d",
-					NULL, privilege, res ? "SUCCESS" : "FAIL", pid, uid,
+					privilege, res ? "SUCCESS" : "FAIL", pid, uid,
 					client_smack ? client_smack : "N/A", len,
 					client_session ? client_session: "N/A", ret);
 
