@@ -87,6 +87,12 @@ AC_SUBST(PEPPER_INOTIFY_REQUIRES)
 PEPPER_KEYROUTER_REQUIRES="tizen-extension-server"
 PKG_CHECK_MODULES(PEPPER_KEYROUTER, [$PEPPER_KEYROUTER_REQUIRES])
 
+AC_ARG_WITH(keylayout-dir,
+            [AS_HELP_STRING([--with-keylayout-dir=dir],
+            [ tizen keylayout dir ])],
+            KEYLAYOUT_DIR="$withval")
+AC_DEFINE_UNQUOTED([KEYLAYOUT_DIR], ["$KEYLAYOUT_DIR"], [Keylayout DIR])
+
 PEPPER_KEYROUTER_DIR="-I\$(top_srcdir)/src/lib/keyrouter"
 PEPPER_KEYROUTER_LIB="\$(top_srcdir)/src/lib/keyrouter/libpepper-keyrouter.la"
 

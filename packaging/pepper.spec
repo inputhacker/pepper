@@ -36,6 +36,8 @@ BuildRequires:  pkgconfig(cynara-client)
 BuildRequires:  pkgconfig(cynara-creds-socket)
 BuildRequires:  pkgconfig(libsmack)
 
+%{!?TZ_SYS_RO_SHARE: %global TZ_SYS_RO_SHARE /usr/share}
+
 %description
 Pepper is a lightweight and flexible library for developing various types of wayland compositors.
 
@@ -266,7 +268,8 @@ cp %{SOURCE1001} .
 	--disable-tdm \
 %endif
 	--enable-socket-fd=yes \
-	--disable-document
+	--disable-document \
+	--with-keylayout-dir=%{TZ_SYS_RO_SHARE}/X11/xkb/tizen_key_layout.txt
 
 make %{?_smp_mflags}
 
