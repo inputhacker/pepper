@@ -178,17 +178,17 @@ main(int argc, char **argv)
 	wl_registry_add_listener(display.registry, &registry_listener, &display);
 	wl_display_roundtrip(display.display);
 
-	if (display.shm) {
+	if (!display.shm) {
 		fprintf(stderr, "Couldn't find wl_shm\n");
 		return -1;
 	}
 
-	if (display.compositor) {
+	if (!display.compositor) {
 		fprintf(stderr, "Couldn't find wl_compositor\n");
 		return -1;
 	}
 
-	if (display.shell) {
+	if (!display.shell) {
 		fprintf(stderr, "Couldn't find pepper_shell\n");
 		return -1;
 	}
