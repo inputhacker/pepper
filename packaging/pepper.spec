@@ -175,6 +175,7 @@ Requires: pepper-render = %{version}-%{release}
 %description render-devel
 This package includes render development module files.
 
+%if "%{ENABLE_DRM}" == "1"
 ###### drm backend
 %package drm
 Summary: Drm backend module for pepper package
@@ -189,7 +190,9 @@ Requires: pepper-drm = %{version}-%{release}
 
 %description drm-devel
 This package includes drm backend development module files.
+%endif
 
+%if "%{ENABLE_TDM}" == "1"
 ###### tdm backend
 %package tdm
 Summary: TDM backend module for pepper package
@@ -204,6 +207,7 @@ Requires: pepper-tdm = %{version}-%{release}
 
 %description tdm-devel
 This package includes drm backend development module files.
+%endif
 
 ###### fbdev backend
 %package fbdev
@@ -247,9 +251,14 @@ This package includes doctor server files.
 ###### samples
 %package samples
 Summary: samples for pepper package
-Requires: pepper-drm pepper-desktop-shell
+%if "%{ENABLE_DRM}" == "1"
+Requires: pepper-drm
+%endif
+Requires: pepper-desktop-shell
 Requires: pepper-fbdev
+%if "%{ENABLE_TDM}" == "1"
 Requires: pepper-tdm
+%endif
 Requires: pepper-wayland pepper-x11
 Requires: pepper-libinput
 Requires: pepper-keyrouter pepper-evdev pepper-devicemgr pepper-inotify
@@ -325,8 +334,10 @@ install -m 0644 data/units/display_env.sh %{buildroot}%{_sysconfdir}/profile.d
 %post render -p /sbin/ldconfig
 %postun render -p /sbin/ldconfig
 
+%if "%{ENABLE_DRM}" == "1"
 %post drm -p /sbin/ldconfig
 %postun drm -p /sbin/ldconfig
+%endif
 
 %post fbdev -p /sbin/ldconfig
 %postun fbdev -p /sbin/ldconfig
