@@ -6,7 +6,9 @@ pkgconfig_DATA =
 
 pkgconfig_DATA += pkgconfig/pepper.pc
 pkgconfig_DATA += pkgconfig/pepper-render.pc
+if ENABLE_DRM
 pkgconfig_DATA += pkgconfig/pepper-drm.pc
+endif
 if ENABLE_TDM
 pkgconfig_DATA += pkgconfig/pepper-tdm.pc
 endif

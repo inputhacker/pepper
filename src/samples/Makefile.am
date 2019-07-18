@@ -1,12 +1,14 @@
 bin_PROGRAMS =
 
 # drm-backend
+if ENABLE_DRM
 bin_PROGRAMS += drm-backend
 
 drm_backend_CFLAGS = $(SAMPLES_CFLAGS)
 drm_backend_LDADD  = $(SAMPLES_LIBS)
 
 drm_backend_SOURCES = drm-backend.c
+endif
 
 # tdm-backend
 if ENABLE_TDM

@@ -189,27 +189,37 @@ AC_SUBST(PEPPER_RENDER_LIBS)
 AC_SUBST(PEPPER_RENDER_REQUIRES)
 
 # pepper-drm
-PEPPER_DRM_REQUIRES="libdrm gbm pixman-1"
-PKG_CHECK_MODULES(PEPPER_DRM, [$PEPPER_DRM_REQUIRES])
+AC_ARG_ENABLE(drm,
+              AC_HELP_STRING([--disable-drm],
+                             [disable drm backend module]),
+              enable_drm=$enableval,
+              enable_drm=yes)
 
-PKG_CHECK_MODULES([DRM_SPRD], [libdrm_sprd], [have_drm_sprd=yes], [have_drm_sprd=no])
-if test x$have_drm_sprd = xyes; then
-   AC_DEFINE([HAVE_DRM_SPRD], [1], [Build the drm_sprd])
-   PEPPER_DRM_REQUIRES="$PEPPER_DRM_REQUIRES libdrm-sprd"
-   PEPPER_DRM_CFLAGS="$PEPPER_DRM_CFLAGS $DRM_SPRD_CFLAGS"
-   PEPPER_DRM_LIBS="$PEPPER_DRM_LIBS $DRM_SPRD_LIBS"
+AM_CONDITIONAL(ENABLE_DRM, test x$enable_drm = xyes)
+
+if test x$enable_drm = xyes; then
+	PEPPER_DRM_REQUIRES="libdrm gbm pixman-1"
+	PKG_CHECK_MODULES(PEPPER_DRM, [$PEPPER_DRM_REQUIRES])
+
+	PKG_CHECK_MODULES([DRM_SPRD], [libdrm_sprd], [have_drm_sprd=yes], [have_drm_sprd=no])
+	if test x$have_drm_sprd = xyes; then
+	   AC_DEFINE([HAVE_DRM_SPRD], [1], [Build the drm_sprd])
+	   PEPPER_DRM_REQUIRES="$PEPPER_DRM_REQUIRES libdrm-sprd"
+	   PEPPER_DRM_CFLAGS="$PEPPER_DRM_CFLAGS $DRM_SPRD_CFLAGS"
+	   PEPPER_DRM_LIBS="$PEPPER_DRM_LIBS $DRM_SPRD_LIBS"
+	fi
+
+	PEPPER_DRM_DIR="-I\$(top_srcdir)/src/lib/drm"
+	PEPPER_DRM_LIB="\$(top_srcdir)/src/lib/drm/libpepper-drm.la"
+
+	PEPPER_DRM_CFLAGS="$PEPPER_DIR $PEPPER_RENDER_DIR $PEPPER_LIBINPUT_DIR $PEPPER_DRM_CFLAGS $TBM_CFLAGS"
+	PEPPER_DRM_CFLAGS="$PEPPER_DRM_CFLAGS $PEPPER_CFLAGS"
+	PEPPER_DRM_LIBS="$PEPPER_LIB $PEPPER_RENDER_LIB $PEPPER_LIBINPUT_LIB $PEPPER_DRM_LIBS $TBM_LIBS"
+
+	AC_SUBST(PEPPER_DRM_CFLAGS)
+	AC_SUBST(PEPPER_DRM_LIBS)
+	AC_SUBST(PEPPER_DRM_REQUIRES)
 fi
-
-PEPPER_DRM_DIR="-I\$(top_srcdir)/src/lib/drm"
-PEPPER_DRM_LIB="\$(top_srcdir)/src/lib/drm/libpepper-drm.la"
-
-PEPPER_DRM_CFLAGS="$PEPPER_DIR $PEPPER_RENDER_DIR $PEPPER_LIBINPUT_DIR $PEPPER_DRM_CFLAGS $TBM_CFLAGS"
-PEPPER_DRM_CFLAGS="$PEPPER_DRM_CFLAGS $PEPPER_CFLAGS"
-PEPPER_DRM_LIBS="$PEPPER_LIB $PEPPER_RENDER_LIB $PEPPER_LIBINPUT_LIB $PEPPER_DRM_LIBS $TBM_LIBS"
-
-AC_SUBST(PEPPER_DRM_CFLAGS)
-AC_SUBST(PEPPER_DRM_LIBS)
-AC_SUBST(PEPPER_DRM_REQUIRES)
 
 # pepper-tdm
 AC_ARG_ENABLE(tdm,
@@ -405,14 +415,12 @@ src/lib/xkb/Makefile
 src/lib/libinput/Makefile
 src/lib/desktop-shell/Makefile
 src/lib/render/Makefile
-src/lib/drm/Makefile
 src/lib/fbdev/Makefile
 src/lib/wayland/Makefile
 src/bin/doctor/Makefile
 src/samples/Makefile
 pkgconfig/pepper.pc
 pkgconfig/pepper-render.pc
-pkgconfig/pepper-drm.pc
 pkgconfig/pepper-fbdev.pc
 pkgconfig/pepper-inotify.pc
 pkgconfig/pepper-keyrouter.pc
@@ -428,6 +436,13 @@ if test x$enable_tdm = xyes; then
     AC_CONFIG_FILES([
         src/lib/tdm/Makefile
         pkgconfig/pepper-tdm.pc
+    ])
+fi
+
+if test x$enable_drm = xyes; then
+    AC_CONFIG_FILES([
+        src/lib/drm/Makefile
+        pkgconfig/pepper-drm.pc
     ])
 fi
 

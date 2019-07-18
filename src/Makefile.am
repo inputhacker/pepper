@@ -6,10 +6,13 @@ SUBDIRS = lib/pepper        \
           lib/xkb           \
           lib/desktop-shell \
           lib/render        \
-          lib/drm           \
           lib/fbdev         \
           lib/wayland       \
           lib/inotify
+
+if ENABLE_DRM
+SUBDIRS += lib/drm
+endif
 
 if ENABLE_TDM
 SUBDIRS += lib/tdm

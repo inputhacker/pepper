@@ -9,6 +9,7 @@ Source:		%{name}-%{version}.tar.xz
 source1001:     %name.manifest
 
 %define ENABLE_TDM	1
+%define ENABLE_DRM  0
 
 BuildRequires:	autoconf > 2.64
 BuildRequires:	automake >= 1.11
@@ -20,7 +21,9 @@ BuildRequires:	pkgconfig(wayland-client)
 BuildRequires:	pkgconfig(pixman-1)
 BuildRequires:	pkgconfig(libinput)
 BuildRequires:	pkgconfig(libdrm)
+%if "%{ENABLE_DRM}" == "1"
 BuildRequires:	pkgconfig(gbm)
+%endif
 BuildRequires:	pkgconfig(egl)
 BuildRequires:	pkgconfig(glesv2)
 BuildRequires:  pkgconfig(xkbcommon)
@@ -264,6 +267,9 @@ cp %{SOURCE1001} .
 %build
 %autogen \
 	--disable-x11 \
+%if "%{ENABLE_DRM}" == "0"
+	--disable-drm \
+%endif
 %if "%{ENABLE_TDM}" == "0"
 	--disable-tdm \
 %endif
@@ -473,6 +479,7 @@ rm -f %{_unitdir_user}/basic.target.wants/display-user.service
 %{_libdir}/pkgconfig/pepper-render.pc
 %{_libdir}/libpepper-render.so
 
+%if "%{ENABLE_DRM}" == "1"
 %files drm
 %manifest %{name}.manifest
 %defattr(-,root,root,-)
@@ -485,6 +492,7 @@ rm -f %{_unitdir_user}/basic.target.wants/display-user.service
 %{_includedir}/pepper/pepper-drm.h
 %{_libdir}/pkgconfig/pepper-drm.pc
 %{_libdir}/libpepper-drm.so
+%endif
 
 %if "%{ENABLE_TDM}" == "1"
 %files tdm
