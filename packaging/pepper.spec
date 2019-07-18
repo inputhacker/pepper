@@ -339,6 +339,11 @@ install -m 0644 data/units/display_env.sh %{buildroot}%{_sysconfdir}/profile.d
 %postun drm -p /sbin/ldconfig
 %endif
 
+%if "%{ENABLE_TDM}" == "1"
+%post tdm -p /sbin/ldconfig
+%postun tdm -p /sbin/ldconfig
+%endif
+
 %post fbdev -p /sbin/ldconfig
 %postun fbdev -p /sbin/ldconfig
 
