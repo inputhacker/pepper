@@ -234,6 +234,7 @@ _pepper_keyrouter_key_send(pepper_keyrouter_t *pepper_keyrouter,
 	pepper_keyboard_t *keyboard_info;
 
 	keyboard_info = pepper_seat_get_keyboard(seat);
+	PEPPER_CHECK(keyboard_info, return, "Current seat has no keyboard\n");
 
 	wl_resource_for_each(resource, pepper_keyboard_get_resource_list(keyboard_info)) {
 		if (wl_resource_get_client(resource) == client)
@@ -688,7 +689,8 @@ _pepper_keyrouter_options_set(pepper_keyrouter_t *pepper_keyrouter)
 		tmp = strtok_r(NULL, " ", &buf_ptr);
 		if (!tmp) continue;
 		keycode = atoi(tmp);
-		PEPPER_CHECK(keycode < KEYROUTER_MAX_KEYS, continue, "Currently %d key is too big to support\n", keycode);
+		PEPPER_CHECK(((0 < keycode) && (keycode < KEYROUTER_MAX_KEYS)),
+			continue, "Currently %d key is invalid to support\n", keycode);
 
 		pepper_keyrouter->opts[keycode].enabled = PEPPER_TRUE;
 
@@ -696,6 +698,7 @@ _pepper_keyrouter_options_set(pepper_keyrouter_t *pepper_keyrouter)
 			pepper_keyrouter->opts[keycode].no_privilege = PEPPER_TRUE;
 		}
     }
+    fclose(file);
 
     return;
 
