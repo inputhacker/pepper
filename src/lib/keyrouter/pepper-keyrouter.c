@@ -449,7 +449,7 @@ _pepper_keyrouter_cb_keygrab_set_list(struct wl_client *client,
 			res = keyrouter_grab_key(pepper_keyrouter->keyrouter, grab_data->mode, grab_data->key, (void *)client);
 			grab_data->err = res;
 			if (res == TIZEN_KEYROUTER_ERROR_NONE)
-				res = _pepper_keyrouter_add_client_to_list(pepper_keyrouter, client);
+				_pepper_keyrouter_add_client_to_list(pepper_keyrouter, client);
 		}
 	}
 

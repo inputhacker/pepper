@@ -166,6 +166,7 @@ failed:
 		wl_event_source_remove(watch_data->event_source);
 	if (watch_data->wd)
 		inotify_rm_watch(inotify->fd, watch_data->wd);
+	free(watch_data);
 
 	return PEPPER_FALSE;
 }
