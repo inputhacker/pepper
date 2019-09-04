@@ -689,8 +689,10 @@ _pepper_keyrouter_options_set(pepper_keyrouter_t *pepper_keyrouter)
 		tmp = strtok_r(NULL, " ", &buf_ptr);
 		if (!tmp) continue;
 		keycode = atoi(tmp);
-		PEPPER_CHECK(((0 < keycode) && (keycode < KEYROUTER_MAX_KEYS)),
-			continue, "Currently %d key is invalid to support\n", keycode);
+		if ((0 >= keycode) || (keycode >= KEYROUTER_MAX_KEYS)) {
+			PEPPER_ERROR("Currently %d key is invalid to support\n", keycode);
+			continue;
+		}
 
 		pepper_keyrouter->opts[keycode].enabled = PEPPER_TRUE;
 
